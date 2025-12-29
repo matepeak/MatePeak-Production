@@ -258,11 +258,59 @@ export default function DateTimeSelection({
         return;
       }
 
-      // Create custom time request record
+      // Check mentor's availability and block status for the requested date
+      const dateStr = format(selectedDate, "yyyy-MM-dd");
+      // 1. Check if date is blocked
+      const { data: blockedDates, error: blockedError } = await supabase
+        .from("blocked_dates")
+        .select("date")
+        .eq("expert_id", mentorId)
+        .eq("date", dateStr);
+      if (blockedError) throw blockedError;
+      if (blockedDates && blockedDates.length > 0) {
+        toast.error("You cannot request time on a blocked date.");
+        return;
+      }
+
+      // 2. Check if mentor has any available slots on this date
+      const { data: availSlots, error: availError } = await supabase
+        .from("availability_slots")
+        .select("id")
+        .eq("expert_id", mentorId)
+        .or(`(is_recurring.eq.true,day_of_week.eq.${selectedDate.getDay()})`, {
+          foreignTable: "availability_slots",
+        })
+        .or(`(is_recurring.eq.false,specific_date.eq.${dateStr})`, {
+          foreignTable: "availability_slots",
+        });
+      if (availError) throw availError;
+      if (availSlots && availSlots.length > 0) {
+        toast.error(
+          "You can only request time for days when the mentor is not available."
+        );
+        return;
+      }
+
+      // 3. Check if mentor has any confirmed bookings on this date
+      const { data: bookings, error: bookingsError } = await supabase
+        .from("bookings")
+        .select("id")
+        .eq("expert_id", mentorId)
+        .eq("scheduled_date", dateStr)
+        .eq("status", "confirmed");
+      if (bookingsError) throw bookingsError;
+      if (bookings && bookings.length > 0) {
+        toast.error(
+          "You cannot request time for days when the mentor already has a confirmed session."
+        );
+        return;
+      }
+
+      // All checks passed, create custom time request record
       const { error } = await supabase.from("booking_requests").insert({
         mentor_id: mentorId,
         mentee_id: user.id,
-        requested_date: format(selectedDate, "yyyy-MM-dd"),
+        requested_date: dateStr,
         requested_start_time: requestedStartTime,
         requested_end_time: requestedEndTime,
         message: requestMessage,

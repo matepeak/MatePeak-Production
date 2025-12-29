@@ -59,6 +59,13 @@ const DashboardOverview = ({
   useEffect(() => {
     fetchDashboardData();
     fetchTimeRequests();
+
+    // Set up auto-refresh for time requests every 30 seconds
+    const refreshInterval = setInterval(() => {
+      fetchTimeRequests();
+    }, 30000);
+
+    return () => clearInterval(refreshInterval);
   }, [mentorProfile, timePeriod]);
 
   const fetchDashboardData = async () => {
