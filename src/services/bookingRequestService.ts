@@ -58,35 +58,70 @@ export async function fetchBookingRequests(
     const mentorIds = Array.from(new Set(allRequests.map((r: any) => r.mentor_id).filter(Boolean)));
     const mentorMap = new Map<string, any>();
 
+    console.log("🔍 TimeRequest Debug - Mentor IDs to fetch:", mentorIds);
+
     if (mentorIds.length > 0) {
       // First try expert_profiles for richer mentor info
       const { data: experts, error: expertsErr } = await supabase
         .from("expert_profiles")
-        .select("id, full_name, username, profile_picture_url, headline, expertise")
+        .select("id, full_name, username, profile_picture_url, headline, expertise_tags")
         .in("id", mentorIds);
 
+      console.log("🔍 Expert profiles fetched:", experts);
+      console.log("🔍 Expert profiles error:", expertsErr);
+
       if (!expertsErr && experts) {
-        experts.forEach((m: any) => mentorMap.set(m.id, m));
+        experts.forEach((m: any) => {
+          console.log(`🔍 Expert ${m.full_name}: profile_picture_url =`, m.profile_picture_url);
+          mentorMap.set(m.id, {
+            ...m,
+            expertise: m.expertise_tags // Map expertise_tags to expertise for interface compatibility
+          });
+        });
       }
 
       // Fill gaps from profiles where expert_profiles missing
       const missingIds = mentorIds.filter((id) => !mentorMap.has(id));
+      console.log("🔍 Missing mentor IDs (not in expert_profiles):", missingIds);
+      
       if (missingIds.length > 0) {
         const { data: profiles } = await supabase
           .from("profiles")
           .select("id, full_name, avatar_url")
           .in("id", missingIds);
-        (profiles || []).forEach((p: any) =>
+        
+        console.log("🔍 Profiles fallback data:", profiles);
+        
+        (profiles || []).forEach((p: any) => {
+          console.log(`🔍 Profile ${p.full_name}: avatar_url =`, p.avatar_url);
           mentorMap.set(p.id, {
             id: p.id,
             full_name: p.full_name,
             profile_picture_url: p.avatar_url,
             headline: undefined,
             expertise: undefined,
-          })
-        );
+          });
+        });
       }
+      
+      // CRITICAL FIX: Also get avatar_url from profiles for ALL mentors to supplement missing images
+      const { data: allProfiles } = await supabase
+        .from("profiles")
+        .select("id, avatar_url")
+        .in("id", mentorIds);
+      
+      console.log("🔍 All profiles for avatar_url supplement:", allProfiles);
+      
+      (allProfiles || []).forEach((p: any) => {
+        const existing = mentorMap.get(p.id);
+        if (existing && !existing.profile_picture_url && p.avatar_url) {
+          console.log(`🔍 Supplementing ${existing.full_name} with avatar_url:`, p.avatar_url);
+          existing.profile_picture_url = p.avatar_url;
+        }
+      });
     }
+
+    console.log("🔍 Final mentorMap:", Array.from(mentorMap.values()));
 
     // Return requests with attached mentor details
     return allRequests.map((r: any) => ({ ...r, mentor: mentorMap.get(r.mentor_id) }));
@@ -224,7 +259,7 @@ export async function createBookingRequest(
           username,
           profile_picture_url,
           headline,
-          expertise
+          expertise_tags
         )
       `
       )
