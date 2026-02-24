@@ -43,9 +43,9 @@ export default function StudentLogin() {
         toast.success("Logged in successfully!");
         navigate("/dashboard");
       } else if (userRole === 'mentor') {
-        toast.error("Please use the mentor sign-in page");
+        toast.warning("Please use the mentor sign-in page");
       } else {
-        toast.error("Invalid account type");
+        toast.warning("Invalid account type");
       }
     } catch (error) {
       toast.error("An error occurred. Please try again.");

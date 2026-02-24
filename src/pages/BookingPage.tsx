@@ -82,7 +82,7 @@ const BookingPage = () => {
           data: { session },
         } = await supabase.auth.getSession();
         if (!session) {
-          toast.error("Please log in to book a session");
+          toast.warning("Please log in to book a session");
           navigate("/student/login");
           return;
         }

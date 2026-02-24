@@ -72,7 +72,7 @@ export default function TeachingCertificationStep({ form }: TeachingCertificatio
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("You must be logged in to upload files");
+        toast.warning("You must be logged in to upload files");
         return;
       }
 

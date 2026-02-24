@@ -144,7 +144,7 @@ export default function StudentProfile({ studentProfile, onProfileUpdate }: Stud
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error('You must be logged in to upload a profile picture');
+        toast.warning('You must be logged in to upload a profile picture');
         return;
       }
 

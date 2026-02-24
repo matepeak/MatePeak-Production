@@ -77,7 +77,7 @@ export default function ProfileHeader({
 
       // Check if user is trying to book their own profile
       if (user.id === mentor.id) {
-        toast.error("You cannot book a session with yourself");
+        toast.warning("You cannot book a session with yourself");
         setIsCheckingAuth(false);
         return;
       }

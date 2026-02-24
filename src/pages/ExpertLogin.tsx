@@ -55,7 +55,7 @@ export default function ExpertLogin() {
 
         if (!profile || !profile.username) {
           // No profile yet, redirect to onboarding
-          toast.success("Please complete your profile setup");
+          toast.info("Please complete your profile setup");
           navigate("/expert/onboarding");
           return;
         }
@@ -64,9 +64,9 @@ export default function ExpertLogin() {
         // Redirect to username-based dashboard
         navigate(`/dashboard/${profile.username}`);
       } else if (userRole === 'student') {
-        toast.error("Please use the student sign-in page");
+        toast.warning("Please use the student sign-in page");
       } else {
-        toast.error("Invalid account type");
+        toast.warning("Invalid account type");
       }
     } catch (error) {
       toast.error("An error occurred. Please try again.");

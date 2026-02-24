@@ -487,7 +487,7 @@ export default function ProfileAvailability({
 
       // Check if user is trying to book their own profile
       if (user.id === mentorId) {
-        toast.error("You cannot book a session with yourself");
+        toast.warning("You cannot book a session with yourself");
         setIsCheckingAuth(false);
         return;
       }
@@ -575,7 +575,7 @@ export default function ProfileAvailability({
     } = await supabase.auth.getUser();
 
     if (!user) {
-      toast.error("Please log in to request custom time with this mentor", {
+      toast.warning("Please log in to request custom time with this mentor", {
         description: "You need to be logged in to send custom time requests",
       });
       return;
@@ -583,7 +583,7 @@ export default function ProfileAvailability({
 
     // Check if user is trying to request time from themselves
     if (user.id === mentorId) {
-      toast.error("You cannot request custom time from yourself", {
+      toast.warning("You cannot request custom time from yourself", {
         description:
           "Custom time requests are for students to request sessions with mentors",
       });
@@ -634,13 +634,13 @@ export default function ProfileAvailability({
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Please sign in to request custom time");
+        toast.warning("Please sign in to request custom time");
         return;
       }
 
       // Prevent mentor from requesting time from themselves
       if (user.id === mentorId) {
-        toast.error("You cannot request custom time from yourself");
+        toast.warning("You cannot request custom time from yourself");
         return;
       }
 
@@ -682,7 +682,7 @@ export default function ProfileAvailability({
     } = await supabase.auth.getUser();
 
     if (!user) {
-      toast.error("Please log in to set up availability alerts", {
+      toast.warning("Please log in to set up availability alerts", {
         description: "You need to be logged in to receive notifications",
       });
       return;
@@ -690,7 +690,7 @@ export default function ProfileAvailability({
 
     // Check if user is trying to subscribe to their own alerts
     if (user.id === mentorId) {
-      toast.error("You cannot subscribe to alerts for your own availability", {
+      toast.warning("You cannot subscribe to alerts for your own availability", {
         description:
           "Availability alerts are for students to get notified when mentors add new slots",
       });
@@ -714,13 +714,13 @@ export default function ProfileAvailability({
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Please sign in to enable alerts");
+        toast.warning("Please sign in to enable alerts");
         return;
       }
 
       // Prevent mentor from subscribing to their own alerts
       if (user.id === mentorId) {
-        toast.error("You cannot subscribe to alerts for your own availability");
+        toast.warning("You cannot subscribe to alerts for your own availability");
         return;
       }
 

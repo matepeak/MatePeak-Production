@@ -211,7 +211,7 @@ export default function DateTimeSelection({
     } = await supabase.auth.getUser();
 
     if (!user) {
-      toast.error("Please log in to request custom time with this mentor", {
+      toast.warning("Please log in to request custom time with this mentor", {
         description: "You need to be logged in to send custom time requests",
       });
       return;
@@ -219,7 +219,7 @@ export default function DateTimeSelection({
 
     // Check if user is trying to request time from themselves
     if (user.id === mentorId) {
-      toast.error("You cannot request custom time from yourself", {
+      toast.warning("You cannot request custom time from yourself", {
         description:
           "Custom time requests are for students to request sessions with mentors",
       });
@@ -248,13 +248,13 @@ export default function DateTimeSelection({
       } = await supabase.auth.getUser();
 
       if (!user) {
-        toast.error("Please sign in to request custom time");
+        toast.warning("Please sign in to request custom time");
         return;
       }
 
       // Prevent mentor from requesting time from themselves
       if (user.id === mentorId) {
-        toast.error("You cannot request custom time from yourself");
+        toast.warning("You cannot request custom time from yourself");
         return;
       }
 

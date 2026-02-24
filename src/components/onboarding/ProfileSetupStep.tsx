@@ -58,7 +58,7 @@ export default function ProfileSetupStep({ form }: { form: UseFormReturn<any> })
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("You must be logged in to upload profile picture");
+        toast.warning("You must be logged in to upload a profile picture");
         return;
       }
 

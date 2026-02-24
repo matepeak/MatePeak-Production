@@ -30,7 +30,7 @@ export default function StudentDashboard() {
       const { data: { session }, error: authError } = await supabase.auth.getSession();
       
       if (authError || !session) {
-        toast.error('Please login to access the dashboard');
+        toast.warning('Please log in to access the dashboard');
         navigate('/student/login');
         return;
       }
@@ -38,7 +38,7 @@ export default function StudentDashboard() {
       // Security: Check if user is a mentor
       const userRole = session.user.user_metadata?.role || session.user.user_metadata?.user_type;
       if (userRole === 'mentor' || userRole === 'expert') {
-        toast.error('This dashboard is for students only');
+        toast.warning('This dashboard is for students only');
         navigate('/mentor-dashboard');
         return;
       }
@@ -51,14 +51,14 @@ export default function StudentDashboard() {
         .single();
 
       if (expertProfile) {
-        toast.error('Mentors cannot access the student dashboard');
+        toast.warning('Mentors cannot access the student dashboard');
         navigate('/mentor-dashboard');
         return;
       }
 
       // Security: Verify user has correct role
       if (userRole && userRole !== 'student') {
-        toast.error('Access denied. Student access only.');
+        toast.warning('Access denied. Student access only.');
         navigate('/');
         return;
       }

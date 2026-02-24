@@ -25,7 +25,7 @@ export default function ExpertDashboard() {
       // Security: Check if user is a student
       const userRole = session.user.user_metadata?.role || session.user.user_metadata?.user_type;
       if (userRole === 'student') {
-        toast.error('This dashboard is for mentors only');
+        toast.warning('This dashboard is for mentors only');
         navigate('/dashboard');
         return;
       }
@@ -38,7 +38,7 @@ export default function ExpertDashboard() {
         .single();
 
       if (!expertCheck) {
-        toast.error('Expert profile not found. Please complete onboarding.');
+        toast.warning('Expert profile not found. Please complete onboarding.');
         navigate('/expert/onboarding');
         return;
       }
