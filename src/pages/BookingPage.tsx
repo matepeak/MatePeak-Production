@@ -164,13 +164,13 @@ const BookingPage = () => {
               duration: 60,
               price: serviceData.price || 0,
               hasFreeDemo: serviceData.hasFreeDemo || false,
+            });
 
-              // Auto-advance to appropriate step
-              if (serviceKey === "oneOnOneSession") {
-                setStep(2); // Date/time selection
-              } else {
-                setStep(3); // Skip to confirmation for non-scheduled services
-              }
+            // Auto-advance to appropriate step
+            if (preSelectedServiceId === "oneOnOneSession") {
+              setStep(2); // Date/time selection
+            } else {
+              setStep(3); // Skip to confirmation for non-scheduled services
             }
           }
         }
