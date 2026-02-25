@@ -47,7 +47,7 @@ const MentorSearch = () => {
           )
         `
         )
-        .eq("onboarding_completed", true)
+        .eq("onboarding_complete", true)
         .not("username", "is", null);
 
       if (error) throw error;

@@ -368,6 +368,20 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
 
+## 📖 Developer Documentation
+
+> **Note**: Comprehensive internal documentation is available in the `docs/` directory for developers working on this project. This includes:
+> - Feature implementation guides
+> - Troubleshooting documentation  
+> - Security and testing guides
+> - Deployment procedures
+>
+> See [docs/INDEX.md](./docs/INDEX.md) for the complete documentation index.
+>
+> *Internal documentation files are not tracked in the repository to keep it clean and focused on code.*
+
+---
+
 <div align="center">
 
 **Built with ❤️ by [Itesh Prajapati](https://github.com/iteshprajapati)**

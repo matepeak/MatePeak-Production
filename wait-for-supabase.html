@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Supabase Wake-up Monitor</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #fff; }
+        .status { font-size: 24px; margin: 20px 0; }
+        .attempts { color: #888; }
+        .log { background: #2d2d2d; padding: 10px; border-radius: 5px; margin-top: 20px; max-height: 300px; overflow-y: auto; }
+        .log-entry { margin: 5px 0; }
+        .success { color: #4caf50; }
+        .error { color: #f44336; }
+        .waiting { color: #ff9800; }
+    </style>
+</head>
+<body>
+    <h2>⏳ Waiting for Supabase to wake up...</h2>
+    <div class="status" id="status">🔄 Checking connection...</div>
+    <div class="attempts" id="attempts">Attempt <span id="count">0</span> - Checking every 10 seconds</div>
+    
+    <div class="log" id="log"></div>
+    
+    <script>
+        const SUPABASE_URL = 'https://hnevrdlcqhmsfubakljg.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuZXZyZGxjcWhtc2Z1YmFrbGpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAwNDIzMDEsImV4cCI6MjA3NTYxODMwMX0.e4OjzNc4A6d6petuDQFW-iD6JPVqwmy5Y_KWvgXabBA';
+        
+        let attemptCount = 0;
+        let startTime = Date.now();
+        
+        function addLog(message, type = 'waiting') {
+            const log = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        async function testConnection() {
+            attemptCount++;
+            document.getElementById('count').textContent = attemptCount;
+            
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            addLog(`Attempt ${attemptCount} (${elapsed}s elapsed) - Testing connection...`, 'waiting');
+            
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
+                
+                const response = await fetch(
+                    `${SUPABASE_URL}/rest/v1/expert_profiles?select=count&limit=1`,
+                    {
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': `Bearer ${SUPABASE_KEY}`
+                        },
+                        signal: controller.signal
+                    }
+                );
+                
+                clearTimeout(timeoutId);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('status').innerHTML = '✅ CONNECTED!';
+                    addLog(`SUCCESS! Supabase is online. Found data: ${JSON.stringify(data)}`, 'success');
+                    addLog('🎉 You can now refresh your app!', 'success');
+                    
+                    // Play sound
+                    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTWM0/LMeSwGJHfH8N2RQAoUXrTp66hVFApGn+DyvmwhBTWM0/LMeSwGJHfH8N2RQAoUXrTp66hVFApGn+DyvmwhBTWM0/LMeSwGJHfH8N2RQAoUXrTp66hVFApGn+DyvmwhBTWM0/LMeSwGJHfH8N2RQAoUXrTp66hVFApGn+DyvmwhBTWM0/LMeSwGJHfH8N2RQAoUXrTp66hVFApGn+DyvmwhBTWM0/LMeSwGJHfH8N2RQAoUXrTp66hVFApGn+DyvmwhBTWM0/LMeSwGJHfH8N2RQAoUXrTp66hVFApGn+DyvmwhBTWM0/LMeSwGJHfH8N2RQAoUXrTp66hVFApGn+DyvmwhBTWM0/LMeSwGJHfH8N2RQAoUXrTp66hVFApGn+DyvmwhBTWM0/LMeSwGJHfH8N+RQAoUXrTp66hVFApGn+DyvmwhBTWM0/LMeSwGJHfH8N+RQAoUXrTp66hVFApGn+DyvmwhBTWM0/LMeSwGJHfH8N+RQAoUXrTp66hVFApGn+DyvmwhBTWM0/LMeSwGJHfH8N+RQAoUXrTp66hVFApGn+DyvmwhBTWM0/LMeSwGJHfH8N+RQAoUXrTp66hVFApGn+DyvmwhBTWM0/LMeSwGJHfH8N+RQAoUXrTp66hVFApGn+DyvmwhBTWM0/LMeSwGJHfH8N+RQAoUXrTp66hVFApGn+DyvmwhBTWM0/LMeSwGJHfH8N+RQAoUXrTp66hVFApGn+DyvmwhBTWM0/LMeSwGJHfH8N+RQAoUXrTp66hVFA==');
+                    audio.play().catch(() => {});
+                    
+                    return true;
+                } else {
+                    addLog(`API returned error: HTTP ${response.status}`, 'error');
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    addLog('Still offline - connection timeout', 'error');
+                } else {
+                    addLog(`Error: ${error.message}`, 'error');
+                }
+            }
+            
+            return false;
+        }
+        
+        async function monitor() {
+            const connected = await testConnection();
+            
+            if (!connected) {
+                // Try again in 10 seconds
+                setTimeout(monitor, 10000);
+            }
+        }
+        
+        // Start monitoring
+        addLog('Starting connection monitor...', 'waiting');
+        addLog('This will check every 10 seconds until Supabase comes online', 'waiting');
+        addLog('', 'waiting');
+        monitor();
+    </script>
+</body>
+</html>

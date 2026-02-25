@@ -30,14 +30,9 @@ export async function updateExpertProfile(data: FormValues) {
     categories: Array.isArray(data.category) ? data.category : [data.category],
     expertise_tags: data.expertiseTags || [],
     languages: data.languages || [],
-    services: {
-      oneOnOneSession: data.oneOnOneSession,
-      chatAdvice: data.chatAdvice,
-      digitalProducts: data.digitalProducts,
-      notes: data.notes,
-    },
-    availability_json: availabilityJson,
+    // Unified services structure - all services now in service_pricing
     service_pricing: data.servicePricing,
+    availability_json: availabilityJson,
     profile_picture_url: data.profilePictureUrl,
     social_links: data.socialLinks,
     introduction: data.introduction,
@@ -52,7 +47,10 @@ export async function updateExpertProfile(data: FormValues) {
     target_audience: data.targetAudience || {},
     problems_helped: data.problemsHelped || {},
     outcomes_delivered: data.outcomesDelivered || {},
-    suggested_services: data.suggestedServices || [],
+    // Identity verification fields
+    verification_photo_url: data.verificationPhotoUrl || null,
+    verification_status: data.verificationStatus || 'pending',
+    verification_date: data.verificationDate || null,
   };
 
   if (existingProfile) {

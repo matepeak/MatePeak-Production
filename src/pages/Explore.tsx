@@ -10,6 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { MentorFetchDebug } from "@/components/MentorFetchDebug";
+
+// Add near the top of your JSX, before the mentor grid:
 import {
   Loader2,
   Search,
@@ -31,6 +34,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { showWarningToast } from "@/utils/toast-helpers";
 import { Session } from "@supabase/supabase-js";
+import { ConnectionStatus } from "@/components/ConnectionStatus";
 
 const Explore = () => {
   const location = useLocation();
@@ -60,7 +64,7 @@ const Explore = () => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -478,7 +482,7 @@ const Explore = () => {
         }, 1000 * (retry + 1)); // Exponential backoff
       } else {
         setError(
-          "Failed to load mentors. Please check your connection and try again."
+          new Error("Failed to load mentors. Please check your connection and try again.")
         );
       }
     } finally {
@@ -498,7 +502,7 @@ const Explore = () => {
   const handleSearch = () => {
     if (searchInput.length > 0 && searchInput.length < MIN_SEARCH_LENGTH) {
       setError(
-        `Please enter at least ${MIN_SEARCH_LENGTH} characters to search`
+        new Error(`Please enter at least ${MIN_SEARCH_LENGTH} characters to search`)
       );
       return;
     }
@@ -769,17 +773,12 @@ const Explore = () => {
 
               {/* Error Message */}
               {error && (
-                <div className="mt-3 flex items-center gap-2 text-red-600 text-sm font-poppins">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <span>{error}</span>
-                  {retryCount > 0 && (
-                    <button
-                      onClick={() => fetchDatabaseMentors()}
-                      className="ml-2 text-blue-600 hover:text-blue-700 underline"
-                    >
-                      Retry now
-                    </button>
-                  )}
+                <div className="mt-3">
+                  <ConnectionStatus 
+                    error={error} 
+                    onRetry={() => fetchDatabaseMentors()} 
+                    isRetrying={loading}
+                  />
                 </div>
               )}
 

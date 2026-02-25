@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Supabase Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #fff; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background: #2d5016; }
+        .error { background: #5a1d1d; }
+        button { padding: 10px 20px; background: #0e639c; color: white; border: none; cursor: pointer; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <h2>🔍 Supabase Quick Test</h2>
+    <div id="result"></div>
+    <button onclick="testConnection()">Test Now</button>
+    
+    <script>
+        const SUPABASE_URL = 'https://hnevrdlcqhmsfubakljg.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuZXZyZGxjcWhtc2Z1YmFrbGpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAwNDIzMDEsImV4cCI6MjA3NTYxODMwMX0.e4OjzNc4A6d6petuDQFW-iD6JPVqwmy5Y_KWvgXabBA';
+        
+        async function testConnection() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="result">⏳ Testing...</div>';
+            
+            try {
+                console.log('Starting test...');
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const response = await fetch(
+                    `${SUPABASE_URL}/rest/v1/expert_profiles?select=id,full_name&limit=3`,
+                    {
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': `Bearer ${SUPABASE_KEY}`
+                        },
+                        signal: controller.signal
+                    }
+                );
+                
+                clearTimeout(timeoutId);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            ✅ SUCCESS! Connected to Supabase<br>
+                            <strong>Found ${data.length} mentors:</strong><br>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                    console.log('✅ SUCCESS:', data);
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            ⚠️ API Error (HTTP ${response.status})<br>
+                            ${JSON.stringify(data, null, 2)}
+                        </div>
+                    `;
+                    console.error('API Error:', data);
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            ❌ CONNECTION TIMEOUT<br>
+                            Project might still be starting up.<br>
+                            <strong>Wait 2 minutes and try again.</strong>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            ❌ ERROR: ${error.message}
+                        </div>
+                    `;
+                }
+                console.error('❌ Error:', error);
+            }
+        }
+        
+        // Auto-run on load
+        testConnection();
+    </script>
+</body>
+</html>

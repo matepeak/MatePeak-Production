@@ -73,70 +73,74 @@ export default function ProfileOverview({
   };
 
   const getServicesList = () => {
-    console.log("🎯 Building services list from:");
+    console.log("🎯 Building services list from unified service_pricing:");
     console.log("   service_pricing:", mentor.service_pricing);
-    console.log("   suggested_services:", mentor.suggested_services);
 
     const services = [];
 
-    // Add predefined services from service_pricing
-    if (mentor.service_pricing?.oneOnOneSession?.enabled) {
-      services.push({
-        name: "1-on-1 Sessions",
-        price: mentor.service_pricing.oneOnOneSession.price,
-        discount_price: mentor.service_pricing.oneOnOneSession.discount_price,
-        hasFreeDemo: mentor.service_pricing.oneOnOneSession.hasFreeDemo,
-        icon: Video,
-      });
-      console.log("   ✅ Added 1-on-1 Sessions");
-    }
-    if (mentor.service_pricing?.chatAdvice?.enabled) {
-      services.push({
-        name: "Chat Advice",
-        price: mentor.service_pricing.chatAdvice.price,
-        discount_price: mentor.service_pricing.chatAdvice.discount_price,
-        hasFreeDemo: mentor.service_pricing.chatAdvice.hasFreeDemo,
-        icon: MessageSquare,
-      });
-      console.log("   ✅ Added Chat Advice");
-    }
-    if (mentor.service_pricing?.digitalProducts?.enabled) {
-      services.push({
-        name: "Digital Products",
-        price: mentor.service_pricing.digitalProducts.price,
-        discount_price: mentor.service_pricing.digitalProducts.discount_price,
-        hasFreeDemo: false,
-        icon: FileText,
-      });
-      console.log("   ✅ Added Digital Products");
-    }
-    if (mentor.service_pricing?.notes?.enabled) {
-      services.push({
-        name: "Notes & Resources",
-        price: mentor.service_pricing.notes.price,
-        discount_price: mentor.service_pricing.notes.discount_price,
-        hasFreeDemo: false,
-        icon: FileText,
-      });
-      console.log("   ✅ Added Notes & Resources");
+    if (!mentor.service_pricing) {
+      console.log("   ⚠️ No service_pricing data");
+      return services;
     }
 
-    // Add custom services from suggested_services
-    if (mentor.suggested_services && Array.isArray(mentor.suggested_services)) {
-      mentor.suggested_services.forEach((service: any) => {
-        if (service.enabled) {
+    // Iterate through all services in service_pricing
+    Object.entries(mentor.service_pricing).forEach(([key, value]: [string, any]) => {
+      if (value?.enabled) {
+        // Predefined services
+        if (key === "oneOnOneSession") {
           services.push({
-            name: service.name,
-            description: service.description,
-            price: service.price,
-            discount_price: service.discount_price,
-            hasFreeDemo: service.hasFreeDemo || false,
-            icon: Star, // Use a default icon for custom services
+            name: value.name || "1-on-1 Sessions",
+            description: value.description || "Live video sessions tailored to your learning pace",
+            price: value.price,
+            discount_price: value.discount_price,
+            hasFreeDemo: value.hasFreeDemo,
+            icon: Video,
           });
-          console.log("   ✅ Added custom service:", service.name);
+          console.log("   ✅ Added 1-on-1 Sessions");
+        } else if (key === "chatAdvice") {
+          services.push({
+            name: value.name || "Chat Advice",
+            description: value.description || "Get quick guidance via text chat whenever you need",
+            price: value.price,
+            discount_price: value.discount_price,
+            hasFreeDemo: value.hasFreeDemo,
+            icon: MessageSquare,
+          });
+          console.log("   ✅ Added Chat Advice");
+        } else if (key === "digitalProducts") {
+          services.push({
+            name: value.name || "Digital Products",
+            description: value.description || "Access curated resources and learning materials",
+            price: value.price,
+            discount_price: value.discount_price,
+            hasFreeDemo: false,
+            icon: FileText,
+          });
+          console.log("   ✅ Added Digital Products");
+        } else if (key === "notes") {
+          services.push({
+            name: value.name || "Notes & Resources",
+            description: value.description || "Download study materials and practice exercises",
+            price: value.price,
+            discount_price: value.discount_price,
+            hasFreeDemo: false,
+            icon: FileText,
+          });
+          console.log("   ✅ Added Notes & Resources");
+        } else {
+          // Custom services
+          services.push({
+            name: value.name,
+            description: value.description,
+            price: value.price,
+            discount_price: value.discount_price,
+            hasFreeDemo: value.hasFreeDemo || false,
+            icon: Star, // Use Star icon for custom services
+          });
+          console.log("   ✅ Added custom service:", value.name);
         }
-      });
-    }
+      }
+    });
 
     console.log("🎯 Final services list:", services);
     return services;

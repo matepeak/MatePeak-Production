@@ -8,6 +8,7 @@ import {
   transformToMentorCard,
   ExpertProfileData,
 } from "@/services/mentorCardService";
+import { ConnectionStatus } from "@/components/ConnectionStatus";
 
 interface FeaturedMentorsProps {
   sectionRef: React.RefObject<HTMLDivElement>;
@@ -80,32 +81,62 @@ const FeaturedMentors = ({ sectionRef }: FeaturedMentorsProps) => {
   const [visibleCategories, setVisibleCategories] = useState(2); // Show only 2 categories initially
   const [allMentors, setAllMentors] = useState<MentorProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  const categories = [
-    "Recent Graduates",
-    "Academic Support",
-    "Mock Interviews",
-    "Resume Review",
-    "Health",
-  ];
+  // Get actual categories from mentors instead of hardcoding
+  const categories = useMemo(() => {
+    const allCategories = new Set<string>();
+    
+    allMentors.forEach((mentor) => {
+      // Add categories from mentor
+      if (mentor.categories && mentor.categories.length > 0) {
+        mentor.categories.forEach(cat => allCategories.add(cat));
+      }
+      // Add from expertise_tags if no categories
+      if ((!mentor.categories || mentor.categories.length === 0) && mentor.expertise_tags) {
+        mentor.expertise_tags.forEach(tag => allCategories.add(tag));
+      }
+    });
+    
+    // If no categories found, use "All Mentors" as default
+    return allCategories.size > 0 ? Array.from(allCategories).slice(0, 5) : ["All Mentors"];
+  }, [allMentors]);
 
   // Fetch mentors from database
   useEffect(() => {
     const fetchMentors = async () => {
       try {
+        setError(null); // Clear any previous errors
+        
         // Fetch expert profiles first
         const { data: expertProfiles, error: expertError } = await supabase
           .from("expert_profiles")
           .select("*");
 
-        if (expertError) throw expertError;
+        if (expertError) {
+          // Provide user-friendly error message
+          if (expertError.message?.includes('timeout') || expertError.message?.includes('timed out')) {
+            throw new Error(
+              "Connection timeout: Unable to reach the server. Please check your internet connection or try again later."
+            );
+          }
+          if (expertError.message?.includes('network') || expertError.message?.includes('fetch')) {
+            throw new Error(
+              "Network error: Cannot connect to the database. Please check your firewall settings or try using a different network."
+            );
+          }
+          throw new Error(`Database error: ${expertError.message}`);
+        }
 
         // Fetch profiles separately
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
           .select("id, avatar_url");
 
-        if (profilesError) throw profilesError;
+        if (profilesError) {
+          console.warn("Could not fetch profile avatars (non-critical):", profilesError.message);
+          // Continue without avatars - this is non-critical
+        }
 
         // Create a map of profiles by id for quick lookup
         const profilesMap = new Map(
@@ -131,8 +162,9 @@ const FeaturedMentors = ({ sectionRef }: FeaturedMentorsProps) => {
 
         console.log("Fetched mentors:", mentorCards.length, mentorCards);
         setAllMentors(mentorCards);
-      } catch (error) {
-        console.error("Error fetching mentors:", error);
+      } catch (err) {
+        console.error("Error fetching mentors:", err);
+        setError(err instanceof Error ? err : new Error(String(err)));
       } finally {
         setLoading(false);
       }
@@ -214,13 +246,23 @@ const FeaturedMentors = ({ sectionRef }: FeaturedMentorsProps) => {
 
     return categories.map((category) => {
       // For each mentor, check if they should be in this category
-      const categoryMentors = allMentors
-        .filter((mentor) => {
-          // Get the mentor's applicable categories
-          const mentorCategories = getMentorCategories(mentor);
-          return mentorCategories.includes(category);
-        })
-        .slice(0, 4); // Limit to 4 mentors per category
+      let categoryMentors: MentorProfile[];
+      
+      if (category === "All Mentors") {
+        // Show all mentors if no categories found
+        categoryMentors = allMentors.slice(0, 4);
+      } else {
+        categoryMentors = allMentors
+          .filter((mentor) => {
+            // Check if mentor has this category or expertise tag
+            const hasCategory = mentor.categories?.includes(category);
+            const hasExpertise = mentor.expertise_tags?.includes(category);
+            const matchesDerivedCategory = getMentorCategories(mentor).includes(category);
+            
+            return hasCategory || hasExpertise || matchesDerivedCategory;
+          })
+          .slice(0, 4); // Limit to 4 mentors per category
+      }
 
       console.log(`Category "${category}":`, categoryMentors.length, "mentors");
 
@@ -263,6 +305,12 @@ const FeaturedMentors = ({ sectionRef }: FeaturedMentorsProps) => {
               <p className="text-gray-600 font-light">Loading mentors...</p>
             </div>
           </div>
+        ) : error ? (
+          <ConnectionStatus 
+            error={error} 
+            onRetry={() => window.location.reload()} 
+            isRetrying={false}
+          />
         ) : (
           <>
             {categorizedMentors

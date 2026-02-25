@@ -167,6 +167,12 @@ const profileSetupSchema = z.object({
     .optional(),
 });
 
+const identityVerificationSchema = z.object({
+  verificationPhotoUrl: z.string().optional(),
+  verificationStatus: z.enum(["pending", "verified", "failed"]).optional(),
+  verificationDate: z.string().optional(),
+});
+
 const outcomeBasedSchema = z.object({
   targetAudience: z
     .object({
@@ -217,6 +223,7 @@ export const formSchema = z.object({
   ...availabilitySchema.shape,
   ...pricingSchema.shape,
   ...profileSetupSchema.shape,
+  ...identityVerificationSchema.shape,
 });
 
 export type FormValues = z.infer<typeof formSchema>;

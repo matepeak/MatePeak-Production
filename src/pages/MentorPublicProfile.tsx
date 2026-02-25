@@ -42,7 +42,6 @@ interface MentorProfileData {
   social_links: any;
   services: any;
   service_pricing: any;
-  suggested_services?: any[]; // Add this field
   education: any[];
   teaching_certifications: any[];
   has_no_certificate: boolean;
@@ -89,7 +88,7 @@ export default function MentorPublicProfile() {
       // Fetch mentor profile by username
       const { data: profileData, error: profileError } = await supabase
         .from("expert_profiles")
-        .select("*, suggested_services, service_pricing")
+        .select("*, service_pricing")
         .eq("username", username)
         .single();
 
@@ -107,10 +106,6 @@ export default function MentorPublicProfile() {
 
       console.log("Profile data fetched:", profileData);
       console.log("📊 Service pricing data:", profileData.service_pricing);
-      console.log(
-        "📊 Suggested services data:",
-        profileData.suggested_services
-      );
       setMentor(profileData as any);
 
       // Check if the logged-in user is viewing their own profile

@@ -26,15 +26,13 @@ import { SelectedService } from "./BookingDialog";
 import { useState } from "react";
 
 interface ServiceSelectionProps {
-  services: any;
-  servicePricing: any;
-  suggestedServices?: any[]; // Add this prop
+  servicePricing: any; // Unified service_pricing structure
   onServiceSelect: (service: SelectedService) => void;
   averageRating?: number;
   totalReviews?: number;
 }
 
-const serviceConfig = {
+const serviceConfig: Record<string, any> = {
   oneOnOneSession: {
     icon: Video,
     name: "1-on-1 Career Strategy Call",
@@ -78,9 +76,7 @@ const serviceConfig = {
 };
 
 export default function ServiceSelection({
-  services,
   servicePricing,
-  suggestedServices = [],
   onServiceSelect,
   averageRating = 0,
   totalReviews = 0,
@@ -92,37 +88,35 @@ export default function ServiceSelection({
     Record<string, boolean>
   >({});
 
-  const availableServices = Object.entries(services || {})
-    .filter(([_, enabled]) => enabled)
-    .map(([key]) => key as keyof typeof serviceConfig);
+  if (!servicePricing) {
+    return (
+      <div className="text-center py-8 bg-gray-100 rounded-2xl border-0">
+        <p className="text-gray-500 text-sm font-medium">
+          No services available at the moment
+        </p>
+      </div>
+    );
+  }
 
-  const handleSelect = (serviceKey: keyof typeof serviceConfig) => {
+  // Get all enabled services
+  const enabledServices = Object.entries(servicePricing)
+    .filter(([_, value]: [string, any]) => value?.enabled)
+    .map(([key, value]) => ({ key, ...value }));
+
+  const handleSelect = (serviceKey: string, serviceName: string, servicePrice: number, hasFreeDemo: boolean) => {
     const config = serviceConfig[serviceKey];
-    const pricing = servicePricing?.[serviceKey];
+    const duration = serviceKey === "oneOnOneSession" ? 
+      (selectedDurations[serviceKey] || 30) : 0;
 
-    if (!pricing?.enabled) return;
-
-    const duration =
-      serviceKey === "oneOnOneSession"
-        ? selectedDurations[serviceKey] || 30
-        : 0;
-
-    const isFreeDemo = freeDemoEnabled[serviceKey] && pricing.hasFreeDemo;
+    const isFreeDemo = freeDemoEnabled[serviceKey] && hasFreeDemo;
 
     onServiceSelect({
-      type: serviceKey,
-      name: config.shortName,
+      type: serviceKey as any,
+      name: config?.shortName || serviceName,
       duration,
-      price: isFreeDemo ? 0 : pricing.price || 0,
-      hasFreeDemo: pricing.hasFreeDemo,
+      price: isFreeDemo ? 0 : servicePrice || 0,
+      hasFreeDemo: hasFreeDemo,
     });
-  };
-
-  const handleDurationSelect = (serviceKey: string, duration: number) => {
-    setSelectedDurations((prev) => ({
-      ...prev,
-      [serviceKey]: duration,
-    }));
   };
 
   const toggleFreeDemo = (serviceKey: string, enabled: boolean) => {
@@ -131,6 +125,16 @@ export default function ServiceSelection({
       [serviceKey]: enabled,
     }));
   };
+
+  if (enabledServices.length === 0) {
+    return (
+      <div className="text-center py-8 bg-gray-100 rounded-2xl border-0">
+        <p className="text-gray-500 text-sm font-medium">
+          No services available at the moment
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -144,10 +148,186 @@ export default function ServiceSelection({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        {availableServices.map((serviceKey) => {
-          const config = serviceConfig[serviceKey];
-          const pricing = servicePricing?.[serviceKey];
+        {enabledServices.map((service) => {
+          const serviceKey = service.key;
+          const isPredefined = serviceConfig[serviceKey];
+          const config = isPredefined ? serviceConfig[serviceKey] : {
+            icon: Star,
+            name: service.name,
+            shortName: service.name,
+            description: service.description,
+            benefits: [],
+            durations: [],
+            typeLabel: "Custom Service",
+          };
           const Icon = config.icon;
+          const selectedDuration =
+            selectedDurations[serviceKey] || config.durations[0] || 0;
+          const isFreeDemo =
+            freeDemoEnabled[serviceKey] && service.hasFreeDemo;
+
+          return (
+            <Card
+              key={serviceKey}
+              className="bg-gray-100 border-0 rounded-2xl shadow-none"
+            >
+              <div className="p-7 space-y-4">
+                {/* Header with Icon & Title */}
+                <div className="flex items-start gap-3.5">
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-sm bg-gradient-to-br from-gray-800 to-gray-900 flex-shrink-0">
+                    <Icon className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-gray-900 text-lg leading-tight mb-1.5">
+                      {config.name}
+                    </h4>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      {config.description}
+                    </p>
+                    {totalReviews > 0 && isPredefined && (
+                      <div className="flex items-center gap-1.5 mt-2">
+                        <div className="inline-flex items-center gap-1 bg-yellow-50 border border-yellow-200 rounded-full px-2.5 py-1">
+                          <Star className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500" />
+                          <span className="font-semibold text-yellow-700 text-xs">
+                            {averageRating.toFixed(1)}
+                          </span>
+                          <span className="text-xs text-yellow-600">
+                            ({totalReviews})
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Benefits */}
+                {config.benefits && config.benefits.length > 0 && (
+                  <div className="space-y-2.5">
+                    {config.benefits.map((benefit: string, index: number) => {
+                      const IconComponent = benefit.startsWith("24-hour")
+                        ? Clock3
+                        : benefit.startsWith("Personalized") ||
+                          benefit.startsWith("Actionable")
+                        ? Target
+                        : benefit.startsWith("Resume")
+                        ? FolderOpen
+                        : benefit.startsWith("LinkedIn")
+                        ? FileCheck
+                        : benefit.startsWith("Short") ||
+                          benefit.startsWith("guidance")
+                        ? PlayCircle
+                        : benefit.includes("min")
+                        ? Clock3
+                        : CheckCircle2;
+
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-center gap-3 bg-white rounded-lg p-3.5 border border-gray-100"
+                        >
+                          <div className="w-5 h-5 rounded bg-white flex items-center justify-center shadow-sm flex-shrink-0">
+                            <IconComponent className="w-3.5 h-3.5 text-gray-700" />
+                          </div>
+                          <span className="text-sm font-medium text-gray-700">
+                            {benefit}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Free Demo Toggle - Only show if service has free demo */}
+                {service.hasFreeDemo && (
+                  <div
+                    className="flex items-center justify-between bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4.5"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex-1 flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
+                        <Sparkles className="w-4 h-4 text-green-600" />
+                      </div>
+                      <div>
+                        <Label
+                          htmlFor={`free-demo-${serviceKey}`}
+                          className="text-sm font-semibold text-green-800 cursor-pointer block"
+                        >
+                          Try Free Demo
+                        </Label>
+                        {isFreeDemo && (
+                          <p className="text-xs text-green-700 mt-0.5">
+                            Session duration may vary
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Switch
+                      id={`free-demo-${serviceKey}`}
+                      checked={isFreeDemo}
+                      onCheckedChange={(checked) =>
+                        toggleFreeDemo(serviceKey, checked)
+                      }
+                      className="data-[state=checked]:bg-green-600"
+                    />
+                  </div>
+                )}
+
+                {/* Duration & Type Info */}
+                <div className="bg-white rounded-xl p-4 space-y-3 shadow-sm">
+                  {/* Service Type Indicator */}
+                  <div className="flex items-center gap-2 text-sm text-gray-700">
+                    <Calendar className="w-4 h-4 flex-shrink-0 text-gray-600" />
+                    <span className="font-medium">{config.typeLabel}</span>
+                  </div>
+                </div>
+
+                {/* Pricing & CTA */}
+                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                  {/* Price display */}
+                  <div className="flex items-baseline gap-2">
+                    {service.discount_price !== undefined ? (
+                      <>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-bold text-green-600">
+                            ₹{service.discount_price}
+                          </span>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-sm font-semibold text-gray-400 line-through">
+                            ₹{service.price?.toLocaleString("en-IN") || 0}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-bold text-gray-900">
+                          ₹{service.price?.toLocaleString("en-IN") || 0}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelect(serviceKey, service.name, service.price, service.hasFreeDemo);
+                    }}
+                    className={cn(
+                      "font-semibold transition-all rounded-lg px-4 py-2 h-auto text-sm group/button",
+                      "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
+                    )}
+                  >
+                    {isFreeDemo ? "Try Free" : "Select"}
+                    <ArrowRight className="w-4 h-4 ml-1.5 transition-transform duration-300 ease-out group-hover/button:translate-x-1" />
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
           const selectedDuration =
             selectedDurations[serviceKey] || config.durations[0] || 0;
           const isFreeDemo =
@@ -309,87 +489,7 @@ export default function ServiceSelection({
             </Card>
           );
         })}
-
-        {/* Custom Services from suggested_services */}
-        {suggestedServices && suggestedServices.length > 0 && (
-          <>
-            {suggestedServices
-              .filter((service: any) => service.enabled)
-              .map((customService: any, index: number) => {
-                const customKey = `custom_${customService.id || index}`;
-                return (
-                  <Card
-                    key={customKey}
-                    className="group bg-gray-100 border-0 rounded-2xl shadow-none hover:shadow-md transition-all duration-200"
-                  >
-                    <div className="p-5 space-y-4">
-                      {/* Header */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
-                            <Star className="w-6 h-6 text-matepeak-primary" />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-bold text-gray-900 text-base leading-tight">
-                              {customService.name}
-                            </h4>
-                            <span className="text-xs text-gray-500">
-                              Custom Service
-                            </span>
-                          </div>
-                        </div>
-                        {customService.hasFreeDemo && (
-                          <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-0 text-xs font-semibold px-2.5 py-1">
-                            Free Demo
-                          </Badge>
-                        )}
-                      </div>
-
-                      {/* Description */}
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        {customService.description}
-                      </p>
-
-                      {/* Price & Select Button */}
-                      <div className="pt-2">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-sm text-gray-600">Price</span>
-                          <span className="text-2xl font-bold text-gray-900">
-                            ₹{customService.price?.toLocaleString("en-IN") || 0}
-                          </span>
-                        </div>
-                        <Button
-                          onClick={() => {
-                            onServiceSelect({
-                              type: "oneOnOneSession",
-                              name: customService.name,
-                              duration: 60,
-                              price: customService.price,
-                              hasFreeDemo: customService.hasFreeDemo || false,
-                            });
-                          }}
-                          className="bg-gray-900 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-xl transition-all group-hover:shadow-md text-sm"
-                        >
-                          Select
-                          <ArrowRight className="w-4 h-4 ml-1.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              })}
-          </>
-        )}
       </div>
-
-      {availableServices.length === 0 &&
-        (!suggestedServices || suggestedServices.length === 0) && (
-          <div className="text-center py-8 bg-gray-100 rounded-2xl border-0">
-            <p className="text-gray-500 text-sm font-medium">
-              No services available at the moment
-            </p>
-          </div>
-        )}
     </div>
   );
 }

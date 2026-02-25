@@ -42,8 +42,7 @@ interface MentorData {
   username: string;
   avatar_url: string;
   timezone: string;
-  services: any;
-  service_pricing: any;
+  service_pricing: any; // Unified service_pricing structure
   average_rating: number;
   total_reviews: number;
 }
@@ -106,7 +105,6 @@ const BookingPage = () => {
             username,
             full_name,
             profile_picture_url,
-            services,
             service_pricing
           `
           )
@@ -157,47 +155,15 @@ const BookingPage = () => {
         });
 
         // If serviceId is provided, auto-select the service
-        if (preSelectedServiceId && mentor.services) {
-          const serviceKey =
-            preSelectedServiceId as keyof typeof mentor.services;
-          if (mentor.services[serviceKey] === true) {
-            // Auto-select based on serviceId
-            const pricing = mentor.service_pricing || {};
-            let serviceName = "";
-            let duration = 60;
-            let price = 0;
-
-            switch (serviceKey) {
-              case "oneOnOneSession":
-                serviceName = "1-on-1 Video Session";
-                duration = 60;
-                price = pricing.oneOnOneSession || 0;
-                break;
-              case "chatAdvice":
-                serviceName = "Chat Advice";
-                duration = 30;
-                price = pricing.chatAdvice || 0;
-                break;
-              case "digitalProducts":
-                serviceName = "Digital Products";
-                duration = 0;
-                price = pricing.digitalProducts || 0;
-                break;
-              case "notes":
-                serviceName = "Session Notes";
-                duration = 0;
-                price = pricing.notes || 0;
-                break;
-            }
-
-            if (serviceName) {
-              setSelectedService({
-                type: serviceKey,
-                name: serviceName,
-                duration,
-                price,
-                hasFreeDemo: pricing.hasFreeDemo || false,
-              });
+        if (preSelectedServiceId && mentor.service_pricing) {
+          const serviceData = mentor.service_pricing[preSelectedServiceId];
+          if (serviceData?.enabled) {
+            setSelectedService({
+              type: preSelectedServiceId as any,
+              name: serviceData.name || preSelectedServiceId,
+              duration: 60,
+              price: serviceData.price || 0,
+              hasFreeDemo: serviceData.hasFreeDemo || false,
 
               // Auto-advance to appropriate step
               if (serviceKey === "oneOnOneSession") {
@@ -729,9 +695,7 @@ const BookingPage = () => {
             <div className="p-6">
               {step === 1 && (
                 <ServiceSelection
-                  services={mentorData.services}
                   servicePricing={mentorData.service_pricing}
-                  suggestedServices={[]}
                   onServiceSelect={handleServiceSelect}
                   averageRating={mentorData.average_rating}
                   totalReviews={mentorData.total_reviews}

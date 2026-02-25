@@ -214,85 +214,45 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
 
       const { data: profile, error } = await supabase
         .from("expert_profiles")
-        .select("suggested_services, service_pricing")
+        .select("service_pricing")
         .eq("id", mentorId)
         .single();
 
       if (error) throw error;
 
-      // Load suggested services (custom services from onboarding)
-      const suggestedServices = profile?.suggested_services || [];
-
-      // Load service pricing (predefined services)
+      // Load unified service_pricing
       const pricing = profile?.service_pricing || {};
       setServicePricing(pricing);
 
       // Convert service_pricing to service format for unified display
-      const pricingServices: Service[] = [];
+      const allServices: Service[] = [];
 
-      if (pricing.oneOnOneSession) {
-        pricingServices.push({
-          id: "oneOnOneSession",
-          name: "1-on-1 Strategy Session",
-          description: "Personalized one-on-one mentoring session",
-          price: pricing.oneOnOneSession.price || 0,
-          discount_price: pricing.oneOnOneSession.discount_price,
-          enabled: pricing.oneOnOneSession.enabled || false,
-          serviceType: "oneOnOneSession",
-          hasFreeDemo: pricing.oneOnOneSession.hasFreeDemo || false,
-        });
-      }
-
-      if (pricing.chatAdvice) {
-        pricingServices.push({
-          id: "chatAdvice",
-          name: "Chat Consultation",
-          description: "Quick advice and guidance via chat",
-          price: pricing.chatAdvice.price || 0,
-          discount_price: pricing.chatAdvice.discount_price,
-          enabled: pricing.chatAdvice.enabled || false,
-          serviceType: "chatAdvice",
-          hasFreeDemo: pricing.chatAdvice.hasFreeDemo || false,
-        });
-      }
-
-      if (pricing.digitalProducts) {
-        pricingServices.push({
-          id: "digitalProducts",
-          name: "Digital Products",
-          description: "Resources, templates, and guides",
-          price: pricing.digitalProducts.price || 0,
-          discount_price: pricing.digitalProducts.discount_price,
-          enabled: pricing.digitalProducts.enabled || false,
-          serviceType: "digitalProducts",
-        });
-      }
-
-      if (pricing.notes) {
-        pricingServices.push({
-          id: "notes",
-          name: "Notes & Resources",
-          description: "Study materials and reference notes",
-          price: pricing.notes.price || 0,
-          discount_price: pricing.notes.discount_price,
-          enabled: pricing.notes.enabled || false,
-          serviceType: "notes",
-        });
-      }
-
-      // Combine all services
-      const allServices = [...pricingServices, ...suggestedServices];
-
-      // Add order if not present
-      const servicesWithOrder = allServices.map((service, index) => ({
-        ...service,
-        order: service.order ?? index,
-      }));
+      // Iterate through all services in service_pricing
+      Object.entries(pricing).forEach(([key, value]: [string, any], index) => {
+        if (value && typeof value === 'object') {
+          const isCustom = !["oneOnOneSession", "chatAdvice", "digitalProducts", "notes"].includes(key);
+          
+          allServices.push({
+            id: key,
+            name: value.name || (key === "oneOnOneSession" ? "1-on-1 Strategy Session" :
+                                 key === "chatAdvice" ? "Chat Consultation" :
+                                 key === "digitalProducts" ? "Digital Products" :
+                                 key === "notes" ? "Notes & Resources" : "Custom Service"),
+            description: value.description || "",
+            price: value.price || 0,
+            discount_price: value.discount_price,
+            enabled: value.enabled || false,
+            serviceType: isCustom ? "custom" : key,
+            hasFreeDemo: value.hasFreeDemo || false,
+            order: value.order ?? index,
+          });
+        }
+      });
 
       // Sort by order
-      servicesWithOrder.sort((a, b) => (a.order || 0) - (b.order || 0));
+      allServices.sort((a, b) => (a.order || 0) - (b.order || 0));
 
-      setServices(servicesWithOrder);
+      setServices(allServices);
     } catch (error: any) {
       console.error("Error loading services:", error);
       toast.error("Failed to load services");
@@ -331,60 +291,35 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       const updatedService = { ...service, ...editForm };
       console.log("✏️ Updated service object:", updatedService);
 
-      // Update based on service type
-      if (
-        ["oneOnOneSession", "chatAdvice", "digitalProducts", "notes"].includes(
-          service.serviceType
-        )
-      ) {
-        console.log("🔧 Updating predefined service:", service.serviceType);
-        // Update service_pricing
-        const updatedPricing = {
-          ...servicePricing,
-          [service.serviceType]: {
-            enabled: updatedService.enabled,
-            price: updatedService.price,
-            discount_price: updatedService.discount_price,
-            hasFreeDemo: updatedService.hasFreeDemo || false,
-          },
-        };
+      // Update service_pricing (works for both predefined and custom services)
+      console.log("🔧 Updating service in unified structure:", service.id);
+      const updatedPricing = {
+        ...servicePricing,
+        [service.id]: {
+          enabled: updatedService.enabled,
+          name: updatedService.name,
+          description: updatedService.description,
+          price: updatedService.price,
+          discount_price: updatedService.discount_price,
+          hasFreeDemo: updatedService.hasFreeDemo || false,
+          type: service.serviceType,
+          order: updatedService.order,
+        },
+      };
 
-        console.log("💾 Saving service_pricing to database:", updatedPricing);
-        const { data, error } = await supabase
-          .from("expert_profiles")
-          .update({ service_pricing: updatedPricing })
-          .eq("id", mentorId)
-          .select();
+      console.log("💾 Saving service_pricing to database:", updatedPricing);
+      const { data, error } = await supabase
+        .from("expert_profiles")
+        .update({ service_pricing: updatedPricing })
+        .eq("id", mentorId)
+        .select();
 
-        if (error) {
-          console.error("❌ Database error:", error);
-          throw error;
-        }
-        console.log("✅ Database update successful:", data);
-        setServicePricing(updatedPricing);
-      } else {
-        console.log("🔧 Updating custom service");
-        // Update suggested_services (custom services)
-        const updatedServices = services
-          .map((s) => (s.id === serviceId ? updatedService : s))
-          .filter((s) => s.serviceType === "custom");
-
-        console.log(
-          "💾 Saving suggested_services to database:",
-          updatedServices
-        );
-        const { data, error } = await supabase
-          .from("expert_profiles")
-          .update({ suggested_services: updatedServices })
-          .eq("id", mentorId)
-          .select();
-
-        if (error) {
-          console.error("❌ Database error:", error);
-          throw error;
-        }
-        console.log("✅ Database update successful:", data);
+      if (error) {
+        console.error("❌ Database error:", error);
+        throw error;
       }
+      console.log("✅ Database update successful:", data);
+      setServicePricing(updatedPricing);
 
       // Update local state
       setServices((prev) =>
@@ -411,40 +346,22 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
 
       const updatedEnabled = !service.enabled;
 
-      if (
-        ["oneOnOneSession", "chatAdvice", "digitalProducts", "notes"].includes(
-          service.serviceType
-        )
-      ) {
-        const updatedPricing = {
-          ...servicePricing,
-          [service.serviceType]: {
-            ...servicePricing[service.serviceType as keyof ServicePricing],
-            enabled: updatedEnabled,
-          },
-        };
+      // Update in unified service_pricing structure
+      const updatedPricing = {
+        ...servicePricing,
+        [serviceId]: {
+          ...servicePricing[serviceId],
+          enabled: updatedEnabled,
+        },
+      };
 
-        const { error } = await supabase
-          .from("expert_profiles")
-          .update({ service_pricing: updatedPricing })
-          .eq("id", mentorId);
+      const { error } = await supabase
+        .from("expert_profiles")
+        .update({ service_pricing: updatedPricing })
+        .eq("id", mentorId);
 
-        if (error) throw error;
-        setServicePricing(updatedPricing);
-      } else {
-        const updatedServices = services
-          .map((s) =>
-            s.id === serviceId ? { ...s, enabled: updatedEnabled } : s
-          )
-          .filter((s) => s.serviceType === "custom");
-
-        const { error } = await supabase
-          .from("expert_profiles")
-          .update({ suggested_services: updatedServices })
-          .eq("id", mentorId);
-
-        if (error) throw error;
-      }
+      if (error) throw error;
+      setServicePricing(updatedPricing);
 
       setServices((prev) =>
         prev.map((s) =>
@@ -479,19 +396,19 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
         return;
       }
 
-      // Delete custom service
-      const updatedServices = services.filter(
-        (s) => s.id !== serviceId && s.serviceType === "custom"
-      );
+      // Delete custom service from service_pricing
+      const updatedPricing = { ...servicePricing };
+      delete updatedPricing[serviceId];
 
       const { error } = await supabase
         .from("expert_profiles")
-        .update({ suggested_services: updatedServices })
+        .update({ service_pricing: updatedPricing })
         .eq("id", mentorId);
 
       if (error) throw error;
 
       setServices((prev) => prev.filter((s) => s.id !== serviceId));
+      setServicePricing(updatedPricing);
       setDeletingService(null);
       toast.success("Service deleted successfully!");
     } catch (error: any) {
@@ -536,18 +453,29 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
         hasFreeDemo: newService.hasFreeDemo ?? false,
       };
 
-      // Add to custom services
-      const customServices = services.filter((s) => s.serviceType === "custom");
-      const updatedServices = [...customServices, service];
+      // Add to service_pricing (unified structure)
+      const updatedPricing = {
+        ...servicePricing,
+        [serviceId]: {
+          enabled: service.enabled,
+          name: service.name,
+          description: service.description,
+          price: service.price,
+          discount_price: service.discount_price,
+          hasFreeDemo: service.hasFreeDemo,
+          type: "custom",
+        },
+      };
 
       const { error } = await supabase
         .from("expert_profiles")
-        .update({ suggested_services: updatedServices })
+        .update({ service_pricing: updatedPricing })
         .eq("id", mentorId);
 
       if (error) throw error;
 
       setServices((prev) => [...prev, service]);
+      setServicePricing(updatedPricing);
       setAddingNew(false);
       setNewService({
         name: "",
@@ -622,14 +550,23 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
 
     // Save to database
     try {
-      const customServices = reorderedServices.filter(
-        (s) => s.serviceType === "custom"
-      );
+      // Update service_pricing with new orders
+      const updatedPricing = { ...servicePricing };
+      reorderedServices.forEach((service) => {
+        if (updatedPricing[service.id]) {
+          updatedPricing[service.id] = {
+            ...updatedPricing[service.id],
+            order: service.order,
+          };
+        }
+      });
+      
       await supabase
         .from("expert_profiles")
-        .update({ suggested_services: customServices })
+        .update({ service_pricing: updatedPricing })
         .eq("id", mentorId);
-
+        
+      setServicePricing(updatedPricing);
       toast.success("Service order updated");
     } catch (error) {
       console.error("Error updating order:", error);
@@ -667,13 +604,23 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
 
     // Save to database
     try {
-      const customServices = reorderedServices.filter(
-        (s) => s.serviceType === "custom"
-      );
+      // Update service_pricing with new orders
+      const updatedPricing = { ...servicePricing };
+      reorderedServices.forEach((service) => {
+        if (updatedPricing[service.id]) {
+          updatedPricing[service.id] = {
+            ...updatedPricing[service.id],
+            order: service.order,
+          };
+        }
+      });
+      
       await supabase
         .from("expert_profiles")
-        .update({ suggested_services: customServices })
+        .update({ service_pricing: updatedPricing })
         .eq("id", mentorId);
+        
+      setServicePricing(updatedPricing);
 
       toast.success("Service order updated");
     } catch (error) {

@@ -8,16 +8,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import OnboardingHeader from "@/components/onboarding/OnboardingHeader";
 import BasicInfoStep from "@/components/onboarding/BasicInfoStep";
+import IdentityVerificationStep from "@/components/onboarding/IdentityVerificationStep";
 import TeachingCertificationStep from "@/components/onboarding/TeachingCertificationStep";
 import EducationStep from "@/components/onboarding/EducationStep";
 import ProfileDescriptionStep from "@/components/onboarding/ProfileDescriptionStep";
 import TargetAudienceStep from "@/components/onboarding/TargetAudienceStep";
 import ProblemsStep from "@/components/onboarding/ProblemsStep";
 import OutcomesStep from "@/components/onboarding/OutcomesStep";
-import SuggestedServicesStep from "@/components/onboarding/SuggestedServicesStep";
-import ServiceTypesStep from "@/components/onboarding/ServiceTypesStep";
+import ServicesAndPricingStep from "@/components/onboarding/ServicesAndPricingStep";
 import AvailabilityStep from "@/components/onboarding/AvailabilityStep";
-import PricingStep from "@/components/onboarding/PricingStep";
 import ProfileSetupStep from "@/components/onboarding/ProfileSetupStep";
 import OnboardingProgress from "@/components/onboarding/OnboardingProgress";
 import StepNavigation from "@/components/onboarding/StepNavigation";
@@ -32,6 +31,7 @@ export default function ExpertOnboarding() {
   const [completedUsername, setCompletedUsername] = useState("");
   const navigate = useNavigate();
   const form = useExpertOnboardingForm();
+  const totalSteps = 11; // Updated: Added identity verification step
 
   // Auto-populate form fields from signup data
   useEffect(() => {
@@ -73,8 +73,6 @@ export default function ExpertOnboarding() {
 
     loadUserData();
   }, [form]);
-
-  const totalSteps = 12;
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
@@ -177,6 +175,18 @@ export default function ExpertOnboarding() {
           }
           break;
         case 2:
+          // Identity Verification - optional but recommended
+          // Check if verification was completed
+          const verificationStatus = form.getValues("verificationStatus");
+          if (verificationStatus === "verified") {
+            isValid = true;
+          } else {
+            // Allow skipping for now, but show a reminder
+            toast.info("Identity verification is recommended for building trust with students");
+            isValid = true;
+          }
+          break;
+        case 3:
           // Teaching Certification - validate only if not skipped
           const hasNoCertificate = form.getValues("hasNoCertificate");
           if (hasNoCertificate) {
@@ -193,13 +203,13 @@ export default function ExpertOnboarding() {
             }
           }
           break;
-        case 3:
+        case 4:
           isValid = await form.trigger(["education"]);
           if (!isValid) {
             toast.error("Please add at least one education entry");
           }
           break;
-        case 4:
+        case 5:
           isValid = await form.trigger([
             "introduction",
             "teachingExperience",
@@ -217,33 +227,27 @@ export default function ExpertOnboarding() {
             else if (errors.headline) toast.error("Please add a headline");
           }
           break;
-        case 5:
+        case 6:
           // Target Audience - optional but recommended
           isValid = true;
           break;
-        case 6:
+        case 7:
           // Problems - optional but recommended
           isValid = true;
           break;
-        case 7:
+        case 8:
           // Outcomes - optional but recommended
           isValid = true;
           break;
-        case 8:
-          // Suggested Services - optional
-          isValid = true;
-          break;
         case 9:
-          // Service Types - at least one service should be selected
-          const services = form.getValues();
-          const hasAnyService =
-            services.oneOnOneSession ||
-            services.chatAdvice ||
-            services.digitalProducts ||
-            services.notes;
+          // Services & Pricing - at least one service should be enabled
+          const servicePricing = form.getValues("servicePricing");
+          const hasAnyService = servicePricing && Object.values(servicePricing).some(
+            (service: any) => service?.enabled === true
+          );
           if (!hasAnyService) {
             toast.error(
-              "Please select at least one service type you want to offer"
+              "Please enable at least one service you want to offer"
             );
             isValid = false;
           } else {
@@ -255,12 +259,7 @@ export default function ExpertOnboarding() {
           isValid = true;
           break;
         case 11:
-          // Pricing validation - check if any service has pricing enabled
-          const servicePricing = form.getValues("servicePricing");
-          isValid = true; // Pricing is optional, mentors can offer free services
-          break;
-        case 12:
-          // Final step - Profile Setup
+          // Profile Setup - last step, submit form
           isValid = await form.trigger(["socialLinks"]);
 
           if (isValid) {
@@ -290,26 +289,24 @@ export default function ExpertOnboarding() {
       case 1:
         return <BasicInfoStep form={form} />;
       case 2:
-        return <TeachingCertificationStep form={form} />;
+        return <IdentityVerificationStep form={form} />;
       case 3:
-        return <EducationStep form={form} />;
+        return <TeachingCertificationStep form={form} />;
       case 4:
-        return <ProfileDescriptionStep form={form} />;
+        return <EducationStep form={form} />;
       case 5:
-        return <TargetAudienceStep form={form} />;
+        return <ProfileDescriptionStep form={form} />;
       case 6:
-        return <ProblemsStep form={form} />;
+        return <TargetAudienceStep form={form} />;
       case 7:
-        return <OutcomesStep form={form} />;
+        return <ProblemsStep form={form} />;
       case 8:
-        return <SuggestedServicesStep form={form} />;
+        return <OutcomesStep form={form} />;
       case 9:
-        return <ServiceTypesStep form={form} />;
+        return <ServicesAndPricingStep form={form} />;
       case 10:
         return <AvailabilityStep form={form} />;
       case 11:
-        return <PricingStep form={form} />;
-      case 12:
         return <ProfileSetupStep form={form} />;
       default:
         return null;
@@ -317,7 +314,7 @@ export default function ExpertOnboarding() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <OnboardingHeader />
 
       {/* Main Content Container */}

@@ -284,7 +284,21 @@ export async function fetchMentorCards(
 
     if (error) {
       console.error("❌ Database query error:", error);
-      throw error;
+      
+      // Provide user-friendly error messages
+      if (error.message?.includes('timeout') || error.message?.includes('timed out')) {
+        throw new Error(
+          "Connection timeout: Unable to reach the server. Please check your internet connection or try again later."
+        );
+      }
+      
+      if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        throw new Error(
+          "Network error: Cannot connect to the database. Please check your firewall settings or try using a different network."
+        );
+      }
+      
+      throw new Error(`Database error: ${error.message}`);
     }
 
     console.log(
@@ -300,7 +314,8 @@ export async function fetchMentorCards(
       .abortSignal(signal as any);
 
     if (profilesError) {
-      console.error("⚠️ Error fetching profiles:", profilesError);
+      console.warn("⚠️ Could not fetch profile avatars (non-critical):", profilesError.message);
+      // Continue without avatars - this is non-critical
     }
 
     // Create a map of profiles by id for O(1) lookup

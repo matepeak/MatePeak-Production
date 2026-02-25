@@ -25,3 +25,19 @@ dist-ssr
 
 # Environment variables
 .env
+
+# Documentation files (internal development notes)
+# All .md files except README.md in root
+*.md
+!README.md
+!**/README.md
+
+# SQL test/diagnostic scripts (keep migration scripts)
+*-test*.sql
+*-fix*.sql
+*-check*.sql
+**/diagnose*.sql
+**/debug*.sql
+**/verify*.sql
+add-test-languages.sql
+test-add-languages.sql
