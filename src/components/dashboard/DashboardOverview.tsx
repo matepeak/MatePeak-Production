@@ -18,6 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { SERVICE_CONFIG } from "@/config/serviceConfig";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
@@ -559,11 +560,19 @@ const DashboardOverview = ({
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 truncate">
-                        {session.session_type === "oneOnOneSession"
-                          ? "1:1 Session"
-                          : session.session_type === "groupSession"
-                          ? "Group Session"
-                          : session.session_type || "1-on-1 Session"}
+                        {(() => {
+                          // Check custom service name first
+                          if (mentorProfile?.service_pricing?.[session.session_type]) {
+                            const customName = mentorProfile.service_pricing[session.session_type].name;
+                            if (customName) return customName;
+                          }
+                          // Then check SERVICE_CONFIG
+                          if (SERVICE_CONFIG[session.session_type]) {
+                            return SERVICE_CONFIG[session.session_type].name;
+                          }
+                          // Fallback to default
+                          return session.session_type || SERVICE_CONFIG.oneOnOneSession?.name || "1-on-1 Session";
+                        })()}
                       </p>
                       <p className="text-xs text-gray-600 mt-1">
                         {formatDate(

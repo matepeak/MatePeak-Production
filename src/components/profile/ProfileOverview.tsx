@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { SERVICE_CONFIG } from "@/config/serviceConfig";
 
 interface ProfileOverviewProps {
   mentor: any;
@@ -72,14 +73,6 @@ export default function ProfileOverview({
     }
   };
 
-  // Suggested default prices for services
-  const suggestedPrices: { [key: string]: number } = {
-    oneOnOneSession: 1500,
-    chatAdvice: 500,
-    digitalProducts: 2000,
-    notes: 300,
-  };
-
   const getServicesList = () => {
     console.log("🎯 Building services list from unified service_pricing:");
     console.log("   service_pricing:", mentor.service_pricing);
@@ -88,11 +81,11 @@ export default function ProfileOverview({
     const services = [];
 
     // Handle legacy pricing (old system)
-    if (!mentor.service_pricing && mentor.pricing && mentor.pricing > 0) {
+    if (!mentor.service_pricing && mentor.pricing !== undefined && mentor.pricing !== null) {
       console.log("   📦 Using legacy pricing system");
       services.push({
-        name: "1-on-1 Sessions",
-        description: "Live video sessions tailored to your learning pace",
+        name: SERVICE_CONFIG.oneOnOneSession.name,
+        description: SERVICE_CONFIG.oneOnOneSession.description,
         price: mentor.pricing,
         discount_price: null,
         hasFreeDemo: false,
@@ -114,8 +107,8 @@ export default function ProfileOverview({
         return;
       }
 
-      // Use actual price if set, otherwise use suggested price
-      const actualPrice = value.price > 0 ? value.price : (suggestedPrices[key] || 500);
+      // Use the exact price set by the mentor (even if it's 0)
+      const actualPrice = value.price !== undefined && value.price !== null ? value.price : 0;
 
       // Build service object
       const service: any = {
@@ -126,29 +119,15 @@ export default function ProfileOverview({
         hasFreeDemo: value.hasFreeDemo || false,
       };
 
-      // Predefined services with specific icons and default descriptions
-      if (key === "oneOnOneSession") {
-        service.name = value.name || "1-on-1 Sessions";
-        service.description = value.description || "Live video sessions tailored to your learning pace";
-        service.icon = Video;
-        console.log("   ✅ Added 1-on-1 Sessions (price:", actualPrice, ")");
-      } else if (key === "chatAdvice") {
-        service.name = value.name || "Chat Advice";
-        service.description = value.description || "Get quick guidance via text chat whenever you need";
-        service.icon = MessageSquare;
-        console.log("   ✅ Added Chat Advice (price:", actualPrice, ")");
-      } else if (key === "digitalProducts") {
-        service.name = value.name || "Digital Products";
-        service.description = value.description || "Access curated resources and learning materials";
-        service.icon = FileText;
-        console.log("   ✅ Added Digital Products (price:", actualPrice, ")");
-      } else if (key === "notes") {
-        service.name = value.name || "Notes & Resources";
-        service.description = value.description || "Download study materials and practice exercises";
-        service.icon = FileText;
-        console.log("   ✅ Added Notes & Resources (price:", actualPrice, ")");
+      // Use shared SERVICE_CONFIG for consistent naming across the app
+      const config = SERVICE_CONFIG[key];
+      if (config) {
+        service.name = value.name || config.name;
+        service.description = value.description || config.description;
+        service.icon = config.icon;
+        console.log(`   ✅ Added ${config.name} (price:`, actualPrice, ")");
       } else {
-        // Custom services
+        // Custom services not in SERVICE_CONFIG
         service.icon = Star;
         console.log("   ✅ Added custom service:", value.name, "(price:", actualPrice, ")");
       }
@@ -311,13 +290,13 @@ export default function ProfileOverview({
                       </h3>
                       <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
                         {service.description ||
-                          (service.name === "1-on-1 Sessions" &&
-                            "Live video sessions tailored to your learning pace") ||
-                          (service.name === "Chat Advice" &&
-                            "Get quick guidance via text chat whenever you need") ||
-                          (service.name === "Digital Products" &&
-                            "Access curated resources and learning materials") ||
-                          (service.name === "Notes & Resources" &&
+                          (service.name === SERVICE_CONFIG.oneOnOneSession.name &&
+                            SERVICE_CONFIG.oneOnOneSession.description) ||
+                          (service.name === SERVICE_CONFIG.chatAdvice.name &&
+                            SERVICE_CONFIG.chatAdvice.description) ||
+                          (service.name === SERVICE_CONFIG.digitalProducts.name &&
+                            SERVICE_CONFIG.digitalProducts.description) ||
+                          (service.name === SERVICE_CONFIG.notes.name &&
                             "Download study materials and practice exercises")}
                       </p>
                     </div>
@@ -341,13 +320,13 @@ export default function ProfileOverview({
                             </div>
                           </div>
                           <span className="text-sm text-gray-500">
-                            {service.name === "1-on-1 Sessions"
+                            {service.name === SERVICE_CONFIG.oneOnOneSession.name
                               ? "/ session"
-                              : service.name === "Chat Advice"
+                              : service.name === SERVICE_CONFIG.chatAdvice.name
                               ? "/ consultation"
-                              : service.name === "Notes & Resources"
+                              : service.name === SERVICE_CONFIG.notes.name
                               ? "/ resource"
-                              : service.name === "Digital Products"
+                              : service.name === SERVICE_CONFIG.digitalProducts.name
                               ? "/ product"
                               : ""}
                           </span>
@@ -359,13 +338,13 @@ export default function ProfileOverview({
                             {service.price}
                           </span>
                           <span className="text-sm text-gray-500 ml-1">
-                            {service.name === "1-on-1 Sessions"
+                            {service.name === SERVICE_CONFIG.oneOnOneSession.name
                               ? "/ session"
-                              : service.name === "Chat Advice"
+                              : service.name === SERVICE_CONFIG.chatAdvice.name
                               ? "/ consultation"
-                              : service.name === "Notes & Resources"
+                              : service.name === SERVICE_CONFIG.notes.name
                               ? "/ resource"
-                              : service.name === "Digital Products"
+                              : service.name === SERVICE_CONFIG.digitalProducts.name
                               ? "/ product"
                               : ""}
                           </span>

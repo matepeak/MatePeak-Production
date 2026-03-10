@@ -1,63 +1,14 @@
 /**
+ * @deprecated This file is deprecated. Use @/config/serviceConfig instead.
+ * 
  * Centralized service type utilities and constants
  * Eliminates duplicate service configuration across components
  */
 import { Video, MessageSquare, ShoppingBag, FileText } from "lucide-react";
+import { SERVICE_CONFIG as SHARED_SERVICE_CONFIG } from "@/config/serviceConfig";
 
-export type ServiceType =
-  | "oneOnOneSession"
-  | "chatAdvice"
-  | "digitalProducts"
-  | "notes";
-
-export interface ServiceConfig {
-  icon: any;
-  name: string;
-  shortName: string;
-  description: string;
-  durations: number[];
-  typeLabel: string;
-  requiresDateTime: boolean;
-}
-
-export const SERVICE_CONFIG: Record<ServiceType, ServiceConfig> = {
-  oneOnOneSession: {
-    icon: Video,
-    name: "Strategic Advisory Session",
-    shortName: "1-on-1 Video Session",
-    description: "Live video mentoring session",
-    durations: [30, 60, 90],
-    typeLabel: "Video Meeting",
-    requiresDateTime: true,
-  },
-  chatAdvice: {
-    icon: MessageSquare,
-    name: "Chat Consultation",
-    shortName: "Chat Advice",
-    description: "Text-based Q&A and guidance",
-    durations: [],
-    typeLabel: "Text Chat",
-    requiresDateTime: false,
-  },
-  digitalProducts: {
-    icon: ShoppingBag,
-    name: "Digital Products",
-    shortName: "Digital Products",
-    description: "Courses, ebooks, templates",
-    durations: [],
-    typeLabel: "Digital Download",
-    requiresDateTime: false,
-  },
-  notes: {
-    icon: FileText,
-    name: "Session Notes & Resources",
-    shortName: "Notes & Resources",
-    description: "Study materials and guides",
-    durations: [],
-    typeLabel: "Study Materials",
-    requiresDateTime: false,
-  },
-};
+// Re-export the shared config for backward compatibility
+export { SERVICE_CONFIG, getSuggestedPrices } from "@/config/serviceConfig";
 
 /**
  * Check if a service type requires date/time selection

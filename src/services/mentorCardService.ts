@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { SERVICE_CONFIG } from "@/config/serviceConfig";
 import { MentorProfile } from "@/components/MentorCard";
 
 /**
@@ -116,25 +117,16 @@ function generateTagline(profile: ExpertProfileData): string {
 export function transformToMentorCard(
   profile: ExpertProfileData
 ): MentorProfile {
-  // Suggested default prices for services
-  const suggestedPrices: { [key: string]: number } = {
-    oneOnOneSession: 1500,
-    chatAdvice: 500,
-    digitalProducts: 2000,
-    notes: 300,
-  };
-
-  // Calculate pricing from service_pricing with fallback to suggested prices
+  // Calculate pricing from service_pricing using exact prices only
   const getLowestPrice = () => {
     if (!profile.service_pricing || typeof profile.service_pricing !== 'object') return 0;
 
     const prices: number[] = [];
 
     Object.entries(profile.service_pricing).forEach(([key, service]: [string, any]) => {
-      if (service?.enabled) {
-        // Use actual price if set and > 0, otherwise use suggested price
-        const price = service.price > 0 ? service.price : (suggestedPrices[key] || 500);
-        prices.push(price);
+      if (service?.enabled && service.price !== undefined && service.price !== null) {
+        // Use the exact price set by the mentor (even if it's 0)
+        prices.push(service.price);
       }
     });
 
@@ -149,15 +141,10 @@ export function transformToMentorCard(
       // Use service_pricing (new unified system)
       Object.entries(profile.service_pricing).forEach(([key, service]: [string, any]) => {
         if (service?.enabled) {
-          // Map service keys to display names
-          if (key === 'oneOnOneSession') {
-            options.push('1-on-1 Sessions');
-          } else if (key === 'chatAdvice') {
-            options.push('Chat Advice');
-          } else if (key === 'digitalProducts') {
-            options.push('Digital Products');
-          } else if (key === 'notes') {
-            options.push('Notes & Resources');
+          // Use shared SERVICE_CONFIG for consistent naming
+          const config = SERVICE_CONFIG[key as keyof typeof SERVICE_CONFIG];
+          if (config) {
+            options.push(config.name);
           } else if (service.name) {
             // Custom services - use their name
             options.push(service.name);
@@ -166,13 +153,13 @@ export function transformToMentorCard(
       });
     } else if (profile.services) {
       // Fallback to old services system for backward compatibility
-      if (profile.services.oneOnOneSession) options.push("1-on-1 Sessions");
-      if (profile.services.chatAdvice) options.push("Chat Advice");
-      if (profile.services.digitalProducts) options.push("Digital Products");
-      if (profile.services.notes) options.push("Notes & Resources");
+      if (profile.services.oneOnOneSession) options.push(SERVICE_CONFIG.oneOnOneSession.name);
+      if (profile.services.chatAdvice) options.push(SERVICE_CONFIG.chatAdvice.name);
+      if (profile.services.digitalProducts) options.push(SERVICE_CONFIG.digitalProducts.name);
+      if (profile.services.notes) options.push(SERVICE_CONFIG.notes.name);
     }
 
-    return options.length > 0 ? options : ["1-on-1 Sessions"];
+    return options.length > 0 ? options : [SERVICE_CONFIG.oneOnOneSession.name];
   };
 
   // Use categories array or fallback to single category

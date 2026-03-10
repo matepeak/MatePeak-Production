@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { SelectedService } from "./BookingDialog";
 import { useState } from "react";
+import { SERVICE_CONFIG } from "@/config/serviceConfig";
 
 interface ServiceSelectionProps {
   servicePricing: any; // Unified service_pricing structure
@@ -32,48 +33,7 @@ interface ServiceSelectionProps {
   totalReviews?: number;
 }
 
-const serviceConfig: Record<string, any> = {
-  oneOnOneSession: {
-    icon: Video,
-    name: "1-on-1 Career Strategy Call",
-    shortName: "1-on-1 Career Strategy Call",
-    description: "Discuss your goals, blockers & next moves",
-    benefits: ["30 min live call", "Personalized action plan after call"],
-    durations: [30, 60, 90],
-    typeLabel: "Video Meeting",
-  },
-  chatAdvice: {
-    icon: MessageSquare,
-    name: "Career Clarity – Ask Anything",
-    shortName: "Career Clarity",
-    description: "Get clear direction on your next career step",
-    benefits: ["24-hour expert responses", "Actionable next steps"],
-    durations: [],
-    typeLabel: "Text Chat",
-  },
-  digitalProducts: {
-    icon: ShoppingBag,
-    name: "Resume & LinkedIn Starter Pack",
-    shortName: "Resource Bundle",
-    description: "Proven templates + expert guidance",
-    benefits: [
-      "Resume templates",
-      "LinkedIn checklist",
-      "Short guidance video",
-    ],
-    durations: [],
-    typeLabel: "Digital Download",
-  },
-  notes: {
-    icon: FileText,
-    name: "Session Notes & Resources",
-    shortName: "Notes & Resources",
-    description: "Study materials and guides",
-    benefits: [],
-    durations: [],
-    typeLabel: "Study Materials",
-  },
-};
+// Use shared SERVICE_CONFIG for consistency across the app
 
 export default function ServiceSelection({
   servicePricing,
@@ -87,14 +47,6 @@ export default function ServiceSelection({
   const [freeDemoEnabled, setFreeDemoEnabled] = useState<
     Record<string, boolean>
   >({});
-
-  // Suggested default prices for services
-  const suggestedPrices: { [key: string]: number } = {
-    oneOnOneSession: 1500,
-    chatAdvice: 500,
-    digitalProducts: 2000,
-    notes: 300,
-  };
   if (!servicePricing) {
     return (
       <div className="text-center py-8 bg-gray-100 rounded-2xl border-0">
@@ -111,18 +63,18 @@ export default function ServiceSelection({
     .map(([key, value]) => ({ key, ...value }));
 
   const handleSelect = (serviceKey: string, serviceName: string, servicePrice: number, hasFreeDemo: boolean) => {
-    const config = serviceConfig[serviceKey];
+    const config = SERVICE_CONFIG[serviceKey];
     const duration = serviceKey === "oneOnOneSession" ? 
       (selectedDurations[serviceKey] || 30) : 0;
 
     const isFreeDemo = freeDemoEnabled[serviceKey] && hasFreeDemo;
 
-    // Use actual price if > 0, otherwise use suggested price
-    const actualPrice = servicePrice > 0 ? servicePrice : (suggestedPrices[serviceKey] || 500);
+    // Use the exact price set by the mentor (even if it's 0)
+    const actualPrice = servicePrice !== undefined && servicePrice !== null ? servicePrice : 0;
 
     onServiceSelect({
       type: serviceKey as any,
-      name: config?.shortName || serviceName,
+      name: serviceName || config?.shortName || serviceKey, // Prioritize custom name
       duration,
       price: isFreeDemo ? 0 : actualPrice,
       hasFreeDemo: hasFreeDemo,
@@ -160,8 +112,16 @@ export default function ServiceSelection({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {enabledServices.map((service) => {
           const serviceKey = service.key;
-          const isPredefined = serviceConfig[serviceKey];
-          const config = isPredefined ? serviceConfig[serviceKey] : {
+          const isPredefined = SERVICE_CONFIG[serviceKey];
+          
+          // Allow mentors to customize predefined service names/descriptions
+          // Use custom name/description if provided, otherwise fall back to SERVICE_CONFIG
+          const config = isPredefined ? {
+            ...SERVICE_CONFIG[serviceKey],
+            name: service.name || SERVICE_CONFIG[serviceKey].name,
+            shortName: service.name || SERVICE_CONFIG[serviceKey].shortName,
+            description: service.description || SERVICE_CONFIG[serviceKey].description,
+          } : {
             icon: Star,
             name: service.name,
             shortName: service.name,
@@ -169,6 +129,7 @@ export default function ServiceSelection({
             benefits: [],
             durations: [],
             typeLabel: "Custom Service",
+            suggestedPrice: 500,
           };
           const Icon = config.icon;
           const selectedDuration =
@@ -176,8 +137,8 @@ export default function ServiceSelection({
           const isFreeDemo =
             freeDemoEnabled[serviceKey] && service.hasFreeDemo;
           
-          // Use actual price if > 0, otherwise use suggested price
-          const displayPrice = service.price > 0 ? service.price : (suggestedPrices[serviceKey] || 500);
+          // Use the exact price set by the mentor (even if it's 0)
+          const displayPrice = service.price !== undefined && service.price !== null ? service.price : 0;
 
           return (
             <Card

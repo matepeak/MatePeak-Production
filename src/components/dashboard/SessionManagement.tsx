@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { SERVICE_CONFIG } from "@/config/serviceConfig";
 import {
   Calendar,
   Clock,
@@ -104,13 +105,25 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
 
   // Helper function to format session type display name
   const formatSessionType = (sessionType: string | null | undefined) => {
-    if (!sessionType) return "1 on 1 Session";
+    if (!sessionType) return SERVICE_CONFIG.oneOnOneSession?.name || "1 on 1 Session";
 
-    // Convert camelCase or other formats to readable format
+    // First, check if it's in the mentor's custom service_pricing
+    if (mentorProfile?.service_pricing?.[sessionType]) {
+      const customName = mentorProfile.service_pricing[sessionType].name;
+      if (customName) return customName;
+    }
+
+    // Then check SERVICE_CONFIG for predefined services
+    if (SERVICE_CONFIG[sessionType]) {
+      return SERVICE_CONFIG[sessionType].name;
+    }
+
+    // Legacy format conversion as fallback
     const typeMap: Record<string, string> = {
-      oneonesession: "1 on 1 Session",
-      oneOnOneSession: "1 on 1 Session",
-      "one-on-one": "1 on 1 Session",
+      oneonesession: SERVICE_CONFIG.oneOnOneSession?.name || "1 on 1 Session",
+      oneOnOneSession: SERVICE_CONFIG.oneOnOneSession?.name || "1 on 1 Session",
+      "one-on-one": SERVICE_CONFIG.oneOnOneSession?.name || "1 on 1 Session",
+      chatAdvice: SERVICE_CONFIG.chatAdvice?.name || "Chat Consultation",
       group: "Group Session",
       groupsession: "Group Session",
       workshop: "Workshop",

@@ -348,6 +348,44 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
     try {
       setSaving(true);
 
+      // Phase 1 (unverified) mentor validation: max 5 slots per week
+      const isUnverified = mentorProfile.verification_status !== 'verified' || 
+                          mentorProfile.mentor_tier === 'basic' || 
+                          !mentorProfile.phase_1_complete;
+      
+      if (isUnverified) {
+        // Calculate the start and end of the current week (next 7 days from today)
+        const today = new Date();
+        const weekEnd = new Date(today);
+        weekEnd.setDate(today.getDate() + 6);
+        const todayStr = getLocalDateString(today);
+        const weekEndStr = getLocalDateString(weekEnd);
+
+        // Count existing slots within the next 7 days (excluding recurring slots)
+        const existingWeeklySlots = availabilitySlots.filter(slot => {
+          if (slot.specific_date) {
+            return slot.specific_date >= todayStr && slot.specific_date <= weekEndStr;
+          }
+          return false;
+        });
+
+        const totalExisting = existingWeeklySlots.length;
+        const totalNew = newSlots.length;
+        const totalSlots = totalExisting + totalNew;
+
+        const MAX_SLOTS_UNVERIFIED = 5;
+
+        if (totalSlots > MAX_SLOTS_UNVERIFIED) {
+          toast({
+            title: "Maximum Slots Reached",
+            description: `Phase 1 mentors can add up to ${MAX_SLOTS_UNVERIFIED} slots per week. You have ${totalExisting} existing slots. You can only add ${MAX_SLOTS_UNVERIFIED - totalExisting} more slot(s). Complete verification to add unlimited slots.`,
+            variant: "destructive",
+          });
+          setSaving(false);
+          return;
+        }
+      }
+
       const slotsToInsert = newSlots.map((slot) => ({
         expert_id: mentorProfile.id,
         day_of_week: dayOfWeek,

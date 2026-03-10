@@ -18,7 +18,7 @@ const basicInfoSchema = z.object({
   category: z
     .array(z.string())
     .min(1, "Please select at least one expertise area"),
-  skills: z.array(z.string()).optional(),
+  skills: z.array(z.string()).min(1, "Please select at least one skill"),
   expertiseTags: z.array(z.string()).optional(),
   countryOfBirth: z.string().min(1, "Please select your country"),
   languages: z
@@ -29,7 +29,7 @@ const basicInfoSchema = z.object({
       })
     )
     .min(1, "Please add at least one language"),
-  phoneNumber: z.string().min(1, "Phone number is required"),
+  phoneNumber: z.string().optional(),
   ageConfirmation: z
     .boolean()
     .refine((val) => val === true, "You must confirm you are over 18"),
@@ -73,27 +73,27 @@ const pricingSchema = z.object({
     oneOnOneSession: z
       .object({
         enabled: z.boolean().optional(),
-        price: z.number().min(0, "Price must be positive").optional(),
+        price: z.number().min(50, "Price must be at least ₹50").max(20000, "Price cannot exceed ₹20,000").optional(),
         hasFreeDemo: z.boolean().optional(),
       })
       .optional(),
     chatAdvice: z
       .object({
         enabled: z.boolean().optional(),
-        price: z.number().min(0, "Price must be positive").optional(),
+        price: z.number().min(50, "Price must be at least ₹50").max(20000, "Price cannot exceed ₹20,000").optional(),
         hasFreeDemo: z.boolean().optional(),
       })
       .optional(),
     digitalProducts: z
       .object({
         enabled: z.boolean().optional(),
-        price: z.number().min(0, "Price must be positive").optional(),
+        price: z.number().min(50, "Price must be at least ₹50").max(20000, "Price cannot exceed ₹20,000").optional(),
       })
       .optional(),
     notes: z
       .object({
         enabled: z.boolean().optional(),
-        price: z.number().min(0, "Price must be positive").optional(),
+        price: z.number().min(50, "Price must be at least ₹50").max(20000, "Price cannot exceed ₹20,000").optional(),
       })
       .optional(),
   }),
@@ -288,7 +288,7 @@ export function useExpertOnboardingForm() {
       notes: false,
       availability: [],
       availableHours: {},
-      timezone: "",
+      timezone: "Asia/Kolkata",
       servicePricing: {
         oneOnOneSession: { enabled: false, price: 0, hasFreeDemo: false },
         chatAdvice: { enabled: false, price: 0, hasFreeDemo: false },

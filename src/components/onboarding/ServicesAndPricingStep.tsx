@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
+import { SERVICE_CONFIG } from "@/config/serviceConfig";
+import { toast } from "sonner";
 import {
   FormField,
   FormItem,
@@ -38,35 +40,35 @@ interface ServiceConfig {
 const predefinedServices: ServiceConfig[] = [
   {
     key: "oneOnOneSession",
-    icon: Video,
-    name: "1-on-1 Video Sessions",
-    description: "Live video mentoring sessions tailored to student needs",
+    icon: SERVICE_CONFIG.oneOnOneSession.icon,
+    name: SERVICE_CONFIG.oneOnOneSession.name,
+    description: SERVICE_CONFIG.oneOnOneSession.description,
     type: "predefined",
-    suggestedPrice: 1500,
+    suggestedPrice: SERVICE_CONFIG.oneOnOneSession.suggestedPrice,
   },
   {
     key: "chatAdvice",
-    icon: MessageSquare,
-    name: "Chat Advice",
-    description: "Text-based Q&A and guidance via messaging",
+    icon: SERVICE_CONFIG.chatAdvice.icon,
+    name: SERVICE_CONFIG.chatAdvice.name,
+    description: SERVICE_CONFIG.chatAdvice.description,
     type: "predefined",
-    suggestedPrice: 500,
+    suggestedPrice: SERVICE_CONFIG.chatAdvice.suggestedPrice,
   },
   {
     key: "digitalProducts",
-    icon: ShoppingBag,
-    name: "Digital Products",
-    description: "Courses, ebooks, templates, and other digital resources",
+    icon: SERVICE_CONFIG.digitalProducts.icon,
+    name: SERVICE_CONFIG.digitalProducts.name,
+    description: SERVICE_CONFIG.digitalProducts.description,
     type: "predefined",
-    suggestedPrice: 2000,
+    suggestedPrice: SERVICE_CONFIG.digitalProducts.suggestedPrice,
   },
   {
     key: "notes",
-    icon: FileText,
-    name: "Notes & Resources",
-    description: "Study materials, bootcamp notes, and educational content",
+    icon: SERVICE_CONFIG.notes.icon,
+    name: SERVICE_CONFIG.notes.name,
+    description: SERVICE_CONFIG.notes.description,
     type: "predefined",
-    suggestedPrice: 300,
+    suggestedPrice: SERVICE_CONFIG.notes.suggestedPrice,
   },
 ];
 
@@ -143,13 +145,14 @@ export default function ServicesAndPricingStep({
     const suggested = generateCustomServices(formData);
     setCustomServices(suggested);
 
-    // Initialize service_pricing with suggested prices for ALL services
+    // Initialize service_pricing with names and descriptions for predefined services
     const currentPricing = form.getValues("servicePricing") || {};
     
-    // Initialize predefined services with their suggested prices if price is 0
+    // Initialize predefined services with their names and descriptions if not set
     predefinedServices.forEach((service) => {
       const currentService = currentPricing[service.key];
-      if (!currentService || currentService.price === 0) {
+      if (!currentService) {
+        // Only set if service doesn't exist at all
         form.setValue(`servicePricing.${service.key}.price`, service.suggestedPrice);
         form.setValue(`servicePricing.${service.key}.name`, service.name);
         form.setValue(`servicePricing.${service.key}.description`, service.description);
@@ -173,6 +176,14 @@ export default function ServicesAndPricingStep({
 
   const handleAddCustomService = () => {
     if (!newService.name || !newService.description) return;
+
+    // Validate price range
+    if (newService.price && (newService.price < 50 || newService.price > 20000)) {
+      toast.error("Invalid Price", {
+        description: "Please set a price between ₹50 and ₹20,000 per session",
+      });
+      return;
+    }
 
     const serviceKey = `custom_${Date.now()}`;
     const service: ServiceConfig = {
@@ -311,17 +322,20 @@ export default function ServicesAndPricingStep({
                             <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                             <Input
                               type="number"
+                              min={50}
+                              max={20000}
+                              step={1}
                               placeholder={service.suggestedPrice.toString()}
                               className="pl-10 h-11 border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 rounded-lg transition-colors"
-                              value={field.value ?? service.suggestedPrice}
+                              value={field.value || ''}
                               onChange={(e) => {
-                                const value = e.target.valueAsNumber;
-                                // Use the suggested price if the input is cleared or invalid
-                                field.onChange(isNaN(value) ? service.suggestedPrice : value);
+                                const value = e.target.value === '' ? 0 : e.target.valueAsNumber;
+                                field.onChange(isNaN(value) ? 0 : value);
                               }}
                             />
                           </div>
                         </FormControl>
+                        <p className="text-xs text-gray-500 mt-1">Set between ₹50 - ₹20,000 per session</p>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -451,17 +465,26 @@ export default function ServicesAndPricingStep({
                   <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                   <Input
                     type="number"
+                    min={50}
+                    max={20000}
+                    step={50}
                     placeholder="500"
                     className="pl-10 h-11 border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 rounded-lg transition-colors"
                     value={newService.price || ""}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const value = e.target.valueAsNumber || 0;
+                      // Validate price range
+                      if (value > 0 && (value < 50 || value > 20000)) {
+                        return; // Don't update if outside range
+                      }
                       setNewService({
                         ...newService,
-                        price: e.target.valueAsNumber || 0,
-                      })
-                    }
+                        price: value,
+                      });
+                    }}
                   />
                 </div>
+                <p className="text-xs text-gray-500 mt-1">Set between ₹50 - ₹20,000 per session</p>
               </div>
               <div className="flex gap-3 pt-2">
                 <Button

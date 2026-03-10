@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { SERVICE_CONFIG } from "@/config/serviceConfig";
 import {
   Card,
   CardContent,
@@ -110,19 +111,20 @@ interface ServicePricing {
   };
 }
 
+// Use shared SERVICE_CONFIG for consistent naming
 const serviceTypeIcons: Record<string, any> = {
-  oneOnOneSession: Briefcase,
-  chatAdvice: MessageSquare,
-  digitalProducts: Package,
-  notes: FileText,
+  oneOnOneSession: SERVICE_CONFIG.oneOnOneSession?.icon || Briefcase,
+  chatAdvice: SERVICE_CONFIG.chatAdvice?.icon || MessageSquare,
+  digitalProducts: SERVICE_CONFIG.digitalProducts?.icon || Package,
+  notes: SERVICE_CONFIG.notes?.icon || FileText,
   custom: Plus,
 };
 
 const serviceTypeLabels: Record<string, string> = {
-  oneOnOneSession: "1-on-1 Session",
-  chatAdvice: "Chat Consultation",
-  digitalProducts: "Digital Products",
-  notes: "Notes & Resources",
+  oneOnOneSession: SERVICE_CONFIG.oneOnOneSession?.name || "1-on-1 Session",
+  chatAdvice: SERVICE_CONFIG.chatAdvice?.name || "Chat Consultation",
+  digitalProducts: SERVICE_CONFIG.digitalProducts?.name || "Digital Products",
+  notes: SERVICE_CONFIG.notes?.name || "Notes & Resources",
   custom: "Custom Service",
 };
 
@@ -178,6 +180,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
   const [editingService, setEditingService] = useState<string | null>(null);
   const [deletingService, setDeletingService] = useState<string | null>(null);
   const [addingNew, setAddingNew] = useState(false);
+  const editingServiceRef = useRef<HTMLDivElement>(null);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -208,6 +211,18 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
     loadServices();
   }, [mentorId]);
 
+  // Scroll to editing service when it changes
+  useEffect(() => {
+    if (editingService && editingServiceRef.current) {
+      setTimeout(() => {
+        editingServiceRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 100);
+    }
+  }, [editingService]);
+
   const loadServices = async () => {
     try {
       setLoading(true);
@@ -234,10 +249,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
           
           allServices.push({
             id: key,
-            name: value.name || (key === "oneOnOneSession" ? "1-on-1 Strategy Session" :
-                                 key === "chatAdvice" ? "Chat Consultation" :
-                                 key === "digitalProducts" ? "Digital Products" :
-                                 key === "notes" ? "Notes & Resources" : "Custom Service"),
+            name: value.name || serviceTypeLabels[key] || "Custom Service",
             description: value.description || "",
             price: value.price || 0,
             discount_price: value.discount_price,
@@ -369,7 +381,21 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
         )
       );
 
-      toast.success(`Service ${updatedEnabled ? "enabled" : "disabled"}`);
+      // If enabling a service, automatically open edit mode
+      if (updatedEnabled) {
+        setEditingService(serviceId);
+        setEditForm({
+          name: service.name,
+          description: service.description,
+          price: service.price,
+          discount_price: service.discount_price,
+          enabled: updatedEnabled,
+          hasFreeDemo: service.hasFreeDemo || false,
+        });
+        toast.success("Service enabled! Update details below.");
+      } else {
+        toast.success("Service disabled");
+      }
     } catch (error: any) {
       console.error("Error toggling service:", error);
       toast.error("Failed to update service");
@@ -830,25 +856,25 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                   <SelectItem value="oneOnOneSession" className="rounded-lg">
                     <div className="flex items-center gap-2">
                       <Video className="h-4 w-4 text-rose-500" />
-                      <span>1-on-1 Session</span>
+                      <span>{serviceTypeLabels.oneOnOneSession}</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="chatAdvice" className="rounded-lg">
                     <div className="flex items-center gap-2">
                       <MessageSquare className="h-4 w-4 text-blue-500" />
-                      <span>Chat Consultation</span>
+                      <span>{serviceTypeLabels.chatAdvice}</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="digitalProducts" className="rounded-lg">
                     <div className="flex items-center gap-2">
                       <Package className="h-4 w-4 text-purple-500" />
-                      <span>Digital Products</span>
+                      <span>{serviceTypeLabels.digitalProducts}</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="notes" className="rounded-lg">
                     <div className="flex items-center gap-2">
                       <FileStack className="h-4 w-4 text-amber-500" />
-                      <span>Notes & Resources</span>
+                      <span>{serviceTypeLabels.notes}</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="custom" className="rounded-lg">
@@ -1165,7 +1191,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       )}
 
       {/* Services List */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         {filteredServices.length === 0 ? (
           <Card className="lg:col-span-2">
             <CardContent className="py-12 text-center">
@@ -1196,6 +1222,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
             return (
               <Card
                 key={service.id}
+                ref={isEditing ? editingServiceRef : null}
                 className={`${service.enabled ? "" : "opacity-60"} ${
                   draggedService === service.id ? "opacity-50" : ""
                 }`}

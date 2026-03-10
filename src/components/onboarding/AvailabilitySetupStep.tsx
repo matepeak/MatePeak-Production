@@ -3,9 +3,8 @@ import { UseFormReturn } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Calendar, Clock, Info, Sparkles, Coffee, Briefcase, Sunset, Plus, X } from 'lucide-react';
+import { Calendar, Clock, Info, Sparkles, Coffee, Briefcase, Sunset, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -50,95 +49,12 @@ const formatTimeToAMPM = (time24: string): string => {
   return `${hour12}:${minute.toString().padStart(2, '0')} ${period}`;
 };
 
-// Helper function to check if a day is in the past (for recurring weekly availability)
-const isDayInPast = (dayKey: string): boolean => {
-  const now = new Date();
-  const currentDayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
-  
-  // Map day keys to JavaScript day numbers
-  const dayMap: { [key: string]: number } = {
-    'sunday': 0,
-    'monday': 1,
-    'tuesday': 2,
-    'wednesday': 3,
-    'thursday': 4,
-    'friday': 5,
-    'saturday': 6
-  };
-  
-  const targetDay = dayMap[dayKey.toLowerCase()];
-  if (targetDay === undefined) return false;
-  
-  // For weekly recurring availability, only block current day if all times have passed
-  // Past days of this week can be used for next week, so we only check current day
-  return false; // We'll check times individually for current day
-};
-
-// Helper function to check if a specific time on a specific day is in the past
-const isTimeInPast = (dayKey: string, time24: string): boolean => {
-  const now = new Date();
-  const currentDayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
-  
-  // Map day keys to JavaScript day numbers
-  const dayMap: { [key: string]: number } = {
-    'sunday': 0,
-    'monday': 1,
-    'tuesday': 2,
-    'wednesday': 3,
-    'thursday': 4,
-    'friday': 5,
-    'saturday': 6
-  };
-  
-  const targetDay = dayMap[dayKey.toLowerCase()];
-  if (targetDay === undefined) return false;
-  
-  // Only check for current day - other days are for future weeks
-  if (targetDay !== currentDayOfWeek) return false;
-  
-  // For current day, check if the time has passed
-  const [hours, minutes] = time24.split(':').map(Number);
-  const currentHours = now.getHours();
-  const currentMinutes = now.getMinutes();
-  
-  const timeInMinutes = hours * 60 + minutes;
-  const nowInMinutes = currentHours * 60 + currentMinutes;
-  
-  return timeInMinutes <= nowInMinutes;
-};
-
-// Helper function to get available time options (excluding past times for current day)
+// For Phase 1 onboarding, mentors set their weekly schedule pattern
+// This will be converted to specific dates for the next 7 days
 const getAvailableTimeOptions = (dayKey: string): string[] => {
-  const now = new Date();
-  const currentDayOfWeek = now.getDay();
-  
-  const dayMap: { [key: string]: number } = {
-    'sunday': 0,
-    'monday': 1,
-    'tuesday': 2,
-    'wednesday': 3,
-    'thursday': 4,
-    'friday': 5,
-    'saturday': 6
-  };
-  
-  const targetDay = dayMap[dayKey.toLowerCase()];
-  
-  // For non-current days, return all time options (they're for future weeks)
-  if (targetDay !== currentDayOfWeek) {
-    return TIME_OPTIONS;
-  }
-  
-  // For current day, filter out past times (add 30 min buffer for booking processing)
-  const currentHours = now.getHours();
-  const currentMinutes = now.getMinutes();
-  const nowInMinutes = currentHours * 60 + currentMinutes + 30; // 30-minute buffer
-  
-  return TIME_OPTIONS.filter(time => {
-    const [hours, minutes] = time.split(':').map(Number);
-    const timeInMinutes = hours * 60 + minutes;
-    return timeInMinutes > nowInMinutes;
-  });
+  // Return all time options - mentors can set their weekly pattern regardless of current day/time
+  // The actual slots will be created for the next 7 days starting from today
+  return TIME_OPTIONS;
 };
 
 const SESSION_DURATIONS = [
@@ -214,116 +130,49 @@ const SCHEDULE_TEMPLATES = [
 ];
 
 const TIMEZONES = [
-  // UTC
-  'UTC',
-  // Americas
-  'America/New_York',
-  'America/Chicago',
-  'America/Denver',
-  'America/Los_Angeles',
-  'America/Anchorage',
-  'America/Phoenix',
-  'America/Toronto',
-  'America/Vancouver',
-  'America/Montreal',
-  'America/Halifax',
-  'America/Mexico_City',
-  'America/Cancun',
-  'America/Bogota',
-  'America/Lima',
-  'America/Santiago',
-  'America/Buenos_Aires',
-  'America/Sao_Paulo',
-  'America/Caracas',
-  'America/Havana',
-  'America/Jamaica',
-  'America/Puerto_Rico',
-  // Europe
-  'Europe/London',
-  'Europe/Dublin',
-  'Europe/Paris',
-  'Europe/Berlin',
-  'Europe/Rome',
-  'Europe/Madrid',
-  'Europe/Amsterdam',
-  'Europe/Brussels',
-  'Europe/Vienna',
-  'Europe/Prague',
-  'Europe/Warsaw',
-  'Europe/Stockholm',
-  'Europe/Oslo',
-  'Europe/Copenhagen',
-  'Europe/Helsinki',
-  'Europe/Athens',
-  'Europe/Bucharest',
-  'Europe/Istanbul',
-  'Europe/Moscow',
-  'Europe/Kiev',
-  'Europe/Zurich',
-  'Europe/Lisbon',
-  // Asia
-  'Asia/Dubai',
-  'Asia/Muscat',
-  'Asia/Kabul',
-  'Asia/Karachi',
+  // India (Default)
   'Asia/Kolkata',
-  'Asia/Kathmandu',
-  'Asia/Dhaka',
-  'Asia/Bangkok',
+  // Asia - Major
+  'Asia/Dubai',
   'Asia/Singapore',
+  'Asia/Bangkok',
   'Asia/Hong_Kong',
-  'Asia/Shanghai',
-  'Asia/Taipei',
   'Asia/Tokyo',
+  'Asia/Shanghai',
   'Asia/Seoul',
+  'Asia/Dhaka',
+  'Asia/Karachi',
   'Asia/Jakarta',
   'Asia/Manila',
-  'Asia/Kuala_Lumpur',
-  'Asia/Ho_Chi_Minh',
-  'Asia/Riyadh',
-  'Asia/Kuwait',
-  'Asia/Baghdad',
-  'Asia/Tehran',
-  'Asia/Baku',
-  'Asia/Yerevan',
-  'Asia/Tashkent',
-  'Asia/Jerusalem',
-  'Asia/Beirut',
-  // Pacific
-  'Pacific/Auckland',
-  'Pacific/Fiji',
-  'Pacific/Guam',
-  'Pacific/Honolulu',
-  'Pacific/Tahiti',
-  'Pacific/Samoa',
+  // Europe - Major
+  'Europe/London',
+  'Europe/Paris',
+  'Europe/Berlin',
+  'Europe/Istanbul',
+  'Europe/Moscow',
+  // Americas - Major
+  'America/New_York',
+  'America/Chicago',
+  'America/Los_Angeles',
+  'America/Toronto',
+  'America/Mexico_City',
+  'America/Sao_Paulo',
   // Australia
   'Australia/Sydney',
   'Australia/Melbourne',
-  'Australia/Brisbane',
-  'Australia/Perth',
-  'Australia/Adelaide',
-  'Australia/Darwin',
+  // Pacific
+  'Pacific/Auckland',
   // Africa
   'Africa/Cairo',
   'Africa/Johannesburg',
-  'Africa/Lagos',
-  'Africa/Nairobi',
-  'Africa/Casablanca',
-  'Africa/Algiers',
-  'Africa/Tunis',
-  'Africa/Accra',
-  'Africa/Addis_Ababa',
-  // Atlantic
-  'Atlantic/Azores',
-  'Atlantic/Cape_Verde',
-  'Atlantic/Reykjavik',
+  // UTC
+  'UTC',
 ];
 
 export const AvailabilitySetupStep = ({
   form
 }: AvailabilitySetupStepProps) => {
-  const [timezone, setTimezone] = useState('America/New_York');
-  const [timezoneSearch, setTimezoneSearch] = useState('');
+  const [timezone, setTimezone] = useState('Asia/Kolkata');
   const [sessionDuration, setSessionDuration] = useState(60);
   const [bufferTime, setBufferTime] = useState(15);
   const [advanceBooking, setAdvanceBooking] = useState(1);
@@ -340,14 +189,7 @@ export const AvailabilitySetupStep = ({
     return initial;
   });
 
-  // Filter timezones based on search - memoized for performance
-  const filteredTimezones = useMemo(() => {
-    if (!timezoneSearch) return TIMEZONES;
-    const searchLower = timezoneSearch.toLowerCase();
-    return TIMEZONES.filter(tz => 
-      tz.toLowerCase().includes(searchLower)
-    );
-  }, [timezoneSearch]);
+
 
   // Helper function to sort time slots
   const sortSlots = (slots: TimeSlot[]): TimeSlot[] => {
@@ -404,15 +246,6 @@ export const AvailabilitySetupStep = ({
       
       // If trying to enable a day, check validations
       if (!currentDay.enabled) {
-        // Check if available time options exist for this day
-        const availableTimes = getAvailableTimeOptions(dayKey);
-        if (availableTimes.length === 0) {
-          toast.error('Cannot Set Availability for Past Times', {
-            description: 'All times for today have passed. You can set availability for other days or try again tomorrow.',
-          });
-          return prev;
-        }
-        
         const currentTotalSlots = Object.values(prev).reduce((total, day) => {
           return total + (day.enabled ? day.slots.length : 0);
         }, 0);
@@ -428,6 +261,9 @@ export const AvailabilitySetupStep = ({
         // When enabling a day, set initial slot to 09:00 - 09:30 (or first available time)
         const preferredStartTime = '09:00';
         const preferredEndTime = '09:30';
+        
+        // Get available times for this day
+        const availableTimes = getAvailableTimeOptions(dayKey);
         
         // Check if preferred time is available, otherwise use first available
         const defaultStart = availableTimes.includes(preferredStartTime) ? preferredStartTime : availableTimes[0];
@@ -555,14 +391,6 @@ export const AvailabilitySetupStep = ({
 
       // Default new slot times - consecutive slots start where previous ended
       const availableTimes = getAvailableTimeOptions(dayKey);
-      
-      // If no available times (all times in the past), show error
-      if (availableTimes.length === 0) {
-        toast.error('Cannot Add Slot', {
-          description: 'All times for today have passed. You can set availability for other days or try again tomorrow.',
-        });
-        return prev;
-      }
       
       let newStart = '09:00'; // Default to 9:00 AM
       let newEnd = '09:30';   // Default to 9:30 AM (30 minutes)
@@ -727,7 +555,7 @@ export const AvailabilitySetupStep = ({
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-amber-600 mt-1">•</span>
-                <span><strong>Phase 1 Limits:</strong> Max {PHASE1_MAX_TOTAL_SLOTS} availability slots and {PHASE1_MAX_SESSION_DURATION}-minute sessions - both expand after verification</span>
+                <span><strong>Phase 1 Limits:</strong> Max {PHASE1_MAX_TOTAL_SLOTS} availability slots for the next 7 days and {PHASE1_MAX_SESSION_DURATION}-minute sessions - both expand after verification</span>
               </li>
             </ul>
           </div>
@@ -749,32 +577,12 @@ export const AvailabilitySetupStep = ({
           <SelectTrigger id="timezone" className="h-11 border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 rounded-lg transition-colors">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="max-h-[300px]">
-            <div className="sticky top-0 z-10 bg-white p-2 border-b">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search timezone..."
-                  value={timezoneSearch}
-                  onChange={(e) => setTimezoneSearch(e.target.value)}
-                  className="pl-9 h-9 border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-400"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </div>
-            </div>
-            <div className="max-h-[240px] overflow-y-auto">
-              {filteredTimezones.length > 0 ? (
-                filteredTimezones.map(tz => (
-                  <SelectItem key={tz} value={tz}>
-                    {tz.replace(/_/g, ' ')}
-                  </SelectItem>
-                ))
-              ) : (
-                <div className="p-4 text-center text-sm text-gray-500">
-                  No timezones found
-                </div>
-              )}
-            </div>
+          <SelectContent>
+            {TIMEZONES.map(tz => (
+              <SelectItem key={tz} value={tz}>
+                {tz.replace(/_/g, ' ')}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -782,7 +590,10 @@ export const AvailabilitySetupStep = ({
       {/* Weekly Schedule */}
       <div className="space-y-3 mt-10">
         <div className="flex items-center justify-between">
-          <Label className="text-sm font-bold text-gray-900">Your Weekly Availability</Label>
+          <div>
+            <Label className="text-sm font-bold text-gray-900">Your Weekly Availability Pattern (Next 7 Days)*</Label>
+            <p className="text-xs text-gray-600 mt-1">Choose your typical weekly schedule - we'll create slots for the next 7 days</p>
+          </div>
           <div className="flex items-center gap-2 text-sm">
             <span className="text-gray-600">
               {enabledDaysCount} {enabledDaysCount === 1 ? 'day' : 'days'} selected

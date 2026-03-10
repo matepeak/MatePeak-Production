@@ -28,9 +28,9 @@ export default function ExpertOnboarding() {
 
   // Phase 1 step components
   const stepComponents = [
-    { component: BasicInfoStep, title: "Basic Info", required: true },
-    { component: ServicesAndPricingStep, title: "Services & Pricing", required: true },
-    { component: AvailabilitySetupStep, title: "Availability Setup", required: true },
+    { component: BasicInfoStep, title: "Basic Info*", required: true },
+    { component: ServicesAndPricingStep, title: "Services & Pricing*", required: true },
+    { component: AvailabilitySetupStep, title: "Availability Setup*", required: true },
   ];
 
   // Auto-save draft to localStorage
@@ -132,12 +132,10 @@ export default function ExpertOnboarding() {
       
       await updateExpertProfile(profileData);
       
-      toast.success("🎉 Profile is now live! Start accepting bookings!");
-
       localStorage.removeItem('mentor-onboarding-phase1-draft');
       
-      // Navigate to dashboard instead of suggesting Phase 2
-      navigate('/mentor/dashboard');
+      // Navigate to dedicated Phase 1 success page
+      navigate('/expert/onboarding/phase-1/success');
     } catch (error: any) {
       console.error("Error creating profile:", error);
       toast.error(error.message || "Failed to save profile");
@@ -186,7 +184,7 @@ export default function ExpertOnboarding() {
     switch (step) {
       case 1: // Basic Info
         isValid = await form.trigger([
-          "firstName", "lastName", "email", "username", "ageConfirmation"
+          "firstName", "lastName", "email", "username", "skills", "ageConfirmation"
         ]);
         if (!isValid) {
           toast.error("Please fill in all required fields");
@@ -203,7 +201,25 @@ export default function ExpertOnboarding() {
           toast.error("Please add at least one service offering");
           isValid = false;
         } else {
-          isValid = true;
+          // Validate that enabled services have valid prices
+          const invalidPrices = servicePricing && Object.entries(servicePricing).filter(
+            ([key, service]: [string, any]) => {
+              if (service?.enabled === true) {
+                const price = service.price || 0;
+                return price < 50 || price > 20000;
+              }
+              return false;
+            }
+          );
+          
+          if (invalidPrices && invalidPrices.length > 0) {
+            toast.error("Invalid Price Range", {
+              description: "All enabled services must have a price between ₹50 and ₹20,000",
+            });
+            isValid = false;
+          } else {
+            isValid = true;
+          }
         }
         break;
         

@@ -568,7 +568,7 @@ export default function BasicInfoStep({ form }: { form: UseFormReturn<any> }) {
           render={({ field }) => (
             <FormItem>
               <FormLabel className="text-sm font-medium text-gray-700">
-                First name
+                First name*
               </FormLabel>
               <FormControl>
                 <Input 
@@ -588,7 +588,7 @@ export default function BasicInfoStep({ form }: { form: UseFormReturn<any> }) {
           render={({ field }) => (
             <FormItem>
               <FormLabel className="text-sm font-medium text-gray-700">
-                Last name
+                Last name*
               </FormLabel>
               <FormControl>
                 <Input 
@@ -609,7 +609,7 @@ export default function BasicInfoStep({ form }: { form: UseFormReturn<any> }) {
         render={({ field }) => (
           <FormItem>
             <FormLabel className="text-sm font-medium text-gray-700">
-              Email
+              Email*
             </FormLabel>
             <FormControl>
               <Input 
@@ -630,7 +630,7 @@ export default function BasicInfoStep({ form }: { form: UseFormReturn<any> }) {
         render={({ field }) => (
           <FormItem>
             <FormLabel className="text-sm font-medium text-gray-700">
-              Username
+              Username*
             </FormLabel>
             <FormControl>
               <div className="relative">
@@ -705,7 +705,7 @@ export default function BasicInfoStep({ form }: { form: UseFormReturn<any> }) {
           return (
             <FormItem>
               <FormLabel className="text-sm font-medium text-gray-700">
-                Country of Birth
+                Country of Birth*
               </FormLabel>
               <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
@@ -735,7 +735,7 @@ export default function BasicInfoStep({ form }: { form: UseFormReturn<any> }) {
         render={({ field }) => (
           <FormItem data-field="category">
             <FormLabel className="text-sm font-medium text-gray-700 mb-3 block">
-              Choose Your Expertise Areas
+              Choose Your Expertise Areas*
             </FormLabel>
 
             <div className="flex flex-wrap gap-2.5">
@@ -833,7 +833,7 @@ export default function BasicInfoStep({ form }: { form: UseFormReturn<any> }) {
           return (
             <FormItem data-field="skills">
               <FormLabel className="text-sm font-medium text-gray-700 mb-3 block">
-                Select Your Skills
+                Select Your Skills*
               </FormLabel>
 
               {selectedCategories.length === 0 ? (
@@ -937,7 +937,7 @@ export default function BasicInfoStep({ form }: { form: UseFormReturn<any> }) {
       <div className="space-y-4" data-field="languages">
         <div className="flex items-center justify-between">
           <FormLabel className="text-sm font-medium text-gray-700">
-            Languages You Speak
+            Languages You Speak*
           </FormLabel>
           <Button
             type="button"
@@ -1028,11 +1028,8 @@ export default function BasicInfoStep({ form }: { form: UseFormReturn<any> }) {
         render={({ field }) => (
           <FormItem>
             <FormLabel className="text-sm font-medium text-gray-700">
-              Phone number <span className="text-red-500">*</span>
+              Phone number
             </FormLabel>
-            <p className="text-xs text-gray-500 mb-2">
-              Required for verification in next step
-            </p>
             <div className="flex gap-3">
               <Select value={countryCode} onValueChange={setCountryCode}>
                 <SelectTrigger className="w-28 h-11 border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 rounded-lg transition-colors">
@@ -1079,7 +1076,7 @@ export default function BasicInfoStep({ form }: { form: UseFormReturn<any> }) {
             </FormControl>
             <div className="space-y-1 leading-none">
               <FormLabel className="text-sm font-medium cursor-pointer text-gray-900">
-                I confirm I'm over 18
+                I confirm I'm over 18*
               </FormLabel>
               <FormMessage />
             </div>

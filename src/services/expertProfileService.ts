@@ -26,9 +26,6 @@ export async function updateExpertProfile(data: FormValues | any) {
     availableHours: data.availableHours 
   });
 
-  // Save timezone if Phase 1 onboarding
-  if (data.timezone) profileData.timezone = data.timezone;
-
   // First, check if profile exists
   const { data: existingProfile, error: checkError } = await supabase
     .from("expert_profiles")
@@ -42,6 +39,9 @@ export async function updateExpertProfile(data: FormValues | any) {
 
   // Create profile data object - only include fields that have values
   const profileData: any = {};
+  
+  // Save timezone if Phase 1 onboarding
+  if (data.timezone) profileData.timezone = data.timezone;
   
   // Required fields (only if provided)
   if (data.firstName && data.lastName) {
@@ -208,48 +208,58 @@ async function saveAvailabilitySlots(expertId: string, availableHours: any) {
       saturday: 6,
     };
 
-    // Delete existing recurring availability slots for this expert
+    // Delete existing future availability slots for this expert (specific dates from today onwards)
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    
     const { error: deleteError } = await supabase
       .from("availability_slots")
       .delete()
       .eq("expert_id", expertId)
-      .eq("is_recurring", true);
+      .eq("is_recurring", false)
+      .gte("specific_date", todayStr);
 
     if (deleteError) {
       console.error("⚠️ Error deleting old availability slots:", deleteError);
       throw new Error(`Failed to delete old availability slots: ${deleteError.message}`);
     } else {
-      console.log('✅ Deleted old recurring slots');
+      console.log('✅ Deleted old future-dated slots');
     }
 
-    // Convert availableHours to availability_slots records
+    // Convert availableHours to availability_slots records for the next 7 days
     const slots: any[] = [];
     
-    Object.entries(availableHours).forEach(([dayKey, dayData]: [string, any]) => {
-      console.log(`Processing day: ${dayKey}`, dayData);
+    // Create slots for the next 7 days starting from today
+    for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+      const targetDate = new Date(today);
+      targetDate.setDate(today.getDate() + dayOffset);
+      const targetDayOfWeek = targetDate.getDay(); // 0 = Sunday, 6 = Saturday
+      const dateStr = targetDate.toISOString().split('T')[0];
       
-      if (dayData.enabled && dayData.slots && Array.isArray(dayData.slots)) {
-        const dayOfWeek = dayMap[dayKey.toLowerCase()];
-        
-        if (dayOfWeek === undefined) {
-          console.warn(`⚠️ Unknown day key: ${dayKey}`);
-          return;
+      // Find matching day in availableHours
+      Object.entries(availableHours).forEach(([dayKey, dayData]: [string, any]) => {
+        if (dayData.enabled && dayData.slots && Array.isArray(dayData.slots)) {
+          const dayOfWeek = dayMap[dayKey.toLowerCase()];
+          
+          if (dayOfWeek === targetDayOfWeek) {
+            console.log(`Creating slots for ${dayKey} (${dateStr})`);
+            
+            dayData.slots.forEach((slot: { start: string; end: string }) => {
+              slots.push({
+                expert_id: expertId,
+                day_of_week: dayOfWeek,
+                start_time: slot.start,
+                end_time: slot.end,
+                is_recurring: false,
+                specific_date: dateStr,
+              });
+            });
+          }
         }
-        
-        dayData.slots.forEach((slot: { start: string; end: string }) => {
-          slots.push({
-            expert_id: expertId,
-            day_of_week: dayOfWeek,
-            start_time: slot.start,
-            end_time: slot.end,
-            is_recurring: true,
-            specific_date: null,
-          });
-        });
-      }
-    });
+      });
+    }
 
-    console.log(`📅 Prepared ${slots.length} slots for insertion:`, slots);
+    console.log(`📅 Prepared ${slots.length} slots for the next 7 days:`, slots);
 
     // Insert new availability slots
     if (slots.length > 0) {
