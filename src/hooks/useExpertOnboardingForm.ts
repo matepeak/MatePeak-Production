@@ -30,8 +30,6 @@ const basicInfoSchema = z.object({
     )
     .min(1, "Please add at least one language"),
   phoneNumber: z.string().min(1, "Phone number is required"),
-  phoneVerified: z.boolean().optional(),
-  phoneVerifiedAt: z.string().optional(),
   ageConfirmation: z
     .boolean()
     .refine((val) => val === true, "You must confirm you are over 18"),
@@ -256,8 +254,6 @@ export function useExpertOnboardingForm() {
       countryOfBirth: "",
       languages: [],
       phoneNumber: "",
-      phoneVerified: false,
-      phoneVerifiedAt: undefined,
       ageConfirmation: false,
       hasNoCertificate: false,
       teachingCertifications: [],

@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import OnboardingHeader from "@/components/onboarding/OnboardingHeader";
 import BasicInfoStep from "@/components/onboarding/BasicInfoStep";
-import PhoneVerificationStep from "@/components/onboarding/PhoneVerificationStep";
 import { AvailabilitySetupStep } from "@/components/onboarding/AvailabilitySetupStep";
 import ServicesAndPricingStep from "@/components/onboarding/ServicesAndPricingStep";
 import { useExpertOnboardingForm } from "@/hooks/useExpertOnboardingForm";
@@ -25,12 +24,11 @@ export default function ExpertOnboarding() {
   const navigate = useNavigate();
   const form = useExpertOnboardingForm();
   
-  const totalSteps = 4; // Basic Info → Phone Verification → Services → Availability
+  const totalSteps = 3; // Basic Info → Services → Availability
 
   // Phase 1 step components
   const stepComponents = [
     { component: BasicInfoStep, title: "Basic Info", required: true },
-    { component: PhoneVerificationStep, title: "Phone Verification", required: true },
     { component: ServicesAndPricingStep, title: "Services & Pricing", required: true },
     { component: AvailabilitySetupStep, title: "Availability Setup", required: true },
   ];
@@ -126,12 +124,10 @@ export default function ExpertOnboarding() {
         ...data,
         is_profile_live: true,
         phase_1_complete: true,
-        mentor_tier: 'basic', // All mentors start as basic (upgrade requires phone + performance)
+        mentor_tier: 'basic', // All mentors start as basic
         max_weekly_bookings: 5, // Basic tier limit
         verification_status: 'pending', // Pending until first successful session
-        profile_status: 'active', // Active with phone verified
-        phone_verified: data.phoneVerified || false,
-        phone_verified_at: data.phoneVerifiedAt || null,
+        profile_status: 'active',
       };
       
       await updateExpertProfile(profileData);
@@ -190,24 +186,13 @@ export default function ExpertOnboarding() {
     switch (step) {
       case 1: // Basic Info
         isValid = await form.trigger([
-          "firstName", "lastName", "email", "username", "phoneNumber", "ageConfirmation"
+          "firstName", "lastName", "email", "username", "ageConfirmation"
         ]);
         if (!isValid) {
           toast.error("Please fill in all required fields");
         }
         break;
         
-      case 2: // Phone Verification
-        const phoneVerified = form.getValues("phoneVerified");
-        if (!phoneVerified) {
-          toast.error("Please verify your phone number to continue");
-          isValid = false;
-        } else {
-          isValid = true;
-        }
-        break;
-        
-      case 3:
       case 2: // Services & Pricing
         const servicePricing = form.getValues("servicePricing");
         const hasEnabledService = servicePricing && Object.values(servicePricing).some(
