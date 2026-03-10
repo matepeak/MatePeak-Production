@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,12 +26,18 @@ export default function ExpertOnboarding() {
   
   const totalSteps = 3; // Basic Info → Services → Availability
 
-  // Phase 1 step components
-  const stepComponents = [
+  // Check if scheduling services are enabled
+  const hasSchedulingService = useMemo(() => {
+    const servicePricing = form.watch("servicePricing");
+    return servicePricing?.oneOnOneSession?.enabled || servicePricing?.chatAdvice?.enabled;
+  }, [form.watch("servicePricing")]);
+
+  // Phase 1 step components - dynamic title for availability based on services
+  const stepComponents = useMemo(() => [
     { component: BasicInfoStep, title: "Basic Info*", required: true },
     { component: ServicesAndPricingStep, title: "Services & Pricing*", required: true },
-    { component: AvailabilitySetupStep, title: "Availability Setup*", required: true },
-  ];
+    { component: AvailabilitySetupStep, title: hasSchedulingService ? "Availability Setup*" : "Availability Setup (Optional)", required: true },
+  ], [hasSchedulingService]);
 
   // Auto-save draft to localStorage
   useEffect(() => {
@@ -225,19 +231,28 @@ export default function ExpertOnboarding() {
         
       case 3: // Availability Setup
         const availableHours = form.getValues("availableHours");
+        const servicePricingForAvailability = form.getValues("servicePricing");
+        
+        // Check which services require scheduling (oneOnOneSession, chatAdvice)
+        const hasSchedulingService = servicePricingForAvailability && 
+          (servicePricingForAvailability.oneOnOneSession?.enabled || 
+           servicePricingForAvailability.chatAdvice?.enabled);
         
         // Check if at least one day is enabled
         const hasAvailability = availableHours && Object.values(availableHours).some(
           (day: any) => day?.enabled === true
         );
         
-        if (hasAvailability) {
+        // Only require availability if they have scheduling-based services
+        if (hasSchedulingService && !hasAvailability) {
+          toast.error("Please set your availability for at least one day", {
+            description: "1-on-1 sessions and chat services require availability slots"
+          });
+          isValid = false;
+        } else {
           // Phase 1 complete! Publish profile
           await onSubmit();
           return;
-        } else {
-          toast.error("Please set your availability for at least one day");
-          isValid = false;
         }
         break;
         

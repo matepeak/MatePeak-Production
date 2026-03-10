@@ -15,11 +15,15 @@ export interface ServiceConfigItem {
   durations: number[];
   typeLabel: string;
   suggestedPrice: number;
+  requiresScheduling: boolean; // Whether this service needs availability/booking slots
 }
 
 /**
  * Shared service configuration used across the app
  * This ensures consistency between mentor public page and booking flow
+ * 
+ * Services that requiresScheduling=true: Need availability slots (oneOnOneSession, chatAdvice)
+ * Services that requiresScheduling=false: Direct access without booking (digitalProducts, notes)
  */
 export const SERVICE_CONFIG: Record<string, ServiceConfigItem> = {
   oneOnOneSession: {
@@ -31,6 +35,7 @@ export const SERVICE_CONFIG: Record<string, ServiceConfigItem> = {
     durations: [30, 60, 90],
     typeLabel: "Video Meeting",
     suggestedPrice: 1500,
+    requiresScheduling: true,
   },
   chatAdvice: {
     icon: MessageSquare,
@@ -41,6 +46,7 @@ export const SERVICE_CONFIG: Record<string, ServiceConfigItem> = {
     durations: [],
     typeLabel: "Text Chat",
     suggestedPrice: 500,
+    requiresScheduling: true,
   },
   digitalProducts: {
     icon: ShoppingBag,
@@ -55,6 +61,7 @@ export const SERVICE_CONFIG: Record<string, ServiceConfigItem> = {
     durations: [],
     typeLabel: "Digital Download",
     suggestedPrice: 2000,
+    requiresScheduling: false,
   },
   notes: {
     icon: FileText,
@@ -65,6 +72,7 @@ export const SERVICE_CONFIG: Record<string, ServiceConfigItem> = {
     durations: [],
     typeLabel: "Study Materials",
     suggestedPrice: 300,
+    requiresScheduling: false,
   },
 };
 

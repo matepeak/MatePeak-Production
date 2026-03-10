@@ -191,6 +191,12 @@ export const AvailabilitySetupStep = ({
 
 
 
+  // Check which services require scheduling
+  const hasSchedulingService = useMemo(() => {
+    const servicePricing = form.getValues('servicePricing');
+    return servicePricing?.oneOnOneSession?.enabled || servicePricing?.chatAdvice?.enabled;
+  }, [form.watch('servicePricing')]);
+
   // Helper function to sort time slots
   const sortSlots = (slots: TimeSlot[]): TimeSlot[] => {
     return [...slots].sort((a, b) => a.start.localeCompare(b.start));
@@ -530,6 +536,22 @@ export const AvailabilitySetupStep = ({
 
   return (
     <div className="space-y-8">
+      {/* Optional vs Required Notice */}
+      {!hasSchedulingService && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <h4 className="font-semibold text-blue-900 mb-1">Availability is Optional for Your Services</h4>
+              <p className="text-sm text-blue-700">
+                You're offering digital products or resources that students can access anytime. 
+                You can skip setting availability and proceed to complete your profile.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Explanatory Header */}
       <div className="bg-gray-50 rounded-xl p-5">
         <div className="flex items-start gap-3">
@@ -591,8 +613,12 @@ export const AvailabilitySetupStep = ({
       <div className="space-y-3 mt-10">
         <div className="flex items-center justify-between">
           <div>
-            <Label className="text-sm font-bold text-gray-900">Your Weekly Availability Pattern (Next 7 Days)*</Label>
-            <p className="text-xs text-gray-600 mt-1">Choose your typical weekly schedule - we'll create slots for the next 7 days</p>
+            <Label className="text-sm font-bold text-gray-900">Your Weekly Availability Pattern (Next 7 Days){hasSchedulingService ? '*' : ' (Optional)'}</Label>
+            <p className="text-xs text-gray-600 mt-1">
+              {hasSchedulingService 
+                ? "Choose your typical weekly schedule - we'll create slots for the next 7 days" 
+                : "Optional: Set availability if you want to offer scheduled sessions in the future"}
+            </p>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <span className="text-gray-600">

@@ -535,6 +535,24 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
     setNewSlots(updated);
   };
 
+  // Helper function to check if a date has availability slots
+  const hasAvailabilityForDate = (date: Date): boolean => {
+    const dateStr = getLocalDateString(date);
+    const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
+
+    return availabilitySlots.some((slot) => {
+      // Check for specific date slots
+      if (slot.specific_date === dateStr) {
+        return true;
+      }
+      // Check for recurring slots on this day of week
+      if (slot.is_recurring && slot.day_of_week === dayOfWeek) {
+        return true;
+      }
+      return false;
+    });
+  };
+
   const handleBlockDate = async (date: Date) => {
     const dateStr = getLocalDateString(date); // Use local timezone helper
 
@@ -554,6 +572,16 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
           description: "Date unblocked",
         });
       } else {
+        // Check if the date has availability slots
+        if (hasAvailabilityForDate(date)) {
+          toast({
+            title: "Cannot Block Date",
+            description: "This date has availability slots. Please remove all slots for this date before blocking it.",
+            variant: "destructive",
+          });
+          return;
+        }
+
         // Block date
         const { error } = await supabase.from("blocked_dates").insert([
           {
@@ -643,15 +671,36 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
 
     try {
       const datesToBlock = [];
+      const datesWithAvailability: string[] = [];
       const currentDate = new Date(bulkBlockStart);
 
       while (currentDate <= bulkBlockEnd) {
-        datesToBlock.push({
-          expert_id: mentorProfile.id,
-          date: getLocalDateString(currentDate),
-          reason: "Bulk blocked by mentor",
-        });
+        // Check if date has availability slots
+        if (hasAvailabilityForDate(currentDate)) {
+          datesWithAvailability.push(format(currentDate, 'MMM dd, yyyy'));
+        } else {
+          datesToBlock.push({
+            expert_id: mentorProfile.id,
+            date: getLocalDateString(currentDate),
+            reason: "Bulk blocked by mentor",
+          });
+        }
         currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      // If some dates have availability, show warning
+      if (datesWithAvailability.length > 0) {
+        toast({
+          title: "Cannot Block Some Dates",
+          description: `${datesWithAvailability.length} date(s) have availability slots and cannot be blocked. Please remove slots for these dates first: ${datesWithAvailability.slice(0, 3).join(', ')}${datesWithAvailability.length > 3 ? '...' : ''}`,
+          variant: "destructive",
+          duration: 7000,
+        });
+        
+        // If no dates can be blocked, return early
+        if (datesToBlock.length === 0) {
+          return;
+        }
       }
 
       const { error } = await supabase
@@ -667,7 +716,7 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
         title: "✓ Dates Blocked Successfully",
         description: `Successfully blocked ${datesToBlock.length} date${
           datesToBlock.length > 1 ? "s" : ""
-        } from your availability`,
+        } from your availability${datesWithAvailability.length > 0 ? `. Skipped ${datesWithAvailability.length} date(s) with existing slots.` : ''}`,
         duration: 5000,
       });
 
