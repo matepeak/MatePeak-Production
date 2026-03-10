@@ -18,7 +18,6 @@ import {
   FormItem,
   FormLabel,
   FormControl,
-  FormDescription,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -26,7 +25,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface ServiceConfig {
   key: string;
@@ -145,8 +143,20 @@ export default function ServicesAndPricingStep({
     const suggested = generateCustomServices(formData);
     setCustomServices(suggested);
 
-    // Initialize service_pricing with suggested services
+    // Initialize service_pricing with suggested prices for ALL services
     const currentPricing = form.getValues("servicePricing") || {};
+    
+    // Initialize predefined services with their suggested prices if price is 0
+    predefinedServices.forEach((service) => {
+      const currentService = currentPricing[service.key];
+      if (!currentService || currentService.price === 0) {
+        form.setValue(`servicePricing.${service.key}.price`, service.suggestedPrice);
+        form.setValue(`servicePricing.${service.key}.name`, service.name);
+        form.setValue(`servicePricing.${service.key}.description`, service.description);
+      }
+    });
+    
+    // Initialize AI-suggested custom services
     suggested.forEach((service) => {
       if (!currentPricing[service.key]) {
         form.setValue(`servicePricing.${service.key}`, {
@@ -205,229 +215,199 @@ export default function ServicesAndPricingStep({
   const allServices = [...predefinedServices, ...customServices];
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Header */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-matepeak-primary to-matepeak-secondary flex items-center justify-center">
-            <Sparkles className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h3 className="text-2xl font-bold text-gray-900">
-              Services & Pricing
-            </h3>
-            <p className="text-gray-600 text-sm">
-              Select services you want to offer and set your pricing
-            </p>
-          </div>
-        </div>
-        {customServices.length > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-xs text-blue-900">
-              <strong>✨ AI Suggested:</strong> We've added custom services based on your profile. Enable, edit pricing, or remove them as needed.
-            </p>
-          </div>
-        )}
-      </div>
-
+    <div className="space-y-6">
       {/* Services List */}
       <div className="space-y-4">
         {allServices.map((service) => {
           const Icon = service.icon;
           const isCustom = service.type === "custom";
+          const isEnabled = form.watch(`servicePricing.${service.key}.enabled`);
 
           return (
-            <Card
+            <div
               key={service.key}
-              className="border-2 border-gray-200 hover:border-matepeak-primary/40 transition-all"
+              className={cn(
+                "border rounded-xl p-6 transition-all",
+                isEnabled ? "border-gray-900 bg-gray-50" : "border-gray-200 bg-white"
+              )}
             >
-              <CardHeader className="pb-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="w-10 h-10 rounded-xl bg-matepeak-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Icon className="w-5 h-5 text-matepeak-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg">{service.name}</CardTitle>
-                        {isCustom && (
-                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
-                            Custom
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {service.description}
-                      </p>
-                    </div>
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start gap-4 flex-1">
+                  <div className={cn(
+                    "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
+                    isEnabled ? "bg-gray-900" : "bg-gray-100"
+                  )}>
+                    <Icon className={cn("w-5 h-5", isEnabled ? "text-white" : "text-gray-600")} />
                   </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-base font-medium text-gray-900">{service.name}</h3>
+                      {isCustom && (
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md font-medium">
+                          Custom
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      {service.description}
+                    </p>
+                  </div>
+                </div>
+                {isCustom && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveCustomService(service.key)}
+                    className="text-red-600 hover:bg-red-50 -mr-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+
+              {/* Enable Toggle */}
+              <FormField
+                control={form.control}
+                name={`servicePricing.${service.key}.enabled`}
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between space-y-0 mb-4">
+                    <FormLabel className="text-sm font-medium text-gray-700">
+                      Offer this service
+                    </FormLabel>
+                    <FormControl>
+                      <Switch
+                        checked={field.value || false}
+                        onCheckedChange={(checked) => {
+                          field.onChange(checked);
+                          if (!checked) {
+                            form.setValue(
+                              `servicePricing.${service.key}.hasFreeDemo`,
+                              false
+                            );
+                          }
+                        }}
+                        className="data-[state=checked]:bg-gray-900"
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              {/* Pricing Section - Only show if enabled */}
+              {isEnabled && (
+                <div className="space-y-4 pt-4 border-t border-gray-200">
+                  {/* Price Input */}
+                  <FormField
+                    control={form.control}
+                    name={`servicePricing.${service.key}.price`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium text-gray-700">
+                          Price per session (INR)
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                            <Input
+                              type="number"
+                              placeholder={service.suggestedPrice.toString()}
+                              className="pl-10 h-11 border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 rounded-lg transition-colors"
+                              value={field.value ?? service.suggestedPrice}
+                              onChange={(e) => {
+                                const value = e.target.valueAsNumber;
+                                // Use the suggested price if the input is cleared or invalid
+                                field.onChange(isNaN(value) ? service.suggestedPrice : value);
+                              }}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Free Demo Option */}
+                  <FormField
+                    control={form.control}
+                    name={`servicePricing.${service.key}.hasFreeDemo`}
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value || false}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none flex-1">
+                          <FormLabel className="flex items-center gap-2 font-medium text-sm text-gray-900 cursor-pointer">
+                            <Gift className="w-4 h-4 text-gray-600" />
+                            Offer free demo
+                          </FormLabel>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Custom Service - Edit Options */}
                   {isCustom && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveCustomService(service.key)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <div className="space-y-4 pt-4 border-t border-gray-200">
+                      <FormField
+                        control={form.control}
+                        name={`servicePricing.${service.key}.name`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium text-gray-700">
+                              Service Name
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter service name"
+                                {...field}
+                                value={field.value || service.name}
+                                className="h-11 border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 rounded-lg transition-colors"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`servicePricing.${service.key}.description`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium text-gray-700">
+                              Service Description
+                            </FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Describe what this service includes"
+                                className="resize-none border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 rounded-lg transition-colors"
+                                rows={2}
+                                {...field}
+                                value={field.value || service.description}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   )}
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Enable Toggle */}
-                <FormField
-                  control={form.control}
-                  name={`servicePricing.${service.key}.enabled`}
-                  render={({ field }) => (
-                    <FormItem className="flex items-center justify-between space-y-0 p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <FormLabel className="text-base font-medium">
-                          Offer this service
-                        </FormLabel>
-                        <FormDescription className="text-xs">
-                          Toggle on to make this service available
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value || false}
-                          onCheckedChange={(checked) => {
-                            field.onChange(checked);
-                            if (!checked) {
-                              form.setValue(
-                                `servicePricing.${service.key}.hasFreeDemo`,
-                                false
-                              );
-                            }
-                          }}
-                          className="data-[state=checked]:bg-matepeak-primary"
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-
-                {/* Pricing Section - Only show if enabled */}
-                {form.watch(`servicePricing.${service.key}.enabled`) && (
-                  <div className="space-y-4 animate-fade-in">
-                    {/* Price Input */}
-                    <FormField
-                      control={form.control}
-                      name={`servicePricing.${service.key}.price`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-medium">
-                            Price per session (INR)
-                          </FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                              <Input
-                                type="number"
-                                placeholder={service.suggestedPrice.toString()}
-                                className="pl-10"
-                                value={field.value || service.suggestedPrice}
-                                onChange={(e) =>
-                                  field.onChange(
-                                    e.target.valueAsNumber || service.suggestedPrice
-                                  )
-                                }
-                              />
-                            </div>
-                          </FormControl>
-                          <FormDescription className="text-xs">
-                            Suggested: ₹{service.suggestedPrice}
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Free Demo Option */}
-                    <FormField
-                      control={form.control}
-                      name={`servicePricing.${service.key}.hasFreeDemo`}
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border border-green-200 bg-green-50 p-4">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value || false}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                          <div className="space-y-1 leading-none flex-1">
-                            <FormLabel className="flex items-center gap-2 font-medium text-sm">
-                              <Gift className="w-4 h-4 text-green-600" />
-                              Offer free demo
-                            </FormLabel>
-                            <FormDescription className="text-xs">
-                              Attract more students with a complimentary trial
-                            </FormDescription>
-                          </div>
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Custom Service - Edit Options */}
-                    {isCustom && (
-                      <div className="space-y-3 pt-2 border-t">
-                        <FormField
-                          control={form.control}
-                          name={`servicePricing.${service.key}.name`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs font-medium">
-                                Service Name
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="Enter service name"
-                                  {...field}
-                                  value={field.value || service.name}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name={`servicePricing.${service.key}.description`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs font-medium">
-                                Service Description
-                              </FormLabel>
-                              <FormControl>
-                                <Textarea
-                                  placeholder="Describe what this service includes"
-                                  className="resize-none"
-                                  rows={2}
-                                  {...field}
-                                  value={field.value || service.description}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              )}
+            </div>
           );
         })}
       </div>
 
       {/* Add Custom Service */}
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+      <div className="border border-dashed border-gray-300 rounded-xl p-6 bg-gray-50">
         {!showAddService ? (
           <Button
             type="button"
             variant="outline"
             onClick={() => setShowAddService(true)}
-            className="w-full"
+            className="w-full h-11 border-gray-300 hover:bg-white transition-colors"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Custom Service
@@ -435,9 +415,9 @@ export default function ServicesAndPricingStep({
         ) : (
           <div className="space-y-4">
             <h4 className="font-semibold text-gray-900">Create Custom Service</h4>
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-gray-700 mb-1.5 block">
                   Service Name
                 </label>
                 <Input
@@ -446,10 +426,11 @@ export default function ServicesAndPricingStep({
                   onChange={(e) =>
                     setNewService({ ...newService, name: e.target.value })
                   }
+                  className="h-11 border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 rounded-lg transition-colors"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-gray-700 mb-1.5 block">
                   Description
                 </label>
                 <Textarea
@@ -459,10 +440,11 @@ export default function ServicesAndPricingStep({
                   onChange={(e) =>
                     setNewService({ ...newService, description: e.target.value })
                   }
+                  className="border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 rounded-lg transition-colors"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-gray-700 mb-1.5 block">
                   Starting Price (INR)
                 </label>
                 <div className="relative">
@@ -470,7 +452,7 @@ export default function ServicesAndPricingStep({
                   <Input
                     type="number"
                     placeholder="500"
-                    className="pl-10"
+                    className="pl-10 h-11 border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 rounded-lg transition-colors"
                     value={newService.price || ""}
                     onChange={(e) =>
                       setNewService({
@@ -481,12 +463,12 @@ export default function ServicesAndPricingStep({
                   />
                 </div>
               </div>
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-3 pt-2">
                 <Button
                   type="button"
                   onClick={handleAddCustomService}
                   disabled={!newService.name || !newService.description}
-                  className="flex-1"
+                  className="flex-1 h-11 bg-gray-900 hover:bg-gray-800 text-white transition-colors"
                 >
                   <Check className="w-4 h-4 mr-2" />
                   Add Service
@@ -498,7 +480,7 @@ export default function ServicesAndPricingStep({
                     setShowAddService(false);
                     setNewService({ name: "", description: "", price: 0 });
                   }}
-                  className="flex-1"
+                  className="flex-1 h-11 border-gray-300 hover:bg-white transition-colors"
                 >
                   Cancel
                 </Button>

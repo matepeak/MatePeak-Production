@@ -6,19 +6,15 @@ import MentorCard from "@/components/MentorCard";
 import { MentorProfile } from "@/components/MentorCard";
 import { fetchMentorCardByUsername } from "@/services/mentorCardService";
 import {
-  Share2,
   Eye,
   Settings,
   CheckCircle2,
-  Sparkles,
-  Calendar,
   ArrowRight,
-  Copy,
-  ExternalLink,
+  ShieldAlert,
+  Calendar,
 } from "lucide-react";
-import { showSuccessToast, showErrorToast } from "@/utils/toast-helpers";
+import { showSuccessToast } from "@/utils/toast-helpers";
 import confetti from "canvas-confetti";
-import { Card, CardContent } from "@/components/ui/card";
 
 interface OnboardingSuccessModalProps {
   isOpen: boolean;
@@ -40,54 +36,36 @@ const OnboardingSuccessModal = ({
       // Add a small delay to ensure database has committed the profile
       const timer = setTimeout(() => {
         loadMentorCard();
-        triggerConfetti();
+        triggerMinimalisticConfetti();
       }, 500);
 
       return () => clearTimeout(timer);
     }
   }, [isOpen, username]);
 
-  const triggerConfetti = () => {
-    const duration = 2000;
-    const end = Date.now() + duration;
-
-    const colors = ["#4F46E5", "#F59E0B", "#10B981"];
-
-    (function frame() {
-      confetti({
-        particleCount: 2,
-        angle: 60,
-        spread: 55,
-        origin: { x: 0 },
-        colors: colors,
-      });
-      confetti({
-        particleCount: 2,
-        angle: 120,
-        spread: 55,
-        origin: { x: 1 },
-        colors: colors,
-      });
-
-      if (Date.now() < end) {
-        requestAnimationFrame(frame);
-      }
-    })();
+  const triggerMinimalisticConfetti = () => {
+    const colors = ['#1f2937', '#374151', '#6b7280']; // Gray shades
+    
+    // Simple, elegant burst from center
+    confetti({
+      particleCount: 50,
+      spread: 60,
+      origin: { y: 0.4 },
+      colors: colors,
+      ticks: 100,
+      gravity: 1.2,
+      scalar: 0.8,
+    });
   };
 
   const loadMentorCard = async () => {
     try {
       setLoading(true);
-      console.log("Loading mentor card for username:", username);
-
       const card = await fetchMentorCardByUsername(username);
-
-      console.log("Mentor card loaded:", card);
 
       if (card) {
         setMentorCard(card);
       } else {
-        console.warn("No mentor card found for username:", username);
         // Retry once after a delay
         setTimeout(async () => {
           const retryCard = await fetchMentorCardByUsername(username);
@@ -98,9 +76,6 @@ const OnboardingSuccessModal = ({
       }
     } catch (error) {
       console.error("Error loading mentor card:", error);
-      showErrorToast("Could not load card preview", {
-        description: "Your profile is live and ready!",
-      });
     } finally {
       setLoading(false);
     }
@@ -108,29 +83,8 @@ const OnboardingSuccessModal = ({
 
   const handleShareProfile = () => {
     const profileUrl = `${window.location.origin}/mentor/${username}`;
-
-    if (navigator.share) {
-      navigator
-        .share({
-          title: `Check out my mentor profile on Matepeak`,
-          text: `I'm now mentoring on Matepeak! Book a session with me.`,
-          url: profileUrl,
-        })
-        .catch((error) => console.log("Error sharing:", error));
-    } else {
-      navigator.clipboard.writeText(profileUrl);
-      showSuccessToast("Link copied to clipboard!", {
-        description: "Share it with your network",
-      });
-    }
-  };
-
-  const handleCopyLink = () => {
-    const profileUrl = `${window.location.origin}/mentor/${username}`;
     navigator.clipboard.writeText(profileUrl);
-    showSuccessToast("Profile link copied!", {
-      description: "Ready to share",
-    });
+    showSuccessToast("Profile link copied!");
   };
 
   const handleViewPublicProfile = () => {
@@ -144,139 +98,129 @@ const OnboardingSuccessModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0">
-        {/* Success Header */}
-        <div className="relative bg-gradient-to-br from-green-500 to-green-600 p-6 text-white">
-          <div className="flex items-center gap-4">
-            <div className="bg-white/20 backdrop-blur-sm p-2.5 rounded-full">
-              <CheckCircle2 className="h-7 w-7 text-white" />
+      <DialogContent className="max-w-xl max-h-[85vh] overflow-hidden p-0 gap-0 border-gray-200">
+        {/* Success Header - Minimal & Clean */}
+        <div className="relative bg-white border-b border-gray-100 px-6 pt-8 pb-6">
+          <div className="text-center space-y-3">
+            {/* Success Icon with subtle animation */}
+            <div className="flex justify-center">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gray-900 rounded-full animate-ping opacity-20"></div>
+                <div className="relative bg-gray-900 p-3 rounded-full">
+                  <CheckCircle2 className="h-6 w-6 text-white" strokeWidth={2.5} />
+                </div>
+              </div>
             </div>
-            <div>
-              <h2 className="text-2xl font-bold">
-                Profile Created Successfully!
+            
+            <div className="space-y-1.5">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Phase 1 Complete
               </h2>
-              <p className="text-white/90 text-sm mt-0.5">
-                You're now live and ready to accept bookings
+              <p className="text-sm text-gray-600 max-w-sm mx-auto">
+                Your profile is now live with access to mentor dashboard and public profile
               </p>
             </div>
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="p-6 space-y-5">
-          {/* Profile Preview */}
-          {mentorCard && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-gray-600" />
-                <h3 className="font-semibold text-sm text-gray-900">
-                  Your Profile Card
-                </h3>
+        {/* Main Content - Scrollable */}
+        <div className="px-6 py-6 space-y-6 overflow-y-auto max-h-[calc(85vh-180px)]">
+          {/* Verification Status Notice */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 mt-0.5">
+                <ShieldAlert className="h-4 w-4 text-gray-700" />
               </div>
-              <div className="bg-gray-50 p-4 rounded-lg border">
-                <div className="max-w-sm mx-auto">
-                  <MentorCard mentor={mentorCard} />
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-gray-900">
+                  Verification Status
+                </h3>
+                <div className="text-sm text-gray-600 leading-relaxed">
+                  <p>
+                    Your profile is <span className="font-medium text-gray-900">currently unverified</span>, limiting you to <span className="font-medium text-gray-900">3-5 bookings per week</span>. Complete Phase 2 for verification and unlimited bookings.
+                  </p>
                 </div>
               </div>
             </div>
-          )}
+          </div>
 
-          {/* Quick Actions */}
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              variant="outline"
-              onClick={handleViewPublicProfile}
-              className="h-auto py-3 flex flex-col items-center gap-2 hover:bg-gray-50"
-            >
-              <ExternalLink className="h-4 w-4" />
-              <div className="text-center">
-                <div className="font-semibold text-xs">View Live Profile</div>
-                <div className="text-[10px] text-gray-500">
-                  See how students see you
+          {/* What You Have Access To */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-gray-900">
+              What You Have Access To
+            </h3>
+            
+            <div className="space-y-2">
+              <div className="flex items-start gap-2.5 text-sm">
+                <div className="w-1 h-1 rounded-full bg-gray-900 mt-2 flex-shrink-0" />
+                <div className="flex-1">
+                  <span className="font-medium text-gray-900">Mentor Dashboard</span>
+                  <span className="text-gray-600"> — Manage bookings and settings</span>
                 </div>
               </div>
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleCopyLink}
-              className="h-auto py-3 flex flex-col items-center gap-2 hover:bg-gray-50"
-            >
-              <Copy className="h-4 w-4" />
-              <div className="text-center">
-                <div className="font-semibold text-xs">Copy Link</div>
-                <div className="text-[10px] text-gray-500">
-                  Share your profile
+              
+              <div className="flex items-start gap-2.5 text-sm">
+                <div className="w-1 h-1 rounded-full bg-gray-900 mt-2 flex-shrink-0" />
+                <div className="flex-1">
+                  <span className="font-medium text-gray-900">Public Profile</span>
+                  <span className="text-gray-600"> — Students can discover and book</span>
                 </div>
               </div>
-            </Button>
+              
+              <div className="flex items-start gap-2.5 text-sm">
+                <div className="w-1 h-1 rounded-full bg-gray-900 mt-2 flex-shrink-0" />
+                <div className="flex-1">
+                  <span className="font-medium text-gray-900">Limited Bookings</span>
+                  <span className="text-gray-600"> — 3-5 per week (unverified)</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Next Steps */}
-          <Card className="border-blue-200 bg-blue-50">
-            <CardContent className="p-4 space-y-3">
-              <h4 className="font-semibold text-sm text-gray-900 flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-blue-600" />
-                Next Steps
-              </h4>
-
-              <div className="space-y-2">
-                <div className="flex items-start gap-2 text-xs">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-1.5 flex-shrink-0" />
-                  <div>
-                    <span className="font-medium text-gray-900">
-                      Set availability:
-                    </span>
-                    <span className="text-gray-600">
-                      {" "}
-                      Add time slots for bookings
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2 text-xs">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-1.5 flex-shrink-0" />
-                  <div>
-                    <span className="font-medium text-gray-900">
-                      Share profile:
-                    </span>
-                    <span className="text-gray-600">
-                      {" "}
-                      Promote on social media
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2 text-xs">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-600 mt-1.5 flex-shrink-0" />
-                  <div>
-                    <span className="font-medium text-gray-900">
-                      Update services:
-                    </span>
-                    <span className="text-gray-600">
-                      {" "}
-                      Customize your offerings
-                    </span>
-                  </div>
-                </div>
+          <div className="border-t border-gray-100 pt-4 space-y-3">
+            <h3 className="text-sm font-medium text-gray-900">
+              Next Steps
+            </h3>
+            
+            <div className="space-y-2">
+              <div className="flex items-center gap-2.5 text-sm text-gray-600">
+                <Calendar className="h-4 w-4 text-gray-400" />
+                <span>Set up your availability</span>
               </div>
-            </CardContent>
-          </Card>
+              
+              <div className="flex items-center gap-2.5 text-sm text-gray-600">
+                <Eye className="h-4 w-4 text-gray-400" />
+                <span>Preview your public profile</span>
+              </div>
+              
+              <div className="flex items-center gap-2.5 text-sm text-gray-600">
+                <ShieldAlert className="h-4 w-4 text-gray-400" />
+                <span>Complete Phase 2 for verification</span>
+              </div>
+            </div>
+          </div>
 
-          {/* Primary CTA */}
+        </div>
+        
+        {/* Action Buttons - Fixed at bottom */}
+        <div className="border-t border-gray-100 px-6 py-4 bg-white">
           <div className="flex gap-3">
             <Button
               variant="outline"
-              onClick={handleShareProfile}
-              className="flex-1"
+              onClick={handleViewPublicProfile}
+              className="flex-1 h-10 border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-colors text-sm"
             >
-              <Share2 className="h-4 w-4 mr-2" />
-              Share
+              <Eye className="h-4 w-4 mr-2" />
+              Preview
             </Button>
+            
             <Button
-              className="flex-1 bg-gray-900 hover:bg-gray-800"
               onClick={handleGoToDashboard}
+              className="flex-1 h-10 bg-gray-900 hover:bg-gray-800 text-white transition-colors group text-sm"
             >
-              <Settings className="h-4 w-4 mr-2" />
               Go to Dashboard
-              <ArrowRight className="h-4 w-4 ml-2" />
+              <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
             </Button>
           </div>
         </div>

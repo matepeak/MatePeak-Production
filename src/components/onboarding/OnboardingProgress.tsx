@@ -7,17 +7,16 @@ interface OnboardingProgressProps {
 
 const steps = [
   { number: 1, title: "Basic Info", icon: "1" },
-  { number: 2, title: "Certification", icon: "2" },
-  { number: 3, title: "Education", icon: "3" },
-  { number: 4, title: "Description", icon: "4" },
-  { number: 5, title: "Audience", icon: "5" },
-  { number: 6, title: "Problems", icon: "6" },
-  { number: 7, title: "Outcomes", icon: "7" },
-  { number: 8, title: "Suggested", icon: "8" },
+  { number: 2, title: "Verification", icon: "2" },
+  { number: 3, title: "Certification", icon: "3" },
+  { number: 4, title: "Education", icon: "4" },
+  { number: 5, title: "Description", icon: "5" },
+  { number: 6, title: "Audience", icon: "6" },
+  { number: 7, title: "Problems", icon: "7" },
+  { number: 8, title: "Outcomes", icon: "8" },
   { number: 9, title: "Services", icon: "9" },
   { number: 10, title: "Availability", icon: "10" },
-  { number: 11, title: "Pricing", icon: "11" },
-  { number: 12, title: "Profile", icon: "12" },
+  { number: 11, title: "Profile", icon: "11" },
 ];
 
 export default function OnboardingProgress({

@@ -28,6 +28,8 @@ export interface ExpertProfileData {
     year?: number;
   }>;
   headline?: string;
+  mentor_tier?: 'basic' | 'verified' | 'top';
+  verification_status?: string;
 }
 
 /**
@@ -114,33 +116,63 @@ function generateTagline(profile: ExpertProfileData): string {
 export function transformToMentorCard(
   profile: ExpertProfileData
 ): MentorProfile {
-  // Calculate pricing from service_pricing
+  // Suggested default prices for services
+  const suggestedPrices: { [key: string]: number } = {
+    oneOnOneSession: 1500,
+    chatAdvice: 500,
+    digitalProducts: 2000,
+    notes: 300,
+  };
+
+  // Calculate pricing from service_pricing with fallback to suggested prices
   const getLowestPrice = () => {
-    if (!profile.service_pricing) return 0;
+    if (!profile.service_pricing || typeof profile.service_pricing !== 'object') return 0;
 
     const prices: number[] = [];
 
-    Object.values(profile.service_pricing).forEach((service: any) => {
-      if (service?.enabled && service?.price) {
-        prices.push(service.price);
+    Object.entries(profile.service_pricing).forEach(([key, service]: [string, any]) => {
+      if (service?.enabled) {
+        // Use actual price if set and > 0, otherwise use suggested price
+        const price = service.price > 0 ? service.price : (suggestedPrices[key] || 500);
+        prices.push(price);
       }
     });
 
     return prices.length > 0 ? Math.min(...prices) : 0;
   };
 
-  // Extract connection options from services
+  // Extract connection options from service_pricing
   const getConnectionOptions = () => {
     const options: string[] = [];
 
-    if (profile.services) {
-      if (profile.services.oneOnOneSession) options.push("1:1 Call");
-      if (profile.services.chatAdvice) options.push("Chat");
-      if (profile.services.digitalProducts) options.push("Document Review");
-      if (profile.services.notes) options.push("Group Session");
+    if (profile.service_pricing && typeof profile.service_pricing === 'object') {
+      // Use service_pricing (new unified system)
+      Object.entries(profile.service_pricing).forEach(([key, service]: [string, any]) => {
+        if (service?.enabled) {
+          // Map service keys to display names
+          if (key === 'oneOnOneSession') {
+            options.push('1-on-1 Sessions');
+          } else if (key === 'chatAdvice') {
+            options.push('Chat Advice');
+          } else if (key === 'digitalProducts') {
+            options.push('Digital Products');
+          } else if (key === 'notes') {
+            options.push('Notes & Resources');
+          } else if (service.name) {
+            // Custom services - use their name
+            options.push(service.name);
+          }
+        }
+      });
+    } else if (profile.services) {
+      // Fallback to old services system for backward compatibility
+      if (profile.services.oneOnOneSession) options.push("1-on-1 Sessions");
+      if (profile.services.chatAdvice) options.push("Chat Advice");
+      if (profile.services.digitalProducts) options.push("Digital Products");
+      if (profile.services.notes) options.push("Notes & Resources");
     }
 
-    return options.length > 0 ? options : ["1:1 Call"];
+    return options.length > 0 ? options : ["1-on-1 Sessions"];
   };
 
   // Use categories array or fallback to single category
@@ -165,6 +197,7 @@ export function transformToMentorCard(
     username: profile.username,
     expertise_tags: profile.expertise_tags || [],
     tagline: profile.headline || generateTagline(profile),
+    mentor_tier: profile.mentor_tier || 'basic', // Include mentor tier for verified badge
   };
 }
 

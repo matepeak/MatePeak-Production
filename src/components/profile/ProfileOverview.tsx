@@ -72,74 +72,88 @@ export default function ProfileOverview({
     }
   };
 
+  // Suggested default prices for services
+  const suggestedPrices: { [key: string]: number } = {
+    oneOnOneSession: 1500,
+    chatAdvice: 500,
+    digitalProducts: 2000,
+    notes: 300,
+  };
+
   const getServicesList = () => {
     console.log("🎯 Building services list from unified service_pricing:");
     console.log("   service_pricing:", mentor.service_pricing);
+    console.log("   legacy pricing:", mentor.pricing);
 
     const services = [];
 
-    if (!mentor.service_pricing) {
+    // Handle legacy pricing (old system)
+    if (!mentor.service_pricing && mentor.pricing && mentor.pricing > 0) {
+      console.log("   📦 Using legacy pricing system");
+      services.push({
+        name: "1-on-1 Sessions",
+        description: "Live video sessions tailored to your learning pace",
+        price: mentor.pricing,
+        discount_price: null,
+        hasFreeDemo: false,
+        icon: Video,
+      });
+      return services;
+    }
+
+    if (!mentor.service_pricing || typeof mentor.service_pricing !== 'object') {
       console.log("   ⚠️ No service_pricing data");
       return services;
     }
 
     // Iterate through all services in service_pricing
     Object.entries(mentor.service_pricing).forEach(([key, value]: [string, any]) => {
-      if (value?.enabled) {
-        // Predefined services
-        if (key === "oneOnOneSession") {
-          services.push({
-            name: value.name || "1-on-1 Sessions",
-            description: value.description || "Live video sessions tailored to your learning pace",
-            price: value.price,
-            discount_price: value.discount_price,
-            hasFreeDemo: value.hasFreeDemo,
-            icon: Video,
-          });
-          console.log("   ✅ Added 1-on-1 Sessions");
-        } else if (key === "chatAdvice") {
-          services.push({
-            name: value.name || "Chat Advice",
-            description: value.description || "Get quick guidance via text chat whenever you need",
-            price: value.price,
-            discount_price: value.discount_price,
-            hasFreeDemo: value.hasFreeDemo,
-            icon: MessageSquare,
-          });
-          console.log("   ✅ Added Chat Advice");
-        } else if (key === "digitalProducts") {
-          services.push({
-            name: value.name || "Digital Products",
-            description: value.description || "Access curated resources and learning materials",
-            price: value.price,
-            discount_price: value.discount_price,
-            hasFreeDemo: false,
-            icon: FileText,
-          });
-          console.log("   ✅ Added Digital Products");
-        } else if (key === "notes") {
-          services.push({
-            name: value.name || "Notes & Resources",
-            description: value.description || "Download study materials and practice exercises",
-            price: value.price,
-            discount_price: value.discount_price,
-            hasFreeDemo: false,
-            icon: FileText,
-          });
-          console.log("   ✅ Added Notes & Resources");
-        } else {
-          // Custom services
-          services.push({
-            name: value.name,
-            description: value.description,
-            price: value.price,
-            discount_price: value.discount_price,
-            hasFreeDemo: value.hasFreeDemo || false,
-            icon: Star, // Use Star icon for custom services
-          });
-          console.log("   ✅ Added custom service:", value.name);
-        }
+      // Only skip if service is explicitly disabled
+      if (!value?.enabled) {
+        console.log(`   ⏭️ Skipping ${key} (not enabled)`);
+        return;
       }
+
+      // Use actual price if set, otherwise use suggested price
+      const actualPrice = value.price > 0 ? value.price : (suggestedPrices[key] || 500);
+
+      // Build service object
+      const service: any = {
+        name: value.name,
+        description: value.description,
+        price: actualPrice,
+        discount_price: value.discount_price,
+        hasFreeDemo: value.hasFreeDemo || false,
+      };
+
+      // Predefined services with specific icons and default descriptions
+      if (key === "oneOnOneSession") {
+        service.name = value.name || "1-on-1 Sessions";
+        service.description = value.description || "Live video sessions tailored to your learning pace";
+        service.icon = Video;
+        console.log("   ✅ Added 1-on-1 Sessions (price:", actualPrice, ")");
+      } else if (key === "chatAdvice") {
+        service.name = value.name || "Chat Advice";
+        service.description = value.description || "Get quick guidance via text chat whenever you need";
+        service.icon = MessageSquare;
+        console.log("   ✅ Added Chat Advice (price:", actualPrice, ")");
+      } else if (key === "digitalProducts") {
+        service.name = value.name || "Digital Products";
+        service.description = value.description || "Access curated resources and learning materials";
+        service.icon = FileText;
+        console.log("   ✅ Added Digital Products (price:", actualPrice, ")");
+      } else if (key === "notes") {
+        service.name = value.name || "Notes & Resources";
+        service.description = value.description || "Download study materials and practice exercises";
+        service.icon = FileText;
+        console.log("   ✅ Added Notes & Resources (price:", actualPrice, ")");
+      } else {
+        // Custom services
+        service.icon = Star;
+        console.log("   ✅ Added custom service:", value.name, "(price:", actualPrice, ")");
+      }
+
+      services.push(service);
     });
 
     console.log("🎯 Final services list:", services);
@@ -160,13 +174,15 @@ export default function ProfileOverview({
             </h2>
           </div>
           <p
-            className={`text-gray-700 leading-relaxed text-sm whitespace-pre-line ${
+            className={`leading-relaxed text-sm whitespace-pre-line ${
+              (mentor.introduction || mentor.bio) ? "text-gray-700" : "text-gray-400 italic"
+            } ${
               !showMore.introduction ? "line-clamp-3" : ""
             }`}
           >
             {mentor.introduction ||
               mentor.bio ||
-              "No introduction provided yet."}
+              "-"}
           </p>
           {((mentor.introduction || mentor.bio || "").split("\n").length > 3 ||
             (mentor.introduction || mentor.bio || "").length > 250) && (
@@ -187,67 +203,68 @@ export default function ProfileOverview({
       </Card>
 
       {/* Why I Became a Mentor */}
-      {mentor.motivation && (
-        <Card className="shadow-none border-0 bg-gray-50 rounded-2xl">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Heart className="h-5 w-5 text-gray-600" />
-              <h2 className="text-lg font-semibold text-gray-900">
-                Why I Became a Mentor
-              </h2>
-            </div>
-            <p
-              className={`text-gray-700 leading-relaxed text-sm whitespace-pre-line ${
-                !showMore.motivation ? "line-clamp-3" : ""
-              }`}
+      <Card className="shadow-none border-0 bg-gray-50 rounded-2xl">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Heart className="h-5 w-5 text-gray-600" />
+            <h2 className="text-lg font-semibold text-gray-900">
+              Why I Became a Mentor
+            </h2>
+          </div>
+          <p
+            className={`leading-relaxed text-sm whitespace-pre-line ${
+              mentor.motivation ? "text-gray-700" : "text-gray-400 italic"
+            } ${
+              !showMore.motivation ? "line-clamp-3" : ""
+            }`}
+          >
+            {mentor.motivation || "-"}
+          </p>
+          {mentor.motivation && (mentor.motivation.split("\n").length > 3 ||
+            mentor.motivation.length > 250) && (
+            <button
+              className="text-xs text-matepeak-primary font-medium focus:outline-none border-b border-gray-200"
+              style={{ paddingBottom: "1px", marginTop: "0" }}
+              onClick={() =>
+                setShowMore((prev) => ({
+                  ...prev,
+                  motivation: !prev.motivation,
+                }))
+              }
             >
-              {mentor.motivation}
-            </p>
-            {(mentor.motivation.split("\n").length > 3 ||
-              mentor.motivation.length > 250) && (
-              <button
-                className="text-xs text-matepeak-primary font-medium focus:outline-none border-b border-gray-200"
-                style={{ paddingBottom: "1px", marginTop: "0" }}
-                onClick={() =>
-                  setShowMore((prev) => ({
-                    ...prev,
-                    motivation: !prev.motivation,
-                  }))
-                }
-              >
-                {showMore.motivation ? "Show less" : "Show more"}
-              </button>
-            )}
-          </CardContent>
-        </Card>
-      )}
+              {showMore.motivation ? "Show less" : "Show more"}
+            </button>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Teaching Experience */}
-      {mentor.teaching_experience && (
-        <Card className="shadow-none border-0 bg-gray-50 rounded-2xl">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Target className="h-5 w-5 text-gray-600" />
-              <h2 className="text-lg font-semibold text-gray-900">
-                An Ideal Relationship To Me
-              </h2>
-            </div>
-            <p
-              className={`text-gray-700 leading-relaxed text-sm whitespace-pre-line ${
-                !showMore.teaching_experience ? "line-clamp-3" : ""
-              }`}
-            >
-              {mentor.teaching_experience}
-            </p>
-            {(mentor.teaching_experience.split("\n").length > 3 ||
-              mentor.teaching_experience.length > 250) && (
-              <button
-                className="text-xs text-matepeak-primary font-medium focus:outline-none border-b border-gray-200"
-                style={{ paddingBottom: "1px", marginTop: "0" }}
-                onClick={() =>
-                  setShowMore((prev) => ({
-                    ...prev,
-                    teaching_experience: !prev.teaching_experience,
+      <Card className="shadow-none border-0 bg-gray-50 rounded-2xl">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Target className="h-5 w-5 text-gray-600" />
+            <h2 className="text-lg font-semibold text-gray-900">
+              An Ideal Relationship To Me
+            </h2>
+          </div>
+          <p
+            className={`leading-relaxed text-sm whitespace-pre-line ${
+              mentor.teaching_experience ? "text-gray-700" : "text-gray-400 italic"
+            } ${
+              !showMore.teaching_experience ? "line-clamp-3" : ""
+            }`}
+          >
+            {mentor.teaching_experience || "-"}
+          </p>
+          {mentor.teaching_experience && (mentor.teaching_experience.split("\n").length > 3 ||
+            mentor.teaching_experience.length > 250) && (
+            <button
+              className="text-xs text-matepeak-primary font-medium focus:outline-none border-b border-gray-200"
+              style={{ paddingBottom: "1px", marginTop: "0" }}
+              onClick={() =>
+                setShowMore((prev) => ({
+                  ...prev,
+                  teaching_experience: !prev.teaching_experience,
                   }))
                 }
               >
@@ -256,7 +273,6 @@ export default function ProfileOverview({
             )}
           </CardContent>
         </Card>
-      )}
 
       {/* What I Offer */}
       {services.length > 0 && (

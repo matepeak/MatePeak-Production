@@ -88,6 +88,13 @@ export default function ServiceSelection({
     Record<string, boolean>
   >({});
 
+  // Suggested default prices for services
+  const suggestedPrices: { [key: string]: number } = {
+    oneOnOneSession: 1500,
+    chatAdvice: 500,
+    digitalProducts: 2000,
+    notes: 300,
+  };
   if (!servicePricing) {
     return (
       <div className="text-center py-8 bg-gray-100 rounded-2xl border-0">
@@ -110,11 +117,14 @@ export default function ServiceSelection({
 
     const isFreeDemo = freeDemoEnabled[serviceKey] && hasFreeDemo;
 
+    // Use actual price if > 0, otherwise use suggested price
+    const actualPrice = servicePrice > 0 ? servicePrice : (suggestedPrices[serviceKey] || 500);
+
     onServiceSelect({
       type: serviceKey as any,
       name: config?.shortName || serviceName,
       duration,
-      price: isFreeDemo ? 0 : servicePrice || 0,
+      price: isFreeDemo ? 0 : actualPrice,
       hasFreeDemo: hasFreeDemo,
     });
   };
@@ -165,6 +175,9 @@ export default function ServiceSelection({
             selectedDurations[serviceKey] || config.durations[0] || 0;
           const isFreeDemo =
             freeDemoEnabled[serviceKey] && service.hasFreeDemo;
+          
+          // Use actual price if > 0, otherwise use suggested price
+          const displayPrice = service.price > 0 ? service.price : (suggestedPrices[serviceKey] || 500);
 
           return (
             <Card
@@ -294,14 +307,14 @@ export default function ServiceSelection({
                         </div>
                         <div className="flex items-baseline gap-1">
                           <span className="text-sm font-semibold text-gray-400 line-through">
-                            ₹{service.price?.toLocaleString("en-IN") || 0}
+                            ₹{displayPrice.toLocaleString("en-IN")}
                           </span>
                         </div>
                       </>
                     ) : (
                       <div className="flex items-baseline gap-1">
                         <span className="text-2xl font-bold text-gray-900">
-                          ₹{service.price?.toLocaleString("en-IN") || 0}
+                          ₹{displayPrice.toLocaleString("en-IN")}
                         </span>
                       </div>
                     )}

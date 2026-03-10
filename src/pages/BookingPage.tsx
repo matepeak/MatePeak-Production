@@ -158,11 +158,22 @@ const BookingPage = () => {
         if (preSelectedServiceId && mentor.service_pricing) {
           const serviceData = mentor.service_pricing[preSelectedServiceId];
           if (serviceData?.enabled) {
+            // Suggested default prices for services
+            const suggestedPrices: { [key: string]: number } = {
+              oneOnOneSession: 1500,
+              chatAdvice: 500,
+              digitalProducts: 2000,
+              notes: 300,
+            };
+
+            // Use actual price if > 0, otherwise use suggested price
+            const actualPrice = serviceData.price > 0 ? serviceData.price : (suggestedPrices[preSelectedServiceId] || 500);
+
             setSelectedService({
               type: preSelectedServiceId as any,
               name: serviceData.name || preSelectedServiceId,
               duration: 60,
-              price: serviceData.price || 0,
+              price: actualPrice,
               hasFreeDemo: serviceData.hasFreeDemo || false,
             });
 

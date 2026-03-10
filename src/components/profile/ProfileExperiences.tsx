@@ -22,7 +22,10 @@ export default function ProfileExperiences({ mentor }: ProfileExperiencesProps) 
   const certifications = Array.isArray(mentor.teaching_certifications) 
     ? mentor.teaching_certifications 
     : [];
-  const expertiseTags = Array.isArray(mentor.expertise_tags) ? mentor.expertise_tags : [];
+  // Prioritize skills field (from current onboarding) over expertise_tags (from old onboarding)
+  const skills = (mentor.skills && Array.isArray(mentor.skills) && mentor.skills.length > 0) 
+    ? mentor.skills 
+    : (Array.isArray(mentor.expertise_tags) ? mentor.expertise_tags : []);
   const languages = Array.isArray(mentor.languages) ? mentor.languages : [];
   const yearsOfExperience = mentor.experience || 0;
 
@@ -77,22 +80,22 @@ export default function ProfileExperiences({ mentor }: ProfileExperiencesProps) 
         </Card>
       )}
 
-      {/* Skills & Expertise Tags */}
-      {expertiseTags.length > 0 && (
+      {/* Skills & Expertise */}
+      {skills.length > 0 && (
         <Card className="shadow-sm border-0 bg-gray-50 rounded-2xl">
           <CardContent className="p-6">
             <div className="flex items-center gap-2 mb-4">
               <Lightbulb className="h-5 w-5 text-gray-600" />
-              <h2 className="text-lg font-semibold text-gray-900">Areas of Expertise</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Skills & Expertise</h2>
             </div>
             <div className="flex flex-wrap gap-2">
-              {expertiseTags.map((tag: string, index: number) => (
+              {skills.map((skill: string, index: number) => (
                 <Badge 
                   key={index} 
                   variant="secondary"
                   className="px-3 py-1 bg-white text-gray-700 border border-gray-200 font-normal"
                 >
-                  {tag}
+                  {skill}
                 </Badge>
               ))}
             </div>

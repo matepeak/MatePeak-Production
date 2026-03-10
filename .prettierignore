@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+package-lock.json
+bun.lockb
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+coverage/
+
+# Supabase
+.supabase/
+supabase/.branches
+supabase/functions/.cache
+supabase/.temp
+
+# Cache & temp files
+.cache/
+*.log
+*.tmp
+
+# Environment files
+.env
+.env.*
+
+# Git
+.git/
+.github/
+
+# IDE
+.vscode/
+.idea/
+
+# Documentation (preserve formatting)
+CHANGELOG.md
+LICENSE
+
+# Test files
+tests/html/*.html

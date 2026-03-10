@@ -18,6 +18,7 @@ const basicInfoSchema = z.object({
   category: z
     .array(z.string())
     .min(1, "Please select at least one expertise area"),
+  skills: z.array(z.string()).optional(),
   expertiseTags: z.array(z.string()).optional(),
   countryOfBirth: z.string().min(1, "Please select your country"),
   languages: z
@@ -28,7 +29,9 @@ const basicInfoSchema = z.object({
       })
     )
     .min(1, "Please add at least one language"),
-  phoneNumber: z.string().optional(),
+  phoneNumber: z.string().min(1, "Phone number is required"),
+  phoneVerified: z.boolean().optional(),
+  phoneVerifiedAt: z.string().optional(),
   ageConfirmation: z
     .boolean()
     .refine((val) => val === true, "You must confirm you are over 18"),
@@ -57,6 +60,14 @@ const availabilitySchema = z.object({
       })
     )
     .optional(),
+  availableHours: z.record(z.object({
+    enabled: z.boolean(),
+    slots: z.array(z.object({
+      start: z.string(),
+      end: z.string(),
+    }))
+  })).optional(),
+  timezone: z.string().optional(),
 });
 
 const pricingSchema = z.object({
@@ -93,16 +104,19 @@ const pricingSchema = z.object({
 const profileDescriptionSchema = z.object({
   introduction: z
     .string()
-    .min(50, "Please write at least 50 characters")
-    .max(400, "Introduction must be less than 400 characters"),
+    .max(400, "Introduction must be less than 400 characters")
+    .optional()
+    .or(z.literal("")),
   teachingExperience: z
     .string()
-    .min(50, "Please write at least 50 characters")
-    .max(400, "Teaching experience must be less than 400 characters"),
+    .max(400, "Teaching experience must be less than 400 characters")
+    .optional()
+    .or(z.literal("")),
   motivation: z
     .string()
-    .min(50, "Please write at least 50 characters")
-    .max(400, "Motivation must be less than 400 characters"),
+    .max(400, "Motivation must be less than 400 characters")
+    .optional()
+    .or(z.literal("")),
   headline: z
     .string()
     .min(10, "Headline must be at least 10 characters")
@@ -140,7 +154,8 @@ const educationSchema = z.object({
         currentlyStudying: z.boolean().optional(),
       })
     )
-    .min(1, "Please add at least one education entry"),
+    .optional()
+    .default([]),
 });
 
 const profileSetupSchema = z.object({
@@ -241,6 +256,8 @@ export function useExpertOnboardingForm() {
       countryOfBirth: "",
       languages: [],
       phoneNumber: "",
+      phoneVerified: false,
+      phoneVerifiedAt: undefined,
       ageConfirmation: false,
       hasNoCertificate: false,
       teachingCertifications: [],
@@ -274,6 +291,8 @@ export function useExpertOnboardingForm() {
       digitalProducts: false,
       notes: false,
       availability: [],
+      availableHours: {},
+      timezone: "",
       servicePricing: {
         oneOnOneSession: { enabled: false, price: 0, hasFreeDemo: false },
         chatAdvice: { enabled: false, price: 0, hasFreeDemo: false },

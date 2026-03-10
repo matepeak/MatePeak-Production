@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Globe, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import SimilarMentors from "./SimilarMentors";
+import { autoMigrateAvailabilitySlots } from "@/utils/availabilityMigration";
 import {
   Dialog,
   DialogContent,
@@ -86,14 +87,18 @@ export default function AvailabilityPreview({
     try {
       setLoading(true);
 
+      // Auto-migrate availability_json to slots if needed
+      await autoMigrateAvailabilitySlots(mentorId);
+
       // Create dates in local timezone at midnight
       const now = new Date();
       now.setHours(0, 0, 0, 0);
       const todayStr = getLocalDateString(now);
 
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0);
-      endOfMonth.setHours(0, 0, 0, 0);
-      const endDateStr = getLocalDateString(endOfMonth);
+      const endDate = new Date(now);
+      endDate.setDate(now.getDate() + 30); // Next 30 days
+      endDate.setHours(0, 0, 0, 0);
+      const endDateStr = getLocalDateString(endDate);
 
       // Get current time for filtering today's slots
       const currentTime = new Date();
@@ -150,9 +155,9 @@ export default function AvailabilityPreview({
         }
       });
 
-      // Process recurring slots for the next 60 days
+      // Process recurring slots for the next 30 days
       if (recurring && recurring.length > 0) {
-        for (let i = 0; i < 60; i++) {
+        for (let i = 0; i < 30; i++) {
           const checkDate = new Date(now);
           checkDate.setDate(now.getDate() + i);
           checkDate.setHours(0, 0, 0, 0);

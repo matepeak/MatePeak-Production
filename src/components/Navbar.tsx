@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   User,
   Search,
+  FileEdit,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,7 @@ const Navbar = () => {
   const [profile, setProfile] = useState<any>(null);
   const [userRole, setUserRole] = useState<"student" | "mentor" | null>(null);
   const [isExploreDropdownOpen, setIsExploreDropdownOpen] = useState(false);
+  const [onboardingDraft, setOnboardingDraft] = useState<{ phase: number; step: number; timestamp: number } | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -47,6 +49,7 @@ const Navbar = () => {
         const role = session.user.user_metadata?.role as "student" | "mentor";
         setUserRole(role);
         fetchProfile(session.user.id, role);
+        checkForOnboardingDraft(role);
       }
     });
 
@@ -59,9 +62,11 @@ const Navbar = () => {
         const role = session.user.user_metadata?.role as "student" | "mentor";
         setUserRole(role);
         fetchProfile(session.user.id, role);
+        checkForOnboardingDraft(role);
       } else {
         setProfile(null);
         setUserRole(null);
+        setOnboardingDraft(null);
       }
     });
 
@@ -76,6 +81,88 @@ const Navbar = () => {
     console.log("user:", user);
     console.log("========================");
   }, [userRole, profile, user]);
+
+  const checkForOnboardingDraft = async (role: "student" | "mentor") => {
+    if (role !== "mentor") {
+      setOnboardingDraft(null);
+      return;
+    }
+
+    try {
+      // Get user's phase completion status from database
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setOnboardingDraft(null);
+        return;
+      }
+
+      const { data: profileData } = await supabase
+        .from('expert_profiles')
+        .select('phase_1_complete, phase_2_complete')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const phase1Complete = profileData?.phase_1_complete || false;
+      const phase2Complete = profileData?.phase_2_complete || false;
+
+      // Check for Phase 2 draft first if Phase 1 is complete
+      const phase2Draft = localStorage.getItem('mentor-onboarding-phase2-draft');
+      if (phase2Draft && phase1Complete && !phase2Complete) {
+        try {
+          const { step, timestamp, data } = JSON.parse(phase2Draft);
+          // Show if user actually has any progress in Phase 2
+          const hasPhase2Progress = step > 1 || 
+            // Check if user filled any Phase 2 specific fields
+            (data?.introduction || data?.teachingCertifications || 
+             data?.education || data?.headline);
+             
+          if (hasPhase2Progress) {
+            setOnboardingDraft({ phase: 2, step: step || 1, timestamp: timestamp || Date.now() });
+            // Clean up old Phase 1 draft since Phase 1 is complete
+            localStorage.removeItem('mentor-onboarding-phase1-draft');
+            return;
+          } else {
+            // Clean up draft without progress
+            localStorage.removeItem('mentor-onboarding-phase2-draft');
+          }
+        } catch (error) {
+          console.error('Failed to parse phase 2 draft:', error);
+          localStorage.removeItem('mentor-onboarding-phase2-draft');
+        }
+      }
+
+      // Check for Phase 1 draft - only if Phase 1 is not complete
+      if (!phase1Complete) {
+        const phase1Draft = localStorage.getItem('mentor-onboarding-phase1-draft');
+        if (phase1Draft) {
+          try {
+            const { step, timestamp, data } = JSON.parse(phase1Draft);
+            // Only consider it a valid draft if step > 1 or has meaningful data
+            const hasProgress = step > 1 || 
+                               (data?.firstName && data?.lastName && data?.username && data?.category);
+            if (hasProgress) {
+              setOnboardingDraft({ phase: 1, step: step || 1, timestamp: timestamp || Date.now() });
+              return;
+            } else {
+              // Clean up empty draft
+              localStorage.removeItem('mentor-onboarding-phase1-draft');
+            }
+          } catch (error) {
+            console.error('Failed to parse phase 1 draft:', error);
+            localStorage.removeItem('mentor-onboarding-phase1-draft');
+          }
+        }
+      } else {
+        // Phase 1 is complete, clean up any Phase 1 drafts
+        localStorage.removeItem('mentor-onboarding-phase1-draft');
+      }
+
+      setOnboardingDraft(null);
+    } catch (error) {
+      console.error('Error checking onboarding draft:', error);
+      setOnboardingDraft(null);
+    }
+  };
 
   const fetchProfile = async (userId: string, role: "student" | "mentor") => {
     if (role === "mentor") {
@@ -202,6 +289,18 @@ const Navbar = () => {
       } else {
         navigate("/dashboard");
       }
+    }
+  };
+
+  const handleResumeOnboarding = () => {
+    if (!onboardingDraft) return;
+    
+    if (onboardingDraft.phase === 1) {
+      navigate('/expert/onboarding');
+      toast.info("Resuming your onboarding from where you left off...");
+    } else if (onboardingDraft.phase === 2) {
+      navigate('/expert/onboarding/phase2');
+      toast.info("Resuming your onboarding from where you left off...");
     }
   };
 
@@ -399,6 +498,21 @@ const Navbar = () => {
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-gray-200 my-1" />
 
+                    {/* Resume Onboarding - Only for mentors with saved drafts */}
+                    {userRole === "mentor" && onboardingDraft && (
+                      <DropdownMenuItem
+                        onClick={() => {
+                          handleResumeOnboarding();
+                        }}
+                        className="cursor-pointer hover:bg-amber-50 rounded-lg px-3 py-2.5 text-amber-700 focus:bg-amber-50 focus:text-amber-900 transition-colors"
+                      >
+                        <FileEdit className="mr-3 h-4 w-4 text-amber-600" />
+                        <span className="text-sm font-medium">
+                          Resume Onboarding
+                        </span>
+                      </DropdownMenuItem>
+                    )}
+
                     {/* View Public Profile - Only for mentors with completed onboarding and username */}
                     {userRole === "mentor" &&
                       profile?.username &&
@@ -513,6 +627,21 @@ const Navbar = () => {
                     </p>
                   </div>
                 </div>
+
+                {/* Resume Onboarding - Only for mentors with saved drafts */}
+                {userRole === "mentor" && onboardingDraft && (
+                  <Button
+                    variant="ghost"
+                    className="text-amber-700 hover:bg-amber-50 w-full font-medium justify-start transition-all duration-200 rounded-xl h-11"
+                    onClick={() => {
+                      handleResumeOnboarding();
+                      setIsMenuOpen(false);
+                    }}
+                  >
+                    <FileEdit className="mr-3 h-4 w-4 text-amber-600" />
+                    Resume Onboarding
+                  </Button>
+                )}
 
                 {/* View Public Profile - Only for fully onboarded mentors with username */}
                 {userRole === "mentor" &&

@@ -25,19 +25,65 @@ dist-ssr
 
 # Environment variables
 .env
+.env.local
+.env.development
+.env.production
+.env.test
+.env*.local
+supabase/.env
+**/.env
+
+# Supabase local development
+.supabase/
+**/supabase/.branches
+**/supabase/functions/.cache
+**/supabase/.temp
+
+# Sensitive configuration
+config/secrets.ts
+config/secrets.js
+config/local.ts
+config/local.js
+**/credentials.json
+**/service-account*.json
+
+# Database files and seeds with real data
+*.db
+*.sqlite
+*.sqlite3
+*-seed.sql
+seed-*.sql
+backup-*.sql
+
+# Build outputs
+coverage/
+.next/
+out/
+build/
+.cache/
+
+# Backups and temporary files
+*.backup
+*.bak
+*.tmp
+*.swp
+*~
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.lnk
 
 # Documentation files (internal development notes)
-# All .md files except README.md in root
-*.md
-!README.md
-!**/README.md
+# Keep all documentation in docs/ folder
+docs/implementation/PHASE2_REMOVAL_IMPLEMENTATION.md
+docs/implementation/PHONE_VERIFICATION_IMPLEMENTATION.md
+docs/implementation/VERIFICATION_PHASE2_IMPLEMENTATION.md
 
-# SQL test/diagnostic scripts (keep migration scripts)
-*-test*.sql
-*-fix*.sql
-*-check*.sql
-**/diagnose*.sql
-**/debug*.sql
-**/verify*.sql
-add-test-languages.sql
-test-add-languages.sql
+# Test and utility scripts (organized structure)
+# All scripts now organized in scripts/ and tests/ folders
+# Keep migrations in supabase/migrations/
+scripts/sql/
+tests/sql/
+tests/html/

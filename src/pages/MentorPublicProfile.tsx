@@ -29,6 +29,7 @@ interface MentorProfileData {
   category: string;
   categories: string[];
   expertise_tags: string[];
+  skills: string[];
   languages: Array<{ language: string; level: string }>;
   bio: string;
   headline: string;
@@ -88,7 +89,7 @@ export default function MentorPublicProfile() {
       // Fetch mentor profile by username
       const { data: profileData, error: profileError } = await supabase
         .from("expert_profiles")
-        .select("*, service_pricing")
+        .select("*, service_pricing, pricing")
         .eq("username", username)
         .single();
 

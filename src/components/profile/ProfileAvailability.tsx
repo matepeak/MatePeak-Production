@@ -53,6 +53,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { format } from "date-fns";
+import { autoMigrateAvailabilitySlots } from "@/utils/availabilityMigration";
 
 interface ProfileAvailabilityProps {
   mentorId: string;
@@ -208,9 +209,12 @@ export default function ProfileAvailability({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     new Date()
   );
-  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(
-    getStartOfWeek(new Date())
-  );
+  // Start from today instead of start of week
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  });
   const [showUserTimezone, setShowUserTimezone] = useState(false);
   const [hoveredSlot, setHoveredSlot] = useState<string | null>(null);
 
@@ -264,6 +268,9 @@ export default function ProfileAvailability({
   const fetchAvailability = async () => {
     try {
       setLoading(true);
+
+      // Auto-migrate availability_json to slots if needed
+      await autoMigrateAvailabilitySlots(mentorId);
 
       // Fetch recurring availability slots from availability_slots table
       const { data: recurring, error: recurringError } = await supabase
@@ -365,12 +372,20 @@ export default function ProfileAvailability({
     const schedule: DaySchedule[] = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
+    // Get current time for filtering today's slots
+    const now = new Date();
+    const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-    for (let i = 0; i < 7; i++) {
+    // Show 30 days (1 month) of availability starting from currentWeekStart
+    // This allows navigation while showing 30 days at a time
+    for (let i = 0; i < 30; i++) {
       const date = new Date(currentWeekStart);
       date.setDate(currentWeekStart.getDate() + i);
-      const dateStr = getLocalDateString(date); // Use local timezone helper
+      const dateStr = getLocalDateString(date);
       const dayOfWeek = date.getDay();
+      const todayStr = getLocalDateString(today);
+      const isToday = dateStr === todayStr;
 
       // Check if date is blocked
       const blocked = blockedDates.find((b) => b.date === dateStr);
@@ -381,10 +396,11 @@ export default function ProfileAvailability({
       // Add specific slots for this exact date
       specificSlots.forEach((slot) => {
         if (slot.specific_date === dateStr) {
-          // Only add if not in the past
-          if (!isSlotInPast(dateStr, slot.start_time, mentorTimezone)) {
-            slots.push({ start: slot.start_time, end: slot.end_time });
+          // Filter out past slots for today
+          if (isToday && slot.start_time < currentTimeStr) {
+            return; // Skip past slots
           }
+          slots.push({ start: slot.start_time, end: slot.end_time });
         }
       });
 
@@ -392,10 +408,11 @@ export default function ProfileAvailability({
       if (!blocked) {
         recurringSlots.forEach((slot) => {
           if (slot.day_of_week === dayOfWeek) {
-            // Only add if not in the past
-            if (!isSlotInPast(dateStr, slot.start_time, mentorTimezone)) {
-              slots.push({ start: slot.start_time, end: slot.end_time });
+            // Filter out past slots for today
+            if (isToday && slot.start_time < currentTimeStr) {
+              return; // Skip past slots
             }
+            slots.push({ start: slot.start_time, end: slot.end_time });
           }
         });
       }
@@ -419,14 +436,26 @@ export default function ProfileAvailability({
 
   const navigateWeek = (direction: "prev" | "next") => {
     const newDate = new Date(currentWeekStart);
+    // Navigate by 30 days (1 month) at a time
     newDate.setDate(
-      currentWeekStart.getDate() + (direction === "next" ? 7 : -7)
+      currentWeekStart.getDate() + (direction === "next" ? 30 : -30)
     );
-    setCurrentWeekStart(newDate);
+    
+    // Don't allow going back before today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (direction === "prev" && newDate < today) {
+      setCurrentWeekStart(today);
+    } else {
+      setCurrentWeekStart(newDate);
+    }
   };
 
   const goToCurrentWeek = () => {
-    setCurrentWeekStart(getStartOfWeek(new Date()));
+    // Start from today instead of start of week
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    setCurrentWeekStart(today);
   };
 
   const calculateDuration = (startTime: string, endTime: string): number => {
@@ -769,6 +798,24 @@ export default function ProfileAvailability({
   const hasAnyAvailability =
     recurringSlots.length > 0 || specificSlots.length > 0;
 
+  // Calculate current page number (1-based) for pagination
+  // Each page represents a 30-day period
+  const getCurrentPage = (): number => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffTime = currentWeekStart.getTime() - today.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return Math.floor(diffDays / 30) + 1;
+  };
+
+  const goToPage = (pageNum: number) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const newDate = new Date(today);
+    newDate.setDate(today.getDate() + (pageNum - 1) * 30);
+    setCurrentWeekStart(newDate);
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -923,7 +970,7 @@ export default function ProfileAvailability({
                   })}{" "}
                   -{" "}
                   {new Date(
-                    currentWeekStart.getTime() + 6 * 24 * 60 * 60 * 1000
+                    currentWeekStart.getTime() + 29 * 24 * 60 * 60 * 1000
                   ).toLocaleDateString("en-US", {
                     month: "long",
                     day: "numeric",
@@ -931,7 +978,7 @@ export default function ProfileAvailability({
                   })}
                 </h2>
                 <p className="text-xs text-gray-500 mt-1">
-                  Click on any time slot to book
+                  Showing next 30 days · Click on any time slot to book
                 </p>
               </div>
               <div className="flex gap-2">
@@ -973,7 +1020,7 @@ export default function ProfileAvailability({
                       : day.isBlocked
                       ? "border-red-200 bg-red-50/50"
                       : day.slots.length > 0
-                      ? "border-green-200 bg-green-50/30 hover:border-green-300 hover:shadow-sm"
+                      ? "border-green-400 bg-green-100/60 hover:border-green-500 hover:shadow-sm"
                       : "border-gray-100 bg-gray-50/50"
                   }`}
                 >
@@ -1024,7 +1071,7 @@ export default function ProfileAvailability({
                             className={`group relative flex items-center gap-2.5 p-2.5 rounded-lg border-2 transition-all duration-200 cursor-pointer ${
                               hoveredSlot === slotKey
                                 ? "bg-matepeak-yellow/10 border-matepeak-primary shadow-md transform scale-[1.02]"
-                                : "bg-green-50/50 border-green-200 hover:bg-green-50 hover:border-green-300 hover:shadow-sm"
+                                : "bg-green-100/80 border-green-400 hover:bg-green-100 hover:border-green-500 hover:shadow-sm"
                             }`}
                             onMouseEnter={() => setHoveredSlot(slotKey)}
                             onMouseLeave={() => setHoveredSlot(null)}
@@ -1123,6 +1170,79 @@ export default function ProfileAvailability({
                   )}
                 </div>
               ))}
+            </div>
+
+            {/* Google-style Pagination */}
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <div className="flex items-center justify-center gap-2">
+                {/* Previous Button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigateWeek("prev")}
+                  disabled={getCurrentPage() === 1}
+                  className="text-matepeak-primary hover:bg-matepeak-yellow/20 disabled:opacity-30 disabled:cursor-not-allowed px-3 h-8 text-sm font-medium"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Previous
+                </Button>
+
+                {/* Page Numbers */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: 10 }, (_, i) => i + 1).map((pageNum) => {
+                    const currentPage = getCurrentPage();
+                    const isActive = pageNum === currentPage;
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => goToPage(pageNum)}
+                        className={`min-w-[32px] h-8 px-2 rounded text-sm font-medium transition-all ${
+                          isActive
+                            ? "bg-matepeak-primary text-white shadow-md"
+                            : "text-matepeak-primary hover:bg-matepeak-yellow/20"
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Next Button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigateWeek("next")}
+                  disabled={getCurrentPage() >= 10}
+                  className="text-matepeak-primary hover:bg-matepeak-yellow/20 disabled:opacity-30 disabled:cursor-not-allowed px-3 h-8 text-sm font-medium"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+
+              {/* Helper Text */}
+              <p className="text-center text-xs text-gray-500 mt-3">
+                Each page shows a 30-day period • Page {getCurrentPage()} of 10 (Next 300 days)
+              </p>
+
+              {/* Request Custom Time CTA */}
+              <div className="mt-6 pt-4 border-t border-gray-100">
+                <div className="text-center">
+                  <p className="text-sm text-gray-600 mb-3">
+                    Can't find a suitable time?
+                  </p>
+                  <Button
+                    onClick={handleCustomTimeDialogOpen}
+                    variant="outline"
+                    className="border-2 border-matepeak-primary text-matepeak-primary hover:bg-matepeak-primary hover:text-white transition-all shadow-sm hover:shadow-md"
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Request Custom Time
+                  </Button>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -1438,7 +1558,7 @@ export default function ProfileAvailability({
                   return (
                     <div
                       key={idx}
-                      className="group relative flex items-center gap-2.5 p-3 rounded-lg border-2 bg-green-50/50 border-green-200 hover:bg-green-50 hover:border-green-300 hover:shadow-sm transition-all duration-200 cursor-pointer"
+                      className="group relative flex items-center gap-2.5 p-3 rounded-lg border-2 bg-green-100/80 border-green-400 hover:bg-green-100 hover:border-green-500 hover:shadow-sm transition-all duration-200 cursor-pointer"
                       onClick={() => {
                         const dateStr = selectedDaySlots.dateStr;
                         const dateObj = new Date(dateStr);

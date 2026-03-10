@@ -34,6 +34,7 @@ interface BookingConfirmationProps {
   onSubmit: (details: BookingDetails) => void;
   onChangeDateTime: () => void;
   isSubmitting?: boolean;
+  bookingLimitReached?: boolean;
 }
 
 export default function BookingConfirmation({
@@ -43,6 +44,7 @@ export default function BookingConfirmation({
   onSubmit,
   onChangeDateTime,
   isSubmitting = false,
+  bookingLimitReached = false,
 }: BookingConfirmationProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -345,8 +347,9 @@ export default function BookingConfirmation({
       <div className="flex justify-center">
         <Button
           type="submit"
-          disabled={!isFormValid || isSubmitting}
+          disabled={!isFormValid || isSubmitting || bookingLimitReached}
           className="group/confirm bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-2.5 px-8 text-sm font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
+          title={bookingLimitReached ? "This mentor has reached their weekly booking limit" : undefined}
         >
           {isSubmitting ? (
             <>

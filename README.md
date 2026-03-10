@@ -256,22 +256,50 @@ supabase
 
 ```
 MatePeak/
+├── .github/              # GitHub Actions & workflows
 ├── public/               # Static assets
-│   └── matepeak-logo.svg # Brand logo
+│   └── lovable-uploads/ # User-uploaded assets
 ├── src/
 │   ├── components/       # React components
 │   │   ├── ui/          # shadcn/ui components
 │   │   ├── dashboard/   # Dashboard features
+│   │   ├── layout/      # Layout components
 │   │   └── onboarding/  # Mentor onboarding
 │   ├── pages/           # Route pages
 │   ├── services/        # API services
-│   ├── hooks/           # Custom hooks
-│   └── integrations/    # Supabase integration
+│   ├── hooks/           # Custom React hooks
+│   ├── contexts/        # React contexts
+│   ├── integrations/    # Supabase integration
+│   ├── lib/             # Utility libraries
+│   ├── data/            # Static data & constants
+│   └── utils/           # Helper functions
 ├── supabase/
-│   ├── functions/       # Edge functions
-│   └── migrations/      # Database migrations
-├── docs/                # Documentation
-└── package.json         # Dependencies
+│   ├── functions/       # Supabase Edge Functions
+│   ├── migrations/      # Database schema migrations
+│   └── config.toml      # Supabase configuration
+├── scripts/
+│   ├── deployment/      # Deployment & CI/CD scripts
+│   ├── sql/             # SQL utility & fix scripts
+│   └── utilities/       # Helper scripts
+├── tests/
+│   ├── sql/             # SQL test scripts
+│   ├── html/            # HTML test files
+│   └── integration/     # Integration tests
+├── docs/                # Comprehensive documentation
+│   ├── features/        # Feature documentation
+│   ├── guides/          # User & developer guides
+│   ├── deployment/      # Deployment guides
+│   ├── implementation/  # Implementation notes
+│   ├── security/        # Security documentation
+│   └── troubleshooting/ # Troubleshooting guides
+├── .gitignore
+├── .env.example         # Environment variables template
+├── package.json         # Dependencies
+├── tsconfig.json        # TypeScript configuration
+├── vite.config.ts       # Vite configuration
+├── tailwind.config.ts   # Tailwind CSS configuration
+├── vercel.json          # Vercel deployment config
+└── README.md            # This file
 ```
 
 ---

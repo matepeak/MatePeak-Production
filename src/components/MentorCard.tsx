@@ -21,6 +21,7 @@ export interface MentorProfile {
   username?: string; // Optional username for new profile route
   expertise_tags?: string[];
   tagline?: string; // Generated tagline like "Senior @ IIT Delhi | Computer Science"
+  mentor_tier?: 'basic' | 'verified' | 'top'; // Mentor tier badge
 }
 
 interface MentorCardProps {
@@ -106,9 +107,11 @@ const MentorCard = ({
           </Avatar>
 
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-gray-900 text-base mb-0.5 line-clamp-1 pr-1">
-              {mentor.name}
-            </h3>
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <h3 className="font-bold text-gray-900 text-base line-clamp-1 pr-1">
+                {mentor.name}
+              </h3>
+            </div>
 
             {/* Tagline */}
             {mentor.tagline && (

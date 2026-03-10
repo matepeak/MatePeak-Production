@@ -12,7 +12,10 @@ import {
   MoveHorizontal,
   AlertTriangle,
   Video,
-  VideoOff
+  VideoOff,
+  ArrowLeft,
+  ArrowRight,
+  EyeOff
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -45,6 +48,12 @@ export default function IdentityVerificationStep({ form }: IdentityVerificationS
   const [faceDetected, setFaceDetected] = useState(false);
   const [brightness, setBrightness] = useState(0);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [facePosition, setFacePosition] = useState({ x: 0, y: 0 });
+  const [previousBrightness, setPreviousBrightness] = useState(0);
+  const [blinkDetected, setBlinkDetected] = useState(false);
+  const [smileDetected, setSmileDetected] = useState(false);
+  const [headTurnDetected, setHeadTurnDetected] = useState(false);
+  const [actionFeedback, setActionFeedback] = useState<string>("");
 
   const challenges: LivenessChallenge[] = ["blink", "smile", "turn-left", "turn-right"];
 
@@ -59,21 +68,17 @@ export default function IdentityVerificationStep({ form }: IdentityVerificationS
   const challengeIcons = {
     blink: Eye,
     smile: Smile,
-    "turn-left": MoveHorizontal,
-    "turn-right": MoveHorizontal,
+    "turn-left": ArrowLeft,
+    "turn-right": ArrowRight,
   };
 
   // Check camera permission
   const checkCameraPermission = async () => {
     try {
-      const result = await navigator.permissions.query({ name: 'camera' as PermissionName });
-      setCameraPermission(result.state as any);
-      
-      result.addEventListener('change', () => {
-        setCameraPermission(result.state as any);
-      });
+      // Note: navigator.permissions.query for 'camera' is not universally supported
+      // We'll rely on getUserMedia to determine permission status
+      setCameraPermission("prompt");
     } catch (error) {
-      // Permissions API not supported, we'll find out when requesting stream
       setCameraPermission("prompt");
     }
   };
@@ -107,14 +112,34 @@ export default function IdentityVerificationStep({ form }: IdentityVerificationS
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play();
         
-        // Wait for video to be ready
-        await new Promise(resolve => {
+        // Wait for video to be ready with timeout
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error("Camera initialization timeout"));
+          }, 10000); // 10 second timeout
+
+          const onLoadedMetadata = () => {
+            clearTimeout(timeout);
+            if (videoRef.current) {
+              videoRef.current.removeEventListener('loadedmetadata', onLoadedMetadata);
+            }
+            resolve(true);
+          };
+
           if (videoRef.current) {
-            videoRef.current.onloadedmetadata = resolve;
+            // Check if metadata is already loaded
+            if (videoRef.current.readyState >= 1) {
+              clearTimeout(timeout);
+              resolve(true);
+            } else {
+              videoRef.current.addEventListener('loadedmetadata', onLoadedMetadata);
+            }
           }
         });
+
+        // Start playing the video
+        await videoRef.current.play();
 
         // Start face detection and brightness monitoring
         startMonitoring();
@@ -217,8 +242,59 @@ export default function IdentityVerificationStep({ form }: IdentityVerificationS
         }
         variance = variance / (centerPixels.length / 4);
 
-        // Face detected if there's good contrast in center region
-        setFaceDetected(variance > 400 && avgBrightness > 30 && avgBrightness < 240);
+        // Face detected with more lenient threshold for varying lighting
+        const isFacePresent = variance > 200 && avgBrightness > 20 && avgBrightness < 250;
+        setFaceDetected(isFacePresent);
+
+        // Detect blink - brightness drop in center region (more lenient)
+        if (previousBrightness > 0) {
+          const brightnessDrop = previousBrightness - centerAvg;
+          if (brightnessDrop > 8 && isFacePresent) {
+            setBlinkDetected(true);
+            setTimeout(() => setBlinkDetected(false), 1500);
+          }
+        }
+        setPreviousBrightness(centerAvg);
+
+        // Detect smile - analyze bottom third of face (more lenient)
+        const mouthY = Math.floor(canvas.height * 0.55);
+        const mouthHeight = Math.floor(canvas.height * 0.2);
+        const mouthData = ctx.getImageData(centerX, mouthY, centerWidth, mouthHeight);
+        const mouthPixels = mouthData.data;
+        let mouthSum = 0;
+        for (let i = 0; i < mouthPixels.length; i += 4) {
+          mouthSum += (mouthPixels[i] + mouthPixels[i + 1] + mouthPixels[i + 2]) / 3;
+        }
+        const mouthAvg = mouthSum / (mouthPixels.length / 4);
+        // Smile detection: mouth area is brighter (more lenient threshold)
+        setSmileDetected(mouthAvg > centerAvg + 5 && isFacePresent);
+
+        // Detect head position for turns - analyze left vs right brightness
+        const leftX = Math.floor(canvas.width * 0.2);
+        const rightX = Math.floor(canvas.width * 0.5);
+        const faceY = Math.floor(canvas.height * 0.35);
+        const sideWidth = Math.floor(canvas.width * 0.15);
+        const sideHeight = Math.floor(canvas.height * 0.3);
+
+        const leftData = ctx.getImageData(leftX, faceY, sideWidth, sideHeight);
+        const rightData = ctx.getImageData(rightX, faceY, sideWidth, sideHeight);
+
+        let leftSum = 0, rightSum = 0;
+        for (let i = 0; i < leftData.data.length; i += 4) {
+          leftSum += (leftData.data[i] + leftData.data[i + 1] + leftData.data[i + 2]) / 3;
+        }
+        for (let i = 0; i < rightData.data.length; i += 4) {
+          rightSum += (rightData.data[i] + rightData.data[i + 1] + rightData.data[i + 2]) / 3;
+        }
+
+        const leftAvg = leftSum / (leftData.data.length / 4);
+        const rightAvg = rightSum / (rightData.data.length / 4);
+
+        // Store face position with more lenient thresholds
+        setFacePosition({ 
+          x: leftAvg - rightAvg, // Negative = turned left, Positive = turned right
+          y: 0 
+        });
       } catch (error) {
         console.error("Analysis error:", error);
       }
@@ -236,18 +312,55 @@ export default function IdentityVerificationStep({ form }: IdentityVerificationS
     setChallengeProgress(0);
   };
 
-  // Simulate challenge completion (in production, this would use actual face detection)
+  // Actual challenge validation based on detected actions
   useEffect(() => {
     if (stage !== "liveness-check") return;
 
     const timer = setInterval(() => {
       if (!faceDetected) {
         setChallengeProgress(0);
+        setActionFeedback("Please position your face in the frame");
         return;
       }
 
+      // Check if current challenge condition is met
+      let conditionMet = false;
+      let feedbackMessage = "";
+
+      switch (currentChallenge) {
+        case "blink":
+          conditionMet = blinkDetected;
+          feedbackMessage = blinkDetected ? "Blink detected! Great!" : "Please blink your eyes";
+          break;
+        case "smile":
+          conditionMet = smileDetected;
+          feedbackMessage = smileDetected ? "Great smile! Perfect!" : "Please smile";
+          break;
+        case "turn-left":
+          // More lenient threshold for head turn
+          conditionMet = facePosition.x < -8;
+          feedbackMessage = conditionMet ? "Perfect! Head turned left" : "Turn your head left";
+          setHeadTurnDetected(conditionMet);
+          break;
+        case "turn-right":
+          // More lenient threshold for head turn
+          conditionMet = facePosition.x > 8;
+          feedbackMessage = conditionMet ? "Perfect! Head turned right" : "Turn your head right";
+          setHeadTurnDetected(conditionMet);
+          break;
+      }
+
+      setActionFeedback(feedbackMessage);
+
+      if (!conditionMet) {
+        // Reset progress more gently if condition not met
+        setChallengeProgress(prev => Math.max(0, prev - 1.5));
+        return;
+      }
+
+      // Increment progress when condition is met (faster progression)
       setChallengeProgress(prev => {
-        const next = prev + 2;
+        const next = prev + 3.5;
         
         if (next >= 100) {
           // Challenge completed
@@ -258,12 +371,14 @@ export default function IdentityVerificationStep({ form }: IdentityVerificationS
             
             // Check if all challenges completed
             if (updated.length === challenges.length) {
+              setActionFeedback("Perfect! Capturing your photo...");
               setTimeout(() => capturePhoto(), 500);
             } else {
               // Move to next challenge
               const nextIndex = challenges.indexOf(currentChallenge) + 1;
               setCurrentChallenge(challenges[nextIndex]);
               setChallengeProgress(0);
+              setActionFeedback("");
             }
             
             return updated;
@@ -277,7 +392,7 @@ export default function IdentityVerificationStep({ form }: IdentityVerificationS
     }, 100);
 
     return () => clearInterval(timer);
-  }, [stage, currentChallenge, faceDetected]);
+  }, [stage, currentChallenge, faceDetected, blinkDetected, smileDetected, facePosition.x]);
 
   // Capture photo
   const capturePhoto = async () => {
@@ -393,13 +508,13 @@ export default function IdentityVerificationStep({ form }: IdentityVerificationS
           </div>
           <div>
             <h3 className="text-2xl font-bold text-gray-900">Identity Verification</h3>
-            <p className="text-gray-600 text-sm">Verify your identity with a live selfie</p>
+            <p className="text-gray-600 text-sm">Required: Verify your identity with a live selfie</p>
           </div>
         </div>
-        <Alert className="border-blue-200 bg-blue-50">
-          <Shield className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-blue-800 text-sm">
-            This verification helps maintain trust and safety on our platform. Your photo is securely stored and only used for verification purposes.
+        <Alert className="border-red-200 bg-red-50">
+          <Shield className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-red-800 text-sm">
+            <strong>Required:</strong> Identity verification is mandatory to maintain trust and safety on our platform. Your photo is securely encrypted and only used for verification purposes.
           </AlertDescription>
         </Alert>
       </div>
@@ -437,17 +552,101 @@ export default function IdentityVerificationStep({ form }: IdentityVerificationS
                       </div>
                     )}
 
-                    {/* Brightness Warning */}
-                    {(brightness < 30 || brightness > 240) && stage === "liveness-check" && (
-                      <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-amber-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium">
+                    {/* Brightness Warning - only show for extreme cases */}
+                    {(brightness < 15 || brightness > 250) && stage === "liveness-check" && (
+                      <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-amber-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium shadow-lg">
                         <AlertTriangle className="w-4 h-4" />
-                        {brightness < 30 ? "Too dark - increase lighting" : "Too bright - reduce lighting"}
+                        {brightness < 15 ? "Very dark - try to improve lighting" : "Very bright - try to reduce lighting"}
                       </div>
+                    )}
+
+                    {/* Challenge Instructions & Visual Indicators */}
+                    {stage === "liveness-check" && faceDetected && !(brightness < 15 || brightness > 250) && (
+                      <>
+                        {/* Challenge Instruction Banner */}
+                        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-xl text-center min-w-[280px]">
+                          <p className="text-lg font-bold mb-1">{challengeInstructions[currentChallenge]}</p>
+                          <p className="text-xs opacity-90">{actionFeedback}</p>
+                        </div>
+
+                        {/* Turn Left Arrow Indicator */}
+                        {currentChallenge === "turn-left" && (
+                          <div className="absolute left-8 top-1/2 -translate-y-1/2 pointer-events-none">
+                            <div className={cn(
+                              "transition-all duration-300",
+                              headTurnDetected ? "opacity-100 scale-110" : "opacity-60 scale-100 animate-bounce-horizontal"
+                            )}>
+                              <ArrowLeft className={cn(
+                                "w-20 h-20 drop-shadow-2xl",
+                                headTurnDetected ? "text-green-400" : "text-white"
+                              )} strokeWidth={3} />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Turn Right Arrow Indicator */}
+                        {currentChallenge === "turn-right" && (
+                          <div className="absolute right-8 top-1/2 -translate-y-1/2 pointer-events-none">
+                            <div className={cn(
+                              "transition-all duration-300",
+                              headTurnDetected ? "opacity-100 scale-110" : "opacity-60 scale-100 animate-bounce-horizontal-right"
+                            )}>
+                              <ArrowRight className={cn(
+                                "w-20 h-20 drop-shadow-2xl",
+                                headTurnDetected ? "text-green-400" : "text-white"
+                              )} strokeWidth={3} />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Blink Indicator */}
+                        {currentChallenge === "blink" && (
+                          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                            <div className={cn(
+                              "transition-all duration-300",
+                              blinkDetected ? "scale-110" : "scale-100"
+                            )}>
+                              {blinkDetected ? (
+                                <EyeOff className="w-24 h-24 text-green-400 drop-shadow-2xl animate-pulse" strokeWidth={2.5} />
+                              ) : (
+                                <Eye className="w-24 h-24 text-white drop-shadow-2xl opacity-60 animate-pulse" strokeWidth={2.5} />
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Smile Indicator */}
+                        {currentChallenge === "smile" && (
+                          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                            <div className={cn(
+                              "transition-all duration-300",
+                              smileDetected ? "scale-110" : "scale-100"
+                            )}>
+                              <Smile className={cn(
+                                "w-24 h-24 drop-shadow-2xl",
+                                smileDetected ? "text-green-400 animate-bounce" : "text-white opacity-60"
+                              )} strokeWidth={2.5} />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Progress Indicator */}
+                        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 w-64">
+                          <div className="bg-black/50 backdrop-blur-sm rounded-full p-2">
+                            <div className="h-3 bg-gray-700 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-gradient-to-r from-green-400 to-green-600 transition-all duration-150 ease-out"
+                                style={{ width: `${challengeProgress}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </>
                     )}
 
                     {/* No Face Detected Warning */}
                     {!faceDetected && stage === "liveness-check" && (
-                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-lg">
                         Position your face in the frame
                       </div>
                     )}

@@ -83,22 +83,23 @@ export default function ProfileAbout({ mentor }: ProfileAboutProps) {
         </Card>
       )}
 
-      {/* Expertise Tags */}
-      {mentor.expertise_tags && mentor.expertise_tags.length > 0 && (
+      {/* Skills */}
+      {((mentor.skills && mentor.skills.length > 0) || (mentor.expertise_tags && mentor.expertise_tags.length > 0)) && (
         <Card className="shadow-sm border-0 bg-gray-50 rounded-2xl">
           <CardContent className="p-6">
             <div className="flex items-center gap-2 mb-4">
               <Code className="h-5 w-5 text-gray-600" />
-              <h2 className="text-lg font-semibold text-gray-900">Skills & Specializations</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Skills</h2>
             </div>
             <div className="flex flex-wrap gap-2">
-              {mentor.expertise_tags.map((tag: string) => (
+              {/* Show skills field (from current onboarding) or fallback to expertise_tags (from old onboarding) */}
+              {(mentor.skills && mentor.skills.length > 0 ? mentor.skills : mentor.expertise_tags).map((skill: string) => (
                 <Badge
-                  key={tag}
+                  key={skill}
                   variant="secondary"
                   className="px-3 py-1 bg-white text-gray-700 border border-gray-200 font-normal text-xs"
                 >
-                  {tag}
+                  {skill}
                 </Badge>
               ))}
             </div>

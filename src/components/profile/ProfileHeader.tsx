@@ -177,9 +177,11 @@ export default function ProfileHeader({
 
           {/* Name and Username */}
           <div className="text-center mb-4 space-y-1">
-            <h1 className="text-lg font-bold text-gray-900">
-              {mentor.full_name}
-            </h1>
+            <div className="flex items-center justify-center gap-2">
+              <h1 className="text-lg font-bold text-gray-900">
+                {mentor.full_name}
+              </h1>
+            </div>
             {mentor.headline && (
               <p className="text-sm text-gray-600 leading-tight">
                 {mentor.headline}
@@ -267,28 +269,29 @@ export default function ProfileHeader({
               </div>
             )}
 
-            {/* Specializations (Expertise Tags) */}
-            {mentor.expertise_tags && mentor.expertise_tags.length > 0 && (
+            {/* Skills */}
+            {((mentor.skills && mentor.skills.length > 0) || (mentor.expertise_tags && mentor.expertise_tags.length > 0)) && (
               <div>
                 <p className="text-xs font-semibold text-gray-700 mb-2">
-                  Specializations:
+                  Skills:
                 </p>
                 <div className="flex flex-wrap gap-1.5">
-                  {mentor.expertise_tags.slice(0, 6).map((tag: string) => (
+                  {/* Show skills field (from current onboarding) or fallback to expertise_tags (from old onboarding) */}
+                  {(mentor.skills && mentor.skills.length > 0 ? mentor.skills : mentor.expertise_tags).slice(0, 6).map((skill: string) => (
                     <Badge
-                      key={tag}
+                      key={skill}
                       variant="secondary"
                       className="px-2 py-0.5 bg-gray-100 text-gray-700 border-0 font-normal text-xs"
                     >
-                      {tag}
+                      {skill}
                     </Badge>
                   ))}
-                  {mentor.expertise_tags.length > 6 && (
+                  {(mentor.skills && mentor.skills.length > 0 ? mentor.skills : mentor.expertise_tags).length > 6 && (
                     <Badge
                       variant="secondary"
                       className="px-2 py-0.5 bg-gray-100 text-gray-500 border-0 font-normal text-xs"
                     >
-                      +{mentor.expertise_tags.length - 6}
+                      +{(mentor.skills && mentor.skills.length > 0 ? mentor.skills : mentor.expertise_tags).length - 6}
                     </Badge>
                   )}
                 </div>

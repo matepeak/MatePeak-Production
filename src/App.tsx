@@ -14,6 +14,7 @@ import MentorPublicProfile from "./pages/MentorPublicProfile";
 import BookingPage from "./pages/BookingPage";
 import BookingConfirmed from "./pages/BookingConfirmed";
 import BookingSuccess from "./pages/BookingSuccess";
+import OnboardingPhase1Success from "./pages/OnboardingPhase1Success";
 import Dashboard from "./pages/Dashboard";
 import HowItWorks from "./pages/HowItWorks";
 import NotFound from "./pages/NotFound";
@@ -24,11 +25,21 @@ import StudentLogin from "./pages/StudentLogin";
 import MentorSignup from "./pages/MentorSignup";
 import ExpertLogin from "./pages/ExpertLogin";
 import ExpertOnboarding from "./pages/ExpertOnboarding";
+import ExpertOnboardingPhase2 from "./pages/ExpertOnboardingPhase2";
 import ExpertDashboard from "./pages/ExpertDashboard";
 import MentorDashboard from "./pages/MentorDashboard";
 import StudentDashboard from "./pages/StudentDashboard";
+import MigrateAvailability from "./pages/MigrateAvailability";
 import AuthCallback from "./pages/AuthCallback";
 import ResetPassword from "./pages/ResetPassword";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminMentorVerification from "./pages/AdminMentorVerification";
+import AdminUserManagement from "./pages/AdminUserManagement";
+import AdminWithdrawals from "./pages/AdminWithdrawals";
+import AdminReviewModeration from "./pages/AdminReviewModeration";
+import AdminLogin from "./pages/AdminLogin";
+import { AdminAuthProvider } from "./contexts/AdminAuthContext";
+import { ProtectedAdminRoute } from "./components/ProtectedAdminRoute";
 
 const App = () => {
   // Create QueryClient instance per App mount for proper isolation between users/tabs
@@ -49,10 +60,11 @@ const App = () => {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Sonner />
-          <BrowserRouter>
-            <ScrollToTop />
+        <AdminAuthProvider>
+          <TooltipProvider>
+            <Sonner />
+            <BrowserRouter>
+              <ScrollToTop />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/mentors" element={<MentorSearch />} />
@@ -83,13 +95,26 @@ const App = () => {
               <Route path="/expert/signup" element={<MentorSignup />} />
               <Route path="/expert/login" element={<ExpertLogin />} />
               <Route path="/expert/onboarding" element={<ExpertOnboarding />} />
+              <Route path="/expert/onboarding/phase-1/success" element={<OnboardingPhase1Success />} />
+              <Route path="/expert/onboarding/phase-2" element={<ExpertOnboardingPhase2 />} />
+              <Route path="/expert/migrate-availability" element={<MigrateAvailability />} />
               <Route path="/expert/dashboard" element={<ExpertDashboard />} />
               <Route path="/mentor/dashboard" element={<MentorDashboard />} />
               <Route path="/dashboard/:username" element={<MentorDashboard />} />
+              
+              {/* Admin Routes */}
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin" element={<ProtectedAdminRoute><AdminDashboard /></ProtectedAdminRoute>} />
+              <Route path="/admin/mentor-verification" element={<ProtectedAdminRoute><AdminMentorVerification /></ProtectedAdminRoute>} />
+              <Route path="/admin/user-management" element={<ProtectedAdminRoute><AdminUserManagement /></ProtectedAdminRoute>} />
+              <Route path="/admin/withdrawals" element={<ProtectedAdminRoute><AdminWithdrawals /></ProtectedAdminRoute>} />
+              <Route path="/admin/review-moderation" element={<ProtectedAdminRoute><AdminReviewModeration /></ProtectedAdminRoute>} />
+              
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
+            </BrowserRouter>
+          </TooltipProvider>
+        </AdminAuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

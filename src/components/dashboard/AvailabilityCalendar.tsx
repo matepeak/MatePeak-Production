@@ -31,6 +31,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { TimePicker } from "@/components/ui/time-picker";
+import { autoMigrateAvailabilitySlots } from "@/utils/availabilityMigration";
 
 interface AvailabilitySlot {
   id?: string;
@@ -126,6 +127,10 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
   const fetchAvailability = async () => {
     try {
       setLoading(true);
+      
+      // Auto-migrate availability_json to slots if needed
+      await autoMigrateAvailabilitySlots(mentorProfile.id);
+      
       // Fetch availability slots
       const { data: slots, error: slotsError } = await supabase
         .from("availability_slots")
@@ -791,9 +796,19 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
       (slot) => !slot.is_recurring && slot.specific_date === dateStr
     );
 
+    let allSlots = [...recurringSlots, ...specificSlots];
+
+    // Filter out past time slots if this is today
+    const now = new Date();
+    const isDateToday = isToday(date);
+    if (isDateToday) {
+      const currentTimeStr = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+      allSlots = allSlots.filter(slot => slot.start_time >= currentTimeStr);
+    }
+
     return {
       blocked: false,
-      slots: [...recurringSlots, ...specificSlots],
+      slots: allSlots,
     };
   };
 

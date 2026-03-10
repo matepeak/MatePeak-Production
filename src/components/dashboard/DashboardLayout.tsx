@@ -353,9 +353,11 @@ const DashboardLayout = ({
                   {getInitials()}
                 </AvatarFallback>
               </Avatar>
-              <h3 className="text-base font-bold text-gray-900">
-                {mentorProfile?.first_name} {mentorProfile?.last_name}
-              </h3>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-base font-bold text-gray-900">
+                  {mentorProfile?.first_name} {mentorProfile?.last_name}
+                </h3>
+              </div>
               <p className="text-sm text-gray-600 font-medium mt-1">Mentor</p>
               <p className="text-xs text-gray-500 mt-0.5">
                 @{mentorProfile?.username}

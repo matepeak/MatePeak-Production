@@ -14,6 +14,7 @@ import DateTimeSelection from "./DateTimeSelection";
 import BookingConfirmation from "./BookingConfirmation";
 import BookingSuccessModal from "./BookingSuccessModal";
 import { createBooking } from "@/services/bookingService";
+import { checkBookingLimit } from "@/services/bookingLimitService";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
@@ -82,6 +83,21 @@ export default function BookingDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdBooking, setCreatedBooking] = useState<any>(null);
+  const [bookingLimitReached, setBookingLimitReached] = useState(false);
+  const [bookingLimitInfo, setBookingLimitInfo] = useState<any>(null);
+
+  // Check booking limit when dialog opens
+  useEffect(() => {
+    if (open) {
+      checkBookingLimit(mentorId).then(limitInfo => {
+        setBookingLimitInfo(limitInfo);
+        setBookingLimitReached(!limitInfo.allowed);
+        if (!limitInfo.allowed) {
+          toast.warning(limitInfo.message || 'This mentor has reached their weekly booking limit');
+        }
+      });
+    }
+  }, [open, mentorId]);
 
   // Effect to handle pre-selected date/time
   useEffect(() => {
@@ -539,6 +555,30 @@ export default function BookingDialog({
             </div>
           </DialogHeader>
 
+          {/* Booking Limit Warning */}
+          {bookingLimitReached && bookingLimitInfo && (
+            <div className="mx-6 mt-4 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-yellow-900 mb-1">Weekly Booking Limit Reached</h4>
+                  <p className="text-sm text-yellow-800 mb-2">
+                    This mentor has reached their limit of {bookingLimitInfo.maxBookings} bookings this week ({bookingLimitInfo.currentBookings}/{bookingLimitInfo.maxBookings} booked).
+                  </p>
+                  <p className="text-xs text-yellow-700">
+                    {bookingLimitInfo.tier === 'basic' && 'Basic mentors can accept up to 5 bookings per week. '}
+                    {bookingLimitInfo.tier === 'verified' && 'Verified mentors can accept up to 15 bookings per week. '}
+                    Please try again next week or browse other mentors.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Content */}
           <div className="px-6 py-6">
             {step === 1 && (
@@ -570,6 +610,7 @@ export default function BookingDialog({
                 onSubmit={handleBookingSubmit}
                 onChangeDateTime={() => setStep(2)}
                 isSubmitting={isSubmitting}
+                bookingLimitReached={bookingLimitReached}
               />
             )}
           </div>

@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import ProfileCompletionCard from "@/components/dashboard/ProfileCompletionCard";
 
 type TimePeriod = "today" | "week" | "month" | "all";
 
@@ -315,6 +316,12 @@ const DashboardOverview = ({
           </p>
         </div>
       </div>
+
+      {/* Profile Completion Card */}
+      <ProfileCompletionCard 
+        profileData={mentorProfile} 
+        username={mentorProfile.username} 
+      />
 
       {/* Time Period Filters - Improved Design */}
       <div className="flex items-center gap-2 pb-2">

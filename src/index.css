@@ -304,6 +304,32 @@
   animation: shake 0.5s ease-in-out;
 }
 
+@keyframes bounce-horizontal {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-10px);
+  }
+}
+
+@keyframes bounce-horizontal-right {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(10px);
+  }
+}
+
+.animate-bounce-horizontal {
+  animation: bounce-horizontal 1s ease-in-out infinite;
+}
+
+.animate-bounce-horizontal-right {
+  animation: bounce-horizontal-right 1s ease-in-out infinite;
+}
+
 .delay-700 {
   animation-delay: 700ms;
 }
