@@ -6,6 +6,7 @@ import HowItWorks from "@/components/home/HowItWorks";
 import NewMentors from "@/components/home/NewMentors";
 import FeaturedMentors from "@/components/home/FeaturedMentors";
 import CallToActionSection from "@/components/CallToActionSection";
+import FAQ from "@/components/home/FAQ";
 import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
@@ -71,6 +72,7 @@ const Index = () => {
         <FeaturedMentors sectionRef={sectionRefs.mentors} />
       </main>
       <CallToActionSection />
+      <FAQ />
       <Footer />
     </div>
   );
