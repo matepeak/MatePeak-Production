@@ -391,7 +391,7 @@ const Navbar = () => {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="flex items-center gap-1 h-10 px-3 rounded-lg hover:bg-transparent transition-all text-gray-700 font-medium text-sm font-poppins focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                    className="flex items-center gap-1 h-10 px-3 rounded-lg border-0 bg-transparent shadow-none hover:bg-transparent hover:text-gray-700 focus:bg-transparent active:bg-transparent data-[state=open]:bg-transparent data-[state=open]:border-transparent data-[state=open]:shadow-none transition-none text-gray-700 font-medium text-sm font-poppins focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
                     onMouseEnter={() => setIsExploreDropdownOpen(true)}
                   >
                     Explore
@@ -573,7 +573,7 @@ const Navbar = () => {
                   <span className="text-gray-300">|</span>
                   <Button
                     variant="outline"
-                    className="bg-[#f2f2f2] text-matepeak-primary border-0 shadow-none hover:bg-[#f2f2f2] hover:text-matepeak-primary hover:shadow-none font-semibold h-10 px-6 rounded-full transition-none font-poppins"
+                    className="bg-[#f2f2f2] text-matepeak-primary border-0 shadow-none hover:bg-[#e6e6e6] hover:text-matepeak-primary hover:shadow-none font-semibold h-10 px-6 rounded-full transition-colors duration-150 font-poppins"
                     onClick={handleSignInClick}
                   >
                     Sign In
