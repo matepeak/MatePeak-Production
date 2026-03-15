@@ -482,3 +482,16 @@
 .animate-scroll-left:hover {
   animation-play-state: paused;
 }
+
+@keyframes arc-spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-arc-spin {
+  animation: arc-spin 1.1s cubic-bezier(0.6, 0.05, 0.4, 0.95) infinite;
+}
+
+.animate-spin {
+  animation: arc-spin 1.1s cubic-bezier(0.6, 0.05, 0.4, 0.95) infinite;
+}

@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import ProfileHeader from "@/components/profile/ProfileHeader";
@@ -201,12 +200,24 @@ export default function MentorPublicProfile() {
       <div className="min-h-screen flex flex-col bg-gray-50">
         <Navbar />
         <div className="flex-grow flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-matepeak-primary mx-auto mb-4" />
-            <p className="text-sm text-gray-600">Loading mentor profile...</p>
-          </div>
+          <svg
+            className="animate-arc-spin h-10 w-10"
+            viewBox="0 0 40 40"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle cx="20" cy="20" r="16" stroke="#e5e7eb" strokeWidth="3" />
+            <circle
+              cx="20"
+              cy="20"
+              r="16"
+              stroke="#111827"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeDasharray="75 26"
+            />
+          </svg>
         </div>
-        <Footer />
       </div>
     );
   }
