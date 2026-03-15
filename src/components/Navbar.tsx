@@ -363,7 +363,7 @@ const Navbar = () => {
       <nav
         className={`${
           isMainPage ? "sticky top-0 z-50" : "relative"
-        } bg-white pt-6 pb-4`}
+        } border-b border-gray-100 bg-white pt-4 pb-4`}
       >
         <div className="container mx-auto px-6 sm:px-8 lg:px-12">
           <div className="flex items-center gap-4">
@@ -573,16 +573,16 @@ const Navbar = () => {
                   <span className="text-gray-300">|</span>
                   <Button
                     variant="outline"
-                    className="text-matepeak-primary border border-matepeak-primary/30 hover:bg-matepeak-primary/5 hover:border-matepeak-primary font-semibold h-10 px-6 rounded-full transition-all duration-300 hover:shadow-md font-poppins"
+                    className="bg-[#f2f2f2] text-matepeak-primary border-0 shadow-none hover:bg-[#f2f2f2] hover:text-matepeak-primary hover:shadow-none font-semibold h-10 px-6 rounded-full transition-none font-poppins"
                     onClick={handleSignInClick}
                   >
                     Sign In
                   </Button>
                   <Button
-                    className="bg-gradient-to-r from-matepeak-primary to-matepeak-secondary text-white hover:from-matepeak-primary/90 hover:to-matepeak-secondary/90 font-bold rounded-full h-11 px-6 transition-all duration-300 font-poppins"
+                    className="bg-gradient-to-r from-matepeak-primary to-matepeak-secondary text-white hover:from-matepeak-primary/90 hover:to-matepeak-secondary/90 font-bold rounded-full h-10 px-6 transition-all duration-300 font-poppins"
                     onClick={handleGetStartedClick}
                   >
-                    Get Started
+                    Create account
                   </Button>
                 </div>
               )}
@@ -710,7 +710,7 @@ const Navbar = () => {
                     setIsMenuOpen(false);
                   }}
                 >
-                  Get Started
+                  Create account
                 </Button>
               </div>
             )}
