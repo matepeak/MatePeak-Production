@@ -2,47 +2,38 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://www.matepeak.com/</loc>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
+    <lastmod>2026-03-15T12:25:25.239Z</lastmod>
   </url>
   <url>
     <loc>https://www.matepeak.com/explore</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
+    <lastmod>2026-03-15T12:25:25.239Z</lastmod>
   </url>
   <url>
     <loc>https://www.matepeak.com/mentors</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
+    <lastmod>2026-03-15T12:25:25.239Z</lastmod>
   </url>
   <url>
     <loc>https://www.matepeak.com/how-it-works</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <lastmod>2026-03-15T12:25:25.239Z</lastmod>
   </url>
   <url>
     <loc>https://www.matepeak.com/about-us</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
+    <lastmod>2026-03-15T12:25:25.239Z</lastmod>
   </url>
   <url>
     <loc>https://www.matepeak.com/student/signup</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
+    <lastmod>2026-03-15T12:25:25.239Z</lastmod>
   </url>
   <url>
     <loc>https://www.matepeak.com/mentor/signup</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
+    <lastmod>2026-03-15T12:25:25.239Z</lastmod>
   </url>
   <url>
     <loc>https://www.matepeak.com/student/login</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.4</priority>
+    <lastmod>2026-03-15T12:25:25.239Z</lastmod>
   </url>
   <url>
     <loc>https://www.matepeak.com/expert/login</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.4</priority>
+    <lastmod>2026-03-15T12:25:25.239Z</lastmod>
   </url>
 </urlset>
