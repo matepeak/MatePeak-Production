@@ -203,7 +203,7 @@ const MentorCard = ({
                 : `/mentors/${mentor.id}`
             }
           >
-            <Button className="bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold px-6 py-2 rounded-lg transition-colors">
+            <Button className="bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold px-6 py-2 rounded-full transition-colors">
               View Profile
             </Button>
           </Link>

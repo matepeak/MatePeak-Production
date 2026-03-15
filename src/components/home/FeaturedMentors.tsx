@@ -332,10 +332,10 @@ const FeaturedMentors = ({ sectionRef }: FeaturedMentorsProps) => {
                         <Link to={`/explore?q=${encodeURIComponent(category)}`}>
                           <Button
                             variant="outline"
-                            className="border-matepeak-primary text-matepeak-primary hover:bg-matepeak-primary hover:text-white transition-all duration-200"
+                            className="group h-10 rounded-full border-0 bg-[#f2f2f2] px-5 text-gray-900 shadow-none hover:bg-[#f2f2f2] hover:text-gray-900 transition-colors duration-200"
                           >
                             View more
-                            <ArrowRight className="ml-2 h-4 w-4" />
+                            <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
                           </Button>
                         </Link>
                       </div>

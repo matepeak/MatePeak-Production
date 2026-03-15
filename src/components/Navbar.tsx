@@ -573,7 +573,7 @@ const Navbar = () => {
                   <span className="text-gray-300">|</span>
                   <Button
                     variant="outline"
-                    className="bg-[#f2f2f2] text-matepeak-primary border-0 shadow-none hover:bg-[#e6e6e6] hover:text-matepeak-primary hover:shadow-none font-semibold h-10 px-6 rounded-full transition-colors duration-150 font-poppins"
+                    className="bg-[#f2f2f2] text-matepeak-primary border-0 shadow-none hover:bg-black hover:text-white hover:shadow-none font-semibold h-10 px-6 rounded-full transition-colors duration-150 font-poppins"
                     onClick={handleSignInClick}
                   >
                     Sign In

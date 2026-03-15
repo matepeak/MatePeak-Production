@@ -474,7 +474,7 @@ const Hero = () => {
                       zIndex: expertProfiles.length - index,
                     }}
                   >
-                    <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white shadow-sm hover:scale-110 transition-transform duration-200">
+                    <div className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-white shadow-sm">
                       <img
                         src={expert.image}
                         alt={expert.name}
