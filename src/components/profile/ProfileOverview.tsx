@@ -417,22 +417,23 @@ export default function ProfileOverview({
                       type="button"
                       onClick={() => setSelectedService(service)}
                     key={index}
-                      className="group relative w-full text-left bg-white rounded-xl border-2 border-gray-200 hover:border-matepeak-primary p-5 transition-all duration-300 hover:shadow-lg"
+                      className="group relative w-full text-left bg-white rounded-2xl border border-gray-200 hover:border-gray-300 p-5 transition-all duration-200 hover:shadow-sm"
                     >
                     {/* Service Icon */}
                     <div className="flex items-start justify-between mb-3">
-                      <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-matepeak-primary/10 to-matepeak-secondary/10 flex items-center justify-center group-hover:from-matepeak-primary/20 group-hover:to-matepeak-secondary/20 transition-colors">
+                      <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center transition-colors">
                         <ServiceIcon className="h-6 w-6 text-matepeak-primary" />
                       </div>
                       <div className="flex items-center gap-2">
                         {serviceStatsByType[service.key]?.reviewCount > 0 ? (
-                          <div className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs text-amber-700 font-medium">
+                          <div className="inline-flex items-center gap-1 rounded-full bg-gray-50 border border-gray-200 px-2 py-0.5 text-xs text-gray-700 font-medium">
                             <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                             {serviceStatsByType[service.key].averageRating.toFixed(1)}
                           </div>
                         ) : (
                           <div className="inline-flex items-center gap-1 rounded-full bg-gray-50 border border-gray-200 px-2 py-0.5 text-xs text-gray-500 font-medium">
-                            New
+                            <Star className="h-3 w-3" />
+                            No rating yet
                           </div>
                         )}
                       {service.hasFreeDemo && (
@@ -496,10 +497,7 @@ export default function ProfileOverview({
                       )}
                     </div>
 
-                    <p className="mt-3 text-xs text-gray-500">Tap to view service details</p>
-
-                    {/* Hover Effect Indicator */}
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-matepeak-primary to-matepeak-secondary rounded-b-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <p className="mt-3 text-xs text-gray-500">View details</p>
                     </button>
                 );
               })}
@@ -565,70 +563,70 @@ export default function ProfileOverview({
           if (!open) setSelectedService(null);
         }}
       >
-        <DialogContent className="sm:max-w-[560px] p-0 overflow-hidden rounded-2xl border border-gray-200">
+        <DialogContent className="sm:max-w-[560px] p-0 overflow-hidden rounded-3xl border border-gray-200 shadow-xl">
           {selectedService && (
             <>
-              <DialogHeader className="px-6 pt-6 pb-4 bg-gray-50 border-b border-gray-100">
+              <DialogHeader className="px-7 pt-7 pb-4 bg-white border-b border-gray-100">
                 <div className="flex items-start gap-4">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-matepeak-primary/15 to-matepeak-secondary/15 flex items-center justify-center">
+                  <div className="h-11 w-11 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center">
                     <selectedService.icon className="h-6 w-6 text-matepeak-primary" />
                   </div>
                   <div className="flex-1">
-                    <DialogTitle className="text-xl font-semibold text-gray-900 leading-tight">
+                    <DialogTitle className="text-[22px] font-semibold tracking-tight text-gray-900 leading-tight">
                       {selectedService.name}
                     </DialogTitle>
-                    <DialogDescription className="mt-1 text-sm text-gray-600">
+                    <DialogDescription className="mt-1.5 text-sm text-gray-500 leading-relaxed">
                       {selectedService.description || "Personalized mentoring service."}
                     </DialogDescription>
                   </div>
                 </div>
               </DialogHeader>
 
-              <div className="px-6 py-5 space-y-5">
-                <div className="flex items-baseline gap-1">
-                  <IndianRupee className="h-5 w-5 text-gray-800" />
-                  <span className="text-3xl font-bold text-gray-900">
+              <div className="px-7 py-6 space-y-6 bg-white">
+                <div className="flex items-end gap-1">
+                  <IndianRupee className="h-5 w-5 text-gray-700 mb-1" />
+                  <span className="text-[32px] leading-none font-semibold tracking-tight text-gray-900">
                     {selectedService.discount_price || selectedService.price}
                   </span>
-                  <span className="text-sm text-gray-500 ml-1">
+                  <span className="text-sm text-gray-500 ml-1 mb-1">
                     {getPriceUnit(selectedService.key)}
                   </span>
                   {selectedService.discount_price && (
-                    <span className="text-sm text-gray-500 line-through ml-2">
+                    <span className="text-sm text-gray-400 line-through ml-2 mb-1">
                       ₹{selectedService.price}
                     </span>
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="rounded-xl border border-gray-200 bg-white p-3">
-                    <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-3.5">
+                    <div className="flex items-center gap-1.5 text-gray-500 text-[11px] uppercase tracking-wide mb-1.5">
                       <Star className="h-3.5 w-3.5" />
-                      Service Rating
+                      Rating
                     </div>
-                    <p className="text-lg font-semibold text-gray-900">
+                    <p className="text-lg font-semibold tracking-tight text-gray-900">
                       {serviceStatsByType[selectedService.key]?.reviewCount > 0
                         ? `${serviceStatsByType[selectedService.key].averageRating.toFixed(1)} / 5`
                         : "Not rated yet"}
                     </p>
                   </div>
 
-                  <div className="rounded-xl border border-gray-200 bg-white p-3">
-                    <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-3.5">
+                    <div className="flex items-center gap-1.5 text-gray-500 text-[11px] uppercase tracking-wide mb-1.5">
                       <Trophy className="h-3.5 w-3.5" />
-                      Completed Sessions
+                      Sessions
                     </div>
-                    <p className="text-lg font-semibold text-gray-900">
+                    <p className="text-lg font-semibold tracking-tight text-gray-900">
                       {serviceStatsByType[selectedService.key]?.completedSessions || 0}
                     </p>
                   </div>
 
-                  <div className="rounded-xl border border-gray-200 bg-white p-3">
-                    <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-3.5">
+                    <div className="flex items-center gap-1.5 text-gray-500 text-[11px] uppercase tracking-wide mb-1.5">
                       <Clock3 className="h-3.5 w-3.5" />
                       Reviews
                     </div>
-                    <p className="text-lg font-semibold text-gray-900">
+                    <p className="text-lg font-semibold tracking-tight text-gray-900">
                       {serviceStatsByType[selectedService.key]?.reviewCount || 0}
                     </p>
                   </div>
@@ -636,17 +634,17 @@ export default function ProfileOverview({
 
                 <Separator />
 
-                <div className="space-y-3">
-                  <h4 className="text-sm font-semibold text-gray-900">Service Details</h4>
+                <div className="space-y-3.5">
+                  <h4 className="text-sm font-semibold tracking-tight text-gray-900">Service Details</h4>
                   <div className="space-y-2 text-sm text-gray-700">
-                    <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+                    <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3.5 py-2.5">
                       <span>Delivery Type</span>
                       <span className="font-medium">
                         {SERVICE_CONFIG[selectedService.key]?.typeLabel || "Mentoring Service"}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+                    <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3.5 py-2.5">
                       <span>Scheduling</span>
                       <span className="font-medium">
                         {SERVICE_CONFIG[selectedService.key]?.requiresScheduling
@@ -655,7 +653,7 @@ export default function ProfileOverview({
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+                    <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3.5 py-2.5">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3.5 w-3.5" />
                         Latest Booking
@@ -674,8 +672,8 @@ export default function ProfileOverview({
                     </div>
 
                     {selectedService.hasFreeDemo && (
-                      <div className="rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-green-700 font-medium">
-                        This service includes a free demo option.
+                      <div className="rounded-xl bg-gray-50 border border-gray-200 px-3.5 py-2.5 text-gray-700 font-medium">
+                        Includes a free demo option.
                       </div>
                     )}
                   </div>
