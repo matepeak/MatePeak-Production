@@ -22,8 +22,8 @@ export interface ServiceConfigItem {
  * Shared service configuration used across the app
  * This ensures consistency between mentor public page and booking flow
  * 
- * Services that requiresScheduling=true: Need availability slots (oneOnOneSession, chatAdvice)
- * Services that requiresScheduling=false: Direct access without booking (digitalProducts, notes)
+ * Services that requiresScheduling=true: Need availability slots (oneOnOneSession)
+ * Services that requiresScheduling=false: Direct access without booking (chatAdvice, digitalProducts, notes)
  */
 export const SERVICE_CONFIG: Record<string, ServiceConfigItem> = {
   oneOnOneSession: {
@@ -46,7 +46,7 @@ export const SERVICE_CONFIG: Record<string, ServiceConfigItem> = {
     durations: [],
     typeLabel: "Text Chat",
     suggestedPrice: 500,
-    requiresScheduling: true,
+    requiresScheduling: false,
   },
   digitalProducts: {
     icon: ShoppingBag,

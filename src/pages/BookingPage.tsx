@@ -489,7 +489,12 @@ const BookingPage = () => {
         session_type: selectedService.type,
         scheduled_date: scheduledDate,
         scheduled_time: scheduledTime,
-        duration: selectedService.duration,
+        duration:
+          selectedService.type === "oneOnOneSession"
+            ? selectedService.duration
+            : selectedService.duration > 0
+            ? selectedService.duration
+            : 30,
         message: details.purpose,
         total_amount: totalAmount,
         user_name: details.name,
