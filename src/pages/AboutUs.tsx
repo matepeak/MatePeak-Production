@@ -125,10 +125,10 @@ const AboutUs = () => {
           We'd love to hear from you! For questions, feedback, or partnership
           opportunities, please reach out to us at{" "}
           <a
-            href="mailto:iteshofficial@gmail.com"
+            href="mailto:support@matepeak.com"
             className="text-matepeak-primary underline"
           >
-            iteshofficial@gmail.com
+            support@matepeak.com
           </a>
           .
         </p>

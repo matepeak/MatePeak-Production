@@ -315,7 +315,7 @@ export default function CustomTimeRequests({
     </div>
     
     <div class="footer">
-      <p>Need help? <a href="mailto:iteshofficial@gmail.com" style="color: #6366f1;">Contact Support</a></p>
+      <p>Need help? <a href="mailto:support@matepeak.com" style="color: #6366f1;">Contact Support</a></p>
       <p style="margin: 5px 0;">© 2025 MatePeak. All rights reserved.</p>
     </div>
   </div>

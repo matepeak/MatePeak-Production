@@ -500,7 +500,7 @@ const DashboardOverview = ({
 
             {/* Message Support */}
             <a
-              href="mailto:iteshofficial@gmail.com"
+              href="mailto:support@matepeak.com"
               className="flex items-center gap-3 p-3 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-rose-300 transition-all text-left group"
             >
               <div className="p-2 rounded-lg bg-gray-100 group-hover:bg-rose-50 transition-colors">

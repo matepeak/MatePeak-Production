@@ -916,7 +916,7 @@ const BookingConfirmed = () => {
               <p className="text-gray-600">
                 Need help?{" "}
                 <a
-                  href="mailto:iteshofficial@gmail.com"
+                  href="mailto:support@matepeak.com"
                   className="text-emerald-600 hover:text-emerald-700 font-medium"
                 >
                   Contact Support

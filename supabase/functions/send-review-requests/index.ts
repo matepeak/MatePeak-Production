@@ -76,7 +76,7 @@ const reviewRequestEmailTemplate = (data: any) => ({
     </div>
     
     <div class="footer">
-      <p>Questions? <a href="mailto:iteshofficial@gmail.com">Contact Support</a></p>
+      <p>Questions? <a href="mailto:support@matepeak.com">Contact Support</a></p>
       <p>&copy; 2025 MatePeak - Be a Solopreneur. All rights reserved.</p>
     </div>
   </div>
