@@ -35,6 +35,7 @@ import { Separator } from "@/components/ui/separator";
 import { showWarningToast } from "@/utils/toast-helpers";
 import { Session } from "@supabase/supabase-js";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
+import SEO from "@/components/SEO";
 
 const Explore = () => {
   const location = useLocation();
@@ -658,6 +659,11 @@ const Explore = () => {
   // Render component
   return (
     <div className="min-h-screen flex flex-col bg-white">
+      <SEO
+        title="Explore Mentors | MatePeak"
+        description="Browse verified mentors by expertise, category, language, and ratings. Discover the right 1-on-1 mentor for your goals on MatePeak."
+        canonicalPath="/explore"
+      />
       <Navbar />
 
       <main className="flex-grow">

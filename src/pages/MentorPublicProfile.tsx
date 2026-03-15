@@ -14,6 +14,7 @@ import ProfileExperiences from "@/components/profile/ProfileExperiences";
 import ProfileReviews from "@/components/profile/ProfileReviews";
 import ProfileAbout from "@/components/profile/ProfileAbout";
 import AvailabilityPreview from "@/components/profile/AvailabilityPreview";
+import SEO from "@/components/SEO";
 
 export type ProfileTab =
   | "overview"
@@ -68,6 +69,28 @@ export default function MentorPublicProfile() {
     totalSessions: 0,
     completedSessions: 0,
   });
+
+  const profileTitle = mentor
+    ? `${mentor.full_name} | Mentor at MatePeak`
+    : "Mentor Profile | MatePeak";
+
+  const profileDescription = mentor
+    ? `Book 1-on-1 mentorship with ${mentor.full_name}${mentor.category ? ` in ${mentor.category}` : ""}. Explore services, availability, and reviews on MatePeak.`
+    : "Explore mentor profile, services, and availability on MatePeak.";
+
+  const profileStructuredData = mentor
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        name: mentor.full_name,
+        url: `https://www.matepeak.com/mentor/${mentor.username}`,
+        description: mentor.bio || mentor.headline || "Mentor on MatePeak",
+        image:
+          mentor.profile_picture_url ||
+          mentor.profiles?.avatar_url ||
+          "https://www.matepeak.com/lovable-uploads/14bf0eea-1bc9-4675-9231-356df10eb82d.png",
+      }
+    : undefined;
 
   useEffect(() => {
     if (username) {
@@ -232,6 +255,13 @@ export default function MentorPublicProfile() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
+      <SEO
+        title={profileTitle}
+        description={profileDescription}
+        canonicalPath={username ? `/mentor/${username}` : "/mentors"}
+        type="profile"
+        structuredData={profileStructuredData}
+      />
       <Navbar />
 
       <main className="flex-grow py-8">

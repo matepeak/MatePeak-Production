@@ -8,6 +8,7 @@ import FeaturedMentors from "@/components/home/FeaturedMentors";
 import CallToActionSection from "@/components/CallToActionSection";
 import FAQ from "@/components/home/FAQ";
 import { supabase } from "@/integrations/supabase/client";
+import SEO from "@/components/SEO";
 
 const Index = () => {
   const [user, setUser] = useState<any>(null);
@@ -64,6 +65,11 @@ const Index = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
+      <SEO
+        title="MatePeak | Turn Questions Into Conversations"
+        description="Connect with expert mentors for 1-on-1 sessions in career growth, coding, interview prep, and more. Learn faster with personalized guidance on MatePeak."
+        canonicalPath="/"
+      />
       <Navbar />
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-8 md:px-12 xl:px-0">
         <Hero />
