@@ -316,7 +316,7 @@ async function sendReminderEmail(
       Authorization: `Bearer ${RESEND_API_KEY}`,
     },
     body: JSON.stringify({
-      from: "MatePeak - Be a Solopreneur <onboarding@resend.dev>",
+      from: "MatePeak - Be a Solopreneur <support@matepeak.com>",
       to: [to],
       subject,
       html,

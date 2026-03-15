@@ -31,7 +31,7 @@ const sendEmail = async (to: string, subject: string, html: string) => {
       Authorization: `Bearer ${RESEND_API_KEY}`,
     },
     body: JSON.stringify({
-      from: "MatePeak - Be a Solopreneur <noreply@sparkmentorconnect.com>",
+      from: "MatePeak - Be a Solopreneur <support@matepeak.com>",
       to,
       subject,
       html,

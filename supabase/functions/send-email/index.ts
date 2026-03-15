@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
       to,
       subject,
       html,
-      from = "MatePeak <onboarding@resend.dev>",
+      from = "MatePeak <support@matepeak.com>",
     }: EmailRequest = requestBody;
 
     // Validate required fields
