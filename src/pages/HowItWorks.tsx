@@ -4,10 +4,16 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Search, Calendar, Video, MessageCircle, BadgeCheck, Shield, CreditCard } from "lucide-react";
 import { Link } from "react-router-dom";
+import SEO from "@/components/SEO";
 
 const HowItWorks = () => {
   return (
     <div className="min-h-screen flex flex-col">
+      <SEO
+        title="How MatePeak Works | 1-on-1 Mentorship in 4 Steps"
+        description="Learn how MatePeak works: find a mentor, book a session, meet via secure video, and grow with personalized guidance."
+        canonicalPath="/how-it-works"
+      />
       <Navbar />
       
       <main className="flex-grow">

@@ -1,5 +1,6 @@
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import SEO from "@/components/SEO";
 
 const NotFound = () => {
   const location = useLocation();
@@ -13,6 +14,11 @@ const NotFound = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white px-4">
+      <SEO
+        title="Page Not Found | MatePeak"
+        description="This page does not exist on MatePeak."
+        noindex
+      />
       <div className="flex flex-col items-center justify-center mb-8">
         {/* Clean professional info icon */}
         <svg xmlns="http://www.w3.org/2000/svg" className="h-20 w-20 mb-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1">

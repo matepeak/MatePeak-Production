@@ -1,8 +1,14 @@
 import React from "react";
+import SEO from "@/components/SEO";
 
 const AboutUs = () => {
   return (
     <div className="max-w-3xl mx-auto px-4 py-20 text-gray-800 bg-white">
+      <SEO
+        title="About MatePeak | Our Mission, Values, and Story"
+        description="Learn about MatePeak's mission to connect learners with expert mentors through accessible, personalized, and impactful mentorship."
+        canonicalPath="/about-us"
+      />
       <h1 className="text-4xl font-extrabold mb-8 text-black">
         About MatePeak
       </h1>
