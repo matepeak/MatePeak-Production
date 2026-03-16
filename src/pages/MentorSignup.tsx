@@ -10,6 +10,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { CheckCircle2 } from "lucide-react";
+import { getAuthRedirectUrl } from "@/utils/authRedirect";
 
 
 export default function MentorSignup() {
@@ -42,6 +43,7 @@ export default function MentorSignup() {
     const formData = new FormData(event.currentTarget);
     const email = formData.get("email") as string;
     const fullName = formData.get("fullName") as string;
+    const authRedirectTo = getAuthRedirectUrl("/");
 
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -52,7 +54,7 @@ export default function MentorSignup() {
             full_name: fullName,
             role: 'mentor'
           },
-          emailRedirectTo: `${window.location.origin}/`
+          emailRedirectTo: authRedirectTo
         },
       });
 
@@ -129,7 +131,7 @@ export default function MentorSignup() {
     setIsResettingPassword(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: getAuthRedirectUrl("/reset-password"),
       });
       
       if (error) throw error;

@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getAuthRedirectUrl } from "@/utils/authRedirect";
 
 export interface SignupData {
   name: string;
@@ -28,7 +29,7 @@ export async function signup(data: SignupData) {
           full_name: name,
           role: role
         },
-        emailRedirectTo: `${window.location.origin}/`
+        emailRedirectTo: getAuthRedirectUrl("/")
       }
     });
     
