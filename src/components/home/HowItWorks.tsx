@@ -383,7 +383,7 @@ const HowItWorks = ({
               <div
                 className={`absolute ${
                   index % 2 === 0 ? "left-0 md:-left-8" : "right-0 md:-right-8"
-                } text-[120px] md:text-[180px] font-black leading-none pointer-events-none select-none z-0 transition-all duration-700 ${
+                } hidden md:block md:text-[180px] font-black leading-none pointer-events-none select-none z-0 transition-all duration-700 ${
                   activeStep === index
                     ? "opacity-20 scale-100"
                     : "opacity-10 scale-95"
