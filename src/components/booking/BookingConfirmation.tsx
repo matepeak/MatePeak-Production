@@ -51,6 +51,7 @@ export default function BookingConfirmation({
   const [phone, setPhone] = useState("");
   const [purpose, setPurpose] = useState("");
   const [showOrderSummary, setShowOrderSummary] = useState(false);
+  const [shareContactInfo, setShareContactInfo] = useState(false);
 
   // Pre-fill user data if logged in
   useEffect(() => {
@@ -113,6 +114,7 @@ export default function BookingConfirmation({
       phone: sanitizedPhone,
       purpose: messageValidation.sanitized!,
       addRecording: false,
+      shareContactInfo,
     });
   };
 
@@ -154,10 +156,12 @@ export default function BookingConfirmation({
       {/* Header */}
       <div>
         <h3 className="text-xl font-bold text-gray-900 mb-1.5">
-          Confirm Your Booking
+          {selectedService.type === "chatAdvice" ? "Send Your Priority DM" : "Confirm Your Booking"}
         </h3>
         <p className="text-sm text-gray-600">
-          Review your details and complete your booking
+          {selectedService.type === "chatAdvice"
+            ? "Your message goes directly to the mentor — expect a reply within 24 hours"
+            : "Review your details and complete your booking"}
         </p>
       </div>
 
@@ -279,6 +283,24 @@ export default function BookingConfirmation({
               required
             />
           </div>
+
+          {selectedService.type === "chatAdvice" && (
+            <div className="flex items-start gap-3 pt-1">
+              <input
+                id="share-contact-info"
+                type="checkbox"
+                checked={shareContactInfo}
+                onChange={(e) => setShareContactInfo(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-green-600 cursor-pointer"
+              />
+              <Label
+                htmlFor="share-contact-info"
+                className="text-sm text-gray-700 font-normal cursor-pointer leading-snug"
+              >
+                Share my contact info (email &amp; phone) with the mentor so they can follow up directly
+              </Label>
+            </div>
+          )}
         </div>
       </div>
 

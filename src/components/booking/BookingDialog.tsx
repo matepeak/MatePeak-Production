@@ -55,6 +55,7 @@ export interface BookingDetails {
   phone?: string;
   purpose: string;
   addRecording?: boolean;
+  shareContactInfo?: boolean;
 }
 
 export default function BookingDialog({
@@ -505,7 +506,7 @@ export default function BookingDialog({
         if (selectedService?.type === "digitalProducts") {
           return "Complete Purchase";
         } else if (selectedService?.type === "chatAdvice") {
-          return "Send Message";
+          return "Priority DM";
         } else if (selectedService?.type === "notes") {
           return "Purchase Session Notes";
         }
