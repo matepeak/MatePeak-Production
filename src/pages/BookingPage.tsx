@@ -16,7 +16,7 @@ import BookingConfirmation from "@/components/booking/BookingConfirmation";
 export type BookingStep = 1 | 2 | 3;
 
 export interface SelectedService {
-  type: "oneOnOneSession" | "chatAdvice" | "digitalProducts" | "notes";
+  type: "oneOnOneSession" | "priorityDm" | "digitalProducts" | "notes";
   name: string;
   duration: number;
   price: number;
@@ -223,7 +223,7 @@ const BookingPage = () => {
     if (
       service.type === "digitalProducts" ||
       service.type === "notes" ||
-      service.type === "chatAdvice"
+      service.type === "priorityDm"
     ) {
       setStep(3);
     } else {
@@ -517,7 +517,7 @@ const BookingPage = () => {
         );
 
         // Create Priority DM thread for Priority DM service type
-        if (selectedService.type === "chatAdvice") {
+        if (selectedService.type === "priorityDm") {
           const dmResult = await createPriorityDm({
             mentorId: mentorId!,
             messageText: details.purpose,
@@ -553,7 +553,7 @@ const BookingPage = () => {
       case 3:
         if (selectedService?.type === "digitalProducts")
           return "Complete Purchase";
-        if (selectedService?.type === "chatAdvice") return "Priority DM";
+        if (selectedService?.type === "priorityDm") return "Priority DM";
         if (selectedService?.type === "notes") return "Purchase Session Notes";
         return "Confirm Booking";
       default:
@@ -646,7 +646,7 @@ const BookingPage = () => {
                     {getStepTitle()}
                   </h1>
                   <p className="text-gray-500 mt-1 text-sm font-medium">
-                    {selectedService?.type === "chatAdvice"
+                    {selectedService?.type === "priorityDm"
                       ? `Step ${step === 3 ? 2 : step} of 2`
                       : `Step ${step} of 3`}
                   </p>
@@ -654,7 +654,7 @@ const BookingPage = () => {
               </div>
 
               {/* Modern Step Indicator — hidden for Priority DM (2-step, no date/time) */}
-              {selectedService?.type !== "chatAdvice" && (
+              {selectedService?.type !== "priorityDm" && (
               <div className="flex justify-center">
                 <div className="w-full max-w-md">
                   <div className="flex items-start justify-between relative px-8">

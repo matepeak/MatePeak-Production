@@ -23,7 +23,7 @@ export interface ServiceConfigItem {
  * This ensures consistency between mentor public page and booking flow
  * 
  * Services that requiresScheduling=true: Need availability slots (oneOnOneSession)
- * Services that requiresScheduling=false: Direct access without booking (chatAdvice, digitalProducts, notes)
+ * Services that requiresScheduling=false: Direct access without booking (priorityDm, digitalProducts, notes)
  */
 export const SERVICE_CONFIG: Record<string, ServiceConfigItem> = {
   oneOnOneSession: {
@@ -37,7 +37,7 @@ export const SERVICE_CONFIG: Record<string, ServiceConfigItem> = {
     suggestedPrice: 1500,
     requiresScheduling: true,
   },
-  chatAdvice: {
+  priorityDm: {
     icon: MessageSquare,
     name: "Career Clarity – Ask Anything",
     shortName: "Career Clarity",

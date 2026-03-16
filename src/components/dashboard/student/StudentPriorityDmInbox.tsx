@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { MessageSquare, Search, Loader2, RefreshCw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
 import {
   listRequesterPriorityDm,
   markPriorityDmRead,
@@ -63,6 +64,28 @@ export default function StudentPriorityDmInbox({ studentProfile }: StudentPriori
     }
 
     loadThreads();
+
+    // Set up realtime subscription for auto-refresh
+    const channel = supabase
+      .channel(`priority_dm_requester_${studentProfile.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "priority_dm_threads",
+          filter: `requester_id=eq.${studentProfile.id}`,
+        },
+        () => {
+          console.log("Priority DM thread change detected, refreshing...");
+          loadThreads(true);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
   }, [studentProfile?.id]);
 
   const filteredThreads = useMemo(() => {

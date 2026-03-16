@@ -1,5 +1,7 @@
 # Booking System Security Audit & Improvement Checklist
 
+> **📝 NOTE (March 2026):** "Chat Advice" service type was renamed to "Priority DM" in March 2026. This document retains the legacy naming for historical audit trail purposes. All new implementations use "Priority DM".
+
 **Date:** November 1, 2025  
 **Scope:** Complete booking system analysis including frontend, backend, and database layers
 

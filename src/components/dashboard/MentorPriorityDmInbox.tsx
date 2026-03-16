@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { MessageSquare, Send, Loader2, Search, RefreshCw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
 import {
   listMentorPriorityDmPending,
   replyPriorityDm,
@@ -64,6 +65,28 @@ const MentorPriorityDmInbox = ({ mentorProfile }: MessagingProps) => {
     }
 
     loadPendingThreads();
+
+    // Set up realtime subscription for auto-refresh
+    const channel = supabase
+      .channel(`priority_dm_${mentorProfile.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "priority_dm_threads",
+          filter: `mentor_id=eq.${mentorProfile.id}`,
+        },
+        () => {
+          console.log("Priority DM thread change detected, refreshing...");
+          loadPendingThreads(true);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
   }, [mentorProfile?.id]);
 
   const selectedThread = useMemo(

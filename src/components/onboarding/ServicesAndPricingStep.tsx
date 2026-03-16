@@ -47,12 +47,12 @@ const predefinedServices: ServiceConfig[] = [
     suggestedPrice: SERVICE_CONFIG.oneOnOneSession.suggestedPrice,
   },
   {
-    key: "chatAdvice",
-    icon: SERVICE_CONFIG.chatAdvice.icon,
-    name: SERVICE_CONFIG.chatAdvice.name,
-    description: SERVICE_CONFIG.chatAdvice.description,
+    key: "priorityDm",
+    icon: SERVICE_CONFIG.priorityDm.icon,
+    name: SERVICE_CONFIG.priorityDm.name,
+    description: SERVICE_CONFIG.priorityDm.description,
     type: "predefined",
-    suggestedPrice: SERVICE_CONFIG.chatAdvice.suggestedPrice,
+    suggestedPrice: SERVICE_CONFIG.priorityDm.suggestedPrice,
   },
   {
     key: "digitalProducts",

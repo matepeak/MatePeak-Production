@@ -36,7 +36,7 @@ interface BookingDialogProps {
 export type BookingStep = 1 | 2 | 3;
 
 export interface SelectedService {
-  type: "oneOnOneSession" | "chatAdvice" | "digitalProducts" | "notes";
+  type: "oneOnOneSession" | "priorityDm" | "digitalProducts" | "notes";
   name: string;
   duration: number; // in minutes
   price: number;
@@ -131,8 +131,8 @@ export default function BookingDialog({
     if (service.type === "digitalProducts" || service.type === "notes") {
       setStep(3);
     }
-    // For chat advice, also skip date/time (chat doesn't need scheduling)
-    else if (service.type === "chatAdvice") {
+    // For Priority DM, also skip date/time because it does not require scheduling
+    else if (service.type === "priorityDm") {
       setStep(3);
     }
     // Only video sessions need date/time selection
@@ -505,7 +505,7 @@ export default function BookingDialog({
       case 3:
         if (selectedService?.type === "digitalProducts") {
           return "Complete Purchase";
-        } else if (selectedService?.type === "chatAdvice") {
+        } else if (selectedService?.type === "priorityDm") {
           return "Priority DM";
         } else if (selectedService?.type === "notes") {
           return "Purchase Session Notes";
@@ -589,9 +589,7 @@ export default function BookingDialog({
           <div className="px-6 py-6">
             {step === 1 && (
               <ServiceSelection
-                services={services}
                 servicePricing={servicePricing}
-                suggestedServices={suggestedServices}
                 onServiceSelect={handleServiceSelect}
                 averageRating={averageRating}
                 totalReviews={totalReviews}

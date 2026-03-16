@@ -1,5 +1,7 @@
 # Backend Integration Implementation Guide
 
+> **📝 NOTE (March 2026):** "Chat Advice" service type is now "Priority DM" in all new code and database schemas. This document retains legacy references for historical documentation purposes.
+
 ## Overview
 
 This document describes the backend integration for the MatePeak booking system, including booking submission and real-time availability checking.

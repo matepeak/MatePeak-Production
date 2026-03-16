@@ -292,8 +292,8 @@ export default function ProfileOverview({
                         {service.description ||
                           (service.name === SERVICE_CONFIG.oneOnOneSession.name &&
                             SERVICE_CONFIG.oneOnOneSession.description) ||
-                          (service.name === SERVICE_CONFIG.chatAdvice.name &&
-                            SERVICE_CONFIG.chatAdvice.description) ||
+                          (service.name === SERVICE_CONFIG.priorityDm.name &&
+                            SERVICE_CONFIG.priorityDm.description) ||
                           (service.name === SERVICE_CONFIG.digitalProducts.name &&
                             SERVICE_CONFIG.digitalProducts.description) ||
                           (service.name === SERVICE_CONFIG.notes.name &&
@@ -322,7 +322,7 @@ export default function ProfileOverview({
                           <span className="text-sm text-gray-500">
                             {service.name === SERVICE_CONFIG.oneOnOneSession.name
                               ? "/ session"
-                              : service.name === SERVICE_CONFIG.chatAdvice.name
+                              : service.name === SERVICE_CONFIG.priorityDm.name
                               ? "/ consultation"
                               : service.name === SERVICE_CONFIG.notes.name
                               ? "/ resource"
@@ -340,7 +340,7 @@ export default function ProfileOverview({
                           <span className="text-sm text-gray-500 ml-1">
                             {service.name === SERVICE_CONFIG.oneOnOneSession.name
                               ? "/ session"
-                              : service.name === SERVICE_CONFIG.chatAdvice.name
+                              : service.name === SERVICE_CONFIG.priorityDm.name
                               ? "/ consultation"
                               : service.name === SERVICE_CONFIG.notes.name
                               ? "/ resource"

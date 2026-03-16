@@ -1,5 +1,7 @@
 -- Priority DM system (Phase 1)
 -- Single paid message + single mentor reply, then auto-delete 24h after requester reads.
+-- NOTE: This feature was previously called 'Chat Advice' (service_type='chatAdvice').
+-- The rename from 'chatAdvice' to 'priorityDm' is handled by migration 20260317000100_rename_chatadvice_to_prioritydm.sql
 
 -- ==============================
 -- 1) Core tables
