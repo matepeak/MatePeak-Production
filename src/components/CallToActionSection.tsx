@@ -45,6 +45,25 @@ const CallToActionSection = () => {
   return (
     <>
       <section className="relative bg-black py-24 md:py-32 px-4 overflow-hidden">
+        {/* Curved Line SVG - Arc touching logo at top, ends at bottom corners */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <svg
+            className="w-full h-full"
+            viewBox="0 0 1440 800"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            preserveAspectRatio="none"
+          >
+            <path
+              d="M 0 750 Q 720 250 1440 750"
+              stroke="white"
+              strokeWidth="2"
+              fill="none"
+              opacity="0.25"
+            />
+          </svg>
+        </div>
+
         <div className="w-full mx-auto text-center relative z-10 px-2 md:px-8 xl:px-0">
           {/* MatePeak Logo - Bigger */}
           <div className="flex justify-center items-center mb-6">
