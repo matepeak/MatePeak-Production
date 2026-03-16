@@ -381,15 +381,17 @@ const HowItWorks = ({
             >
               {/* Background Number with smooth transitions */}
               <div
-                className={`absolute top-2 left-3 md:top-1/2 md:-translate-y-1/2 md:left-1/2 md:-translate-x-1/2 ${
-                  index % 2 === 0
-                    ? "md:left-0 md:-left-8 md:translate-x-0"
-                    : "md:left-auto md:right-0 md:-right-8 md:translate-x-0"
-                } hidden md:block text-[82px] sm:text-[110px] md:text-[180px] font-black leading-none pointer-events-none select-none z-[1] transition-all duration-700 ${
+                className={`absolute ${
+                  index % 2 === 0 ? "left-0 md:-left-8" : "right-0 md:-right-8"
+                } hidden md:block md:text-[180px] font-black leading-none pointer-events-none select-none z-0 transition-all duration-700 ${
                   activeStep === index
                     ? "opacity-20 scale-100"
                     : "opacity-10 scale-95"
                 } text-gray-400`}
+                style={{
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                }}
               >
                 {step.number}
               </div>
