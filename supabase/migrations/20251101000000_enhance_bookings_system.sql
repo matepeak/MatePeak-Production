@@ -1,5 +1,7 @@
 -- Migration to enhance bookings table for new booking system
 -- Date: 2025-11-01
+-- NOTE (March 2026): Session type 'chatAdvice' referenced in this file has been renamed to 'priorityDm'
+-- See migration 20260317000100_rename_chatadvice_to_prioritydm.sql for the rename operation.
 
 -- Add any missing columns to bookings table
 DO $$ 

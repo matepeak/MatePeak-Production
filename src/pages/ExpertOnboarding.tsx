@@ -29,7 +29,7 @@ export default function ExpertOnboarding() {
   // Check if scheduling services are enabled
   const hasSchedulingService = useMemo(() => {
     const servicePricing = form.watch("servicePricing");
-    return servicePricing?.oneOnOneSession?.enabled || servicePricing?.chatAdvice?.enabled;
+    return servicePricing?.oneOnOneSession?.enabled || servicePricing?.priorityDm?.enabled;
   }, [form.watch("servicePricing")]);
 
   // Phase 1 step components - dynamic title for availability based on services
@@ -233,10 +233,10 @@ export default function ExpertOnboarding() {
         const availableHours = form.getValues("availableHours");
         const servicePricingForAvailability = form.getValues("servicePricing");
         
-        // Check which services require scheduling (oneOnOneSession, chatAdvice)
+        // Check which services require scheduling (oneOnOneSession, priorityDm)
         const hasSchedulingService = servicePricingForAvailability && 
           (servicePricingForAvailability.oneOnOneSession?.enabled || 
-           servicePricingForAvailability.chatAdvice?.enabled);
+           servicePricingForAvailability.priorityDm?.enabled);
         
         // Check if at least one day is enabled
         const hasAvailability = availableHours && Object.values(availableHours).some(

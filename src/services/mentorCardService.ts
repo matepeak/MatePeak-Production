@@ -154,7 +154,7 @@ export function transformToMentorCard(
     } else if (profile.services) {
       // Fallback to old services system for backward compatibility
       if (profile.services.oneOnOneSession) options.push(SERVICE_CONFIG.oneOnOneSession.name);
-      if (profile.services.chatAdvice) options.push(SERVICE_CONFIG.chatAdvice.name);
+      if (profile.services.priorityDm) options.push(SERVICE_CONFIG.priorityDm.name);
       if (profile.services.digitalProducts) options.push(SERVICE_CONFIG.digitalProducts.name);
       if (profile.services.notes) options.push(SERVICE_CONFIG.notes.name);
     }

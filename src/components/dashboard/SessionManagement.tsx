@@ -123,7 +123,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
       oneonesession: SERVICE_CONFIG.oneOnOneSession?.name || "1 on 1 Session",
       oneOnOneSession: SERVICE_CONFIG.oneOnOneSession?.name || "1 on 1 Session",
       "one-on-one": SERVICE_CONFIG.oneOnOneSession?.name || "1 on 1 Session",
-      chatAdvice: SERVICE_CONFIG.chatAdvice?.name || "Chat Consultation",
+      priorityDm: SERVICE_CONFIG.priorityDm?.name || "Priority DM",
       group: "Group Session",
       groupsession: "Group Session",
       workshop: "Workshop",

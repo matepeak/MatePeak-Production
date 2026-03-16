@@ -18,9 +18,9 @@ const services = [
     description: "Offer personal one-on-one video or voice call sessions with mentees",
   },
   {
-    name: "chatAdvice",
+    name: "priorityDm",
     icon: MessageSquare,
-    label: "Chat Advice",
+    label: "Priority DM",
     description: "Provide advice and guidance through text-based chat messaging",
   },
   {
