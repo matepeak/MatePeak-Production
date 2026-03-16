@@ -20,32 +20,32 @@ import {
 
 export default function PricingStep({ form }: { form: UseFormReturn<any> }) {
   const oneOnOneSession = form.watch("oneOnOneSession");
-  const chatAdvice = form.watch("chatAdvice");
+  const priorityDm = form.watch("priorityDm");
   const digitalProducts = form.watch("digitalProducts");
   const notes = form.watch("notes");
 
   const serviceIcons = {
     oneOnOneSession: Video,
-    chatAdvice: MessageSquare,
+    priorityDm: MessageSquare,
     digitalProducts: ShoppingBag,
     notes: FileText,
   };
 
   const serviceLabels = {
     oneOnOneSession: "1-on-1 Video Sessions",
-    chatAdvice: "Chat Advice",
+    priorityDm: "Priority DM",
     digitalProducts: "Digital Products",
     notes: "Notes & Resources",
   };
 
   const serviceDescriptions = {
     oneOnOneSession: "Live video mentoring sessions",
-    chatAdvice: "Text-based Q&A and guidance",
+    priorityDm: "Text-based Q&A and guidance",
     digitalProducts: "Courses, ebooks, templates, etc.",
     notes: "Study materials and resources",
   };
 
-  const hasAnyService = oneOnOneSession || chatAdvice || digitalProducts || notes;
+  const hasAnyService = oneOnOneSession || priorityDm || digitalProducts || notes;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -172,24 +172,24 @@ export default function PricingStep({ form }: { form: UseFormReturn<any> }) {
           </Card>
         )}
 
-        {/* Chat Advice */}
-        {chatAdvice && (
+        {/* Priority DM */}
+        {priorityDm && (
           <Card className="border-2 border-matepeak-primary/20 hover:border-matepeak-primary/40 transition-all">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-matepeak-primary/10 flex items-center justify-center">
-                  {serviceIcons.chatAdvice && <serviceIcons.chatAdvice className="w-5 h-5 text-matepeak-primary" />}
+                  {serviceIcons.priorityDm && <serviceIcons.priorityDm className="w-5 h-5 text-matepeak-primary" />}
                 </div>
                 <div>
-                  <CardTitle className="text-lg">{serviceLabels.chatAdvice}</CardTitle>
-                  <CardDescription>{serviceDescriptions.chatAdvice}</CardDescription>
+                  <CardTitle className="text-lg">{serviceLabels.priorityDm}</CardTitle>
+                  <CardDescription>{serviceDescriptions.priorityDm}</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <FormField
                 control={form.control}
-                name="servicePricing.chatAdvice.enabled"
+                name="servicePricing.priorityDm.enabled"
                 render={({ field }) => (
                   <FormItem className="flex items-center justify-between space-y-0">
                     <div>
@@ -202,7 +202,7 @@ export default function PricingStep({ form }: { form: UseFormReturn<any> }) {
                         onCheckedChange={(checked) => {
                           field.onChange(checked);
                           if (!checked) {
-                            form.setValue("servicePricing.chatAdvice.price", 0);
+                            form.setValue("servicePricing.priorityDm.price", 0);
                           }
                         }}
                         className="data-[state=checked]:bg-matepeak-primary"
@@ -212,11 +212,11 @@ export default function PricingStep({ form }: { form: UseFormReturn<any> }) {
                 )}
               />
 
-              {form.watch("servicePricing.chatAdvice.enabled") && (
+              {form.watch("servicePricing.priorityDm.enabled") && (
                 <div className="space-y-4 animate-fade-in">
                   <FormField
                     control={form.control}
-                    name="servicePricing.chatAdvice.price"
+                    name="servicePricing.priorityDm.price"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="flex items-center gap-2">
@@ -247,7 +247,7 @@ export default function PricingStep({ form }: { form: UseFormReturn<any> }) {
 
                   <FormField
                     control={form.control}
-                    name="servicePricing.chatAdvice.hasFreeDemo"
+                    name="servicePricing.priorityDm.hasFreeDemo"
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 bg-green-50 border-green-200">
                         <FormControl>

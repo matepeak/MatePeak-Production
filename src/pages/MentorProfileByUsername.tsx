@@ -104,7 +104,7 @@ export default function MentorProfileByUsername() {
   const getServicesList = () => {
     const services = [];
     if (mentor?.services?.oneOnOneSession) services.push("1-on-1 Sessions");
-    if (mentor?.services?.chatAdvice) services.push("Chat Advice");
+    if (mentor?.services?.priorityDm) services.push("Priority DM");
     if (mentor?.services?.digitalProducts) services.push("Digital Products");
     if (mentor?.services?.notes) services.push("Notes & Resources");
     return services;
@@ -268,11 +268,11 @@ export default function MentorProfileByUsername() {
                           </div>
                         </div>
                       )}
-                      {mentor.services?.chatAdvice && (
+                      {mentor.services?.priorityDm && (
                         <div className="flex items-start gap-3">
                           <MessageSquare className="h-5 w-5 text-matepeak-primary mt-0.5" />
                           <div>
-                            <h3 className="font-medium">Chat Advice</h3>
+                            <h3 className="font-medium">Priority DM</h3>
                             <p className="text-sm text-gray-600">Quick questions and guidance</p>
                           </div>
                         </div>

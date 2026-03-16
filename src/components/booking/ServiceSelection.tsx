@@ -64,8 +64,11 @@ export default function ServiceSelection({
 
   const handleSelect = (serviceKey: string, serviceName: string, servicePrice: number, hasFreeDemo: boolean) => {
     const config = SERVICE_CONFIG[serviceKey];
-    const duration = serviceKey === "oneOnOneSession" ? 
-      (selectedDurations[serviceKey] || 30) : 0;
+    // Store a valid, non-zero duration for non-scheduled services to satisfy DB constraints.
+    const duration =
+      serviceKey === "oneOnOneSession"
+        ? selectedDurations[serviceKey] || 30
+        : 30;
 
     const isFreeDemo = freeDemoEnabled[serviceKey] && hasFreeDemo;
 
