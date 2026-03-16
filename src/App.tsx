@@ -32,6 +32,7 @@ import StudentDashboard from "./pages/StudentDashboard";
 import MigrateAvailability from "./pages/MigrateAvailability";
 import AuthCallback from "./pages/AuthCallback";
 import ResetPassword from "./pages/ResetPassword";
+import PaymentTest from "./pages/PaymentTest";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminMentorVerification from "./pages/AdminMentorVerification";
 import AdminUserManagement from "./pages/AdminUserManagement";
@@ -91,6 +92,7 @@ const App = () => {
               <Route path="/student/login" element={<StudentLogin />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/payment-test" element={<PaymentTest />} />
               <Route path="/mentor/signup" element={<MentorSignup />} />
               <Route path="/expert/signup" element={<MentorSignup />} />
               <Route path="/expert/login" element={<ExpertLogin />} />

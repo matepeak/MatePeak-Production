@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { createBooking } from "@/services/bookingService";
+import { paymentService } from "@/services/paymentService";
 import { format } from "date-fns";
 import Navbar from "@/components/Navbar";
 import ServiceSelection from "@/components/booking/ServiceSelection";
@@ -148,7 +149,6 @@ const BookingPage = () => {
           full_name: mentor.full_name,
           avatar_url: mentor.profile_picture_url || "",
           timezone: "Asia/Kolkata", // Default timezone since column doesn't exist
-          services: mentor.services || {},
           service_pricing: mentor.service_pricing || {},
           average_rating: averageRating,
           total_reviews: totalReviews,
@@ -501,6 +501,27 @@ const BookingPage = () => {
       const result = await createBooking(bookingData);
 
       if (result.success) {
+        const shouldRedirectToPayment = totalAmount > 0;
+
+        if (shouldRedirectToPayment) {
+          // Render gateway currently fails for long UUID booking IDs in create-order receipt generation.
+          // Use a payment-safe short id while passing full id as actualBookingId for backend reconciliation.
+          const fullBookingId = result.data.id as string;
+          const gatewayBookingId = fullBookingId.slice(0, 18);
+
+          const checkoutUrl = paymentService.getHostedGatewayCheckoutUrl({
+            amount: totalAmount,
+            bookingId: gatewayBookingId,
+            actualBookingId: fullBookingId,
+            mentorId: mentorId || undefined,
+            sessionType: selectedService.type,
+          });
+
+          toast.success("Booking created. Redirecting to payment gateway...");
+          window.location.href = checkoutUrl;
+          return;
+        }
+
         // Send confirmation emails (async, don't wait)
         sendConfirmationEmails(
           result.data,
