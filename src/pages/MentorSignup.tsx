@@ -10,7 +10,6 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { CheckCircle2 } from "lucide-react";
-import { getAuthRedirectUrl } from "@/utils/authRedirect";
 
 
 export default function MentorSignup() {
@@ -43,7 +42,6 @@ export default function MentorSignup() {
     const formData = new FormData(event.currentTarget);
     const email = formData.get("email") as string;
     const fullName = formData.get("fullName") as string;
-    const authRedirectTo = getAuthRedirectUrl("/");
 
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -54,24 +52,12 @@ export default function MentorSignup() {
             full_name: fullName,
             role: 'mentor'
           },
-          emailRedirectTo: authRedirectTo
+          emailRedirectTo: `${window.location.origin}/`
         },
-      });
-
-      console.log('Signup response:', {
-        hasSession: !!data?.session,
-        hasUser: !!data?.user,
-        userEmail: data?.user?.email,
-        errorExists: !!error
       });
 
       if (error) {
         console.error('Signup error:', error);
-        console.error('Error details:', {
-          message: error.message,
-          status: error.status,
-          name: error.name
-        });
         
         // Handle specific error cases with better messages
         if (error.message.includes('fetch')) {
@@ -90,21 +76,13 @@ export default function MentorSignup() {
         return;
       }
 
-      // Check if email confirmation is required
+      // With email confirmation disabled, session should be available immediately
       if (data.session) {
-        // Session created immediately (email confirmation disabled)
         toast.success("Account created successfully! Redirecting to onboarding...");
         navigate("/expert/onboarding");
-      } else if (data.user && !data.session) {
-        // Email confirmation required
-        toast.success(
-          "Account created! Please check your email to verify your account before logging in.",
-          { duration: 6000 }
-        );
-        navigate("/expert/login");
       } else {
-        // Unexpected case
-        toast.error("Failed to create account. Please try again or contact support.");
+        toast.error("Failed to create session. Please try logging in.");
+        navigate("/expert/login");
       }
     } catch (error: any) {
       console.error('Unexpected error during signup:', error);
@@ -131,7 +109,7 @@ export default function MentorSignup() {
     setIsResettingPassword(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
-        redirectTo: getAuthRedirectUrl("/reset-password"),
+        redirectTo: `${window.location.origin}/reset-password`,
       });
       
       if (error) throw error;

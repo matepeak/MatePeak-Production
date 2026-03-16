@@ -9,7 +9,6 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { CheckCircle2, Mail } from "lucide-react";
-import { getAuthRedirectUrl } from "@/utils/authRedirect";
 
 const StudentSignup = () => {
   const navigate = useNavigate();
@@ -42,7 +41,6 @@ const StudentSignup = () => {
     const formData = new FormData(event.currentTarget);
     const email = formData.get("email") as string;
     const fullName = formData.get("fullName") as string;
-    const authRedirectTo = getAuthRedirectUrl("/");
 
     // DETAILED DEBUG LOGGING
     console.log('==========================================');
@@ -52,7 +50,7 @@ const StudentSignup = () => {
     console.log('Full Name:', fullName);
     console.log('Password Length:', password?.length);
     console.log('Password Valid:', isPasswordValid);
-    console.log('Redirect URL:', authRedirectTo);
+    console.log('Redirect URL:', `${window.location.origin}/`);
     console.log('==========================================');
 
     try {
@@ -66,7 +64,7 @@ const StudentSignup = () => {
             full_name: fullName,
             role: 'student'
           },
-          emailRedirectTo: authRedirectTo
+          emailRedirectTo: `${window.location.origin}/`
         },
       });
 
@@ -152,7 +150,7 @@ const StudentSignup = () => {
     setIsResettingPassword(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(forgotPasswordEmail, {
-        redirectTo: getAuthRedirectUrl("/reset-password"),
+        redirectTo: `${window.location.origin}/reset-password`,
       });
       
       if (error) throw error;

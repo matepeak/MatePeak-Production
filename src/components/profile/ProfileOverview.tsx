@@ -117,6 +117,16 @@ export default function ProfileOverview({
     return "";
   };
 
+  const formatPrice = (value: number | null | undefined) => {
+    if (typeof value !== "number" || Number.isNaN(value)) {
+      return "0";
+    }
+
+    return new Intl.NumberFormat("en-IN", {
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
   const fetchServiceStats = async () => {
     try {
       const { data: bookings, error: bookingsError } = await supabase
@@ -417,14 +427,14 @@ export default function ProfileOverview({
                       type="button"
                       onClick={() => setSelectedService(service)}
                     key={index}
-                      className="group relative w-full text-left bg-white rounded-2xl border border-gray-200 hover:border-gray-300 p-5 transition-all duration-200 hover:shadow-sm"
+                      className="group relative w-full text-left bg-white rounded-2xl border border-gray-200 p-5 transition-all duration-200 hover:border-gray-300 hover:shadow-md"
                     >
                     {/* Service Icon */}
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center transition-colors">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center transition-colors group-hover:bg-matepeak-primary/5 group-hover:border-matepeak-primary/20">
                         <ServiceIcon className="h-6 w-6 text-matepeak-primary" />
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap justify-end">
                         {serviceStatsByType[service.key]?.reviewCount > 0 ? (
                           <div className="inline-flex items-center gap-1 rounded-full bg-gray-50 border border-gray-200 px-2 py-0.5 text-xs text-gray-700 font-medium">
                             <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
@@ -445,8 +455,8 @@ export default function ProfileOverview({
                     </div>
 
                     {/* Service Info */}
-                    <div className="space-y-2">
-                      <h3 className="font-bold text-gray-900 text-base leading-tight">
+                    <div className="space-y-2 min-h-[92px]">
+                      <h3 className="font-semibold text-gray-900 text-[1.05rem] leading-snug line-clamp-2">
                         {service.name}
                       </h3>
                       <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
@@ -463,24 +473,24 @@ export default function ProfileOverview({
                     </div>
 
                     {/* Pricing */}
-                    <div className="mt-4 pt-4 border-t border-gray-100">
+                    <div className="mt-4 pt-4 border-t border-gray-100 bg-gray-50/60 rounded-xl px-3.5 py-3">
                       {service.discount_price ? (
-                        <div className="space-y-1">
+                        <div className="space-y-1.5">
                           <div className="flex items-baseline gap-2">
                             <div className="flex items-baseline gap-1">
                               <IndianRupee className="h-5 w-5 text-green-600 mt-0.5" />
                               <span className="text-2xl font-bold text-green-600">
-                                {service.discount_price}
+                                {formatPrice(service.discount_price)}
                               </span>
                             </div>
                             <div className="flex items-baseline gap-1 opacity-60">
                               <IndianRupee className="h-4 w-4 text-gray-500 mt-0.5" />
                               <span className="text-lg font-medium text-gray-500 line-through">
-                                {service.price}
+                                {formatPrice(service.price)}
                               </span>
                             </div>
                           </div>
-                          <span className="text-sm text-gray-500">
+                          <span className="text-xs text-gray-500 uppercase tracking-wide">
                             {getPriceUnit(service.key)}
                           </span>
                         </div>
@@ -488,16 +498,19 @@ export default function ProfileOverview({
                         <div className="flex items-baseline gap-1">
                           <IndianRupee className="h-5 w-5 text-gray-700 mt-0.5" />
                           <span className="text-2xl font-bold text-gray-900">
-                            {service.price}
+                            {formatPrice(service.price)}
                           </span>
-                          <span className="text-sm text-gray-500 ml-1">
+                          <span className="text-xs text-gray-500 uppercase tracking-wide ml-1">
                             {getPriceUnit(service.key)}
                           </span>
                         </div>
                       )}
                     </div>
 
-                    <p className="mt-3 text-xs text-gray-500">View details</p>
+                    <div className="mt-3 flex items-center justify-between">
+                      <p className="text-xs text-gray-500 font-medium">View details</p>
+                      <span className="text-sm text-matepeak-primary opacity-80 group-hover:translate-x-0.5 transition-transform">→</span>
+                    </div>
                     </button>
                 );
               })}
@@ -586,14 +599,14 @@ export default function ProfileOverview({
                 <div className="flex items-end gap-1">
                   <IndianRupee className="h-5 w-5 text-gray-700 mb-1" />
                   <span className="text-[32px] leading-none font-semibold tracking-tight text-gray-900">
-                    {selectedService.discount_price || selectedService.price}
+                    {formatPrice(selectedService.discount_price || selectedService.price)}
                   </span>
                   <span className="text-sm text-gray-500 ml-1 mb-1">
                     {getPriceUnit(selectedService.key)}
                   </span>
                   {selectedService.discount_price && (
                     <span className="text-sm text-gray-400 line-through ml-2 mb-1">
-                      ₹{selectedService.price}
+                      ₹{formatPrice(selectedService.price)}
                     </span>
                   )}
                 </div>

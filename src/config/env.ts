@@ -21,8 +21,6 @@ const envSchema = z.object({
   // Optional Configuration
   VITE_ENABLE_AI_SEARCH: z.enum(["true", "false"]).default("false").optional(),
 
-  VITE_APP_URL: z.string().url("VITE_APP_URL must be a valid URL").optional(),
-
   VITE_PAYMENT_PROVIDER: z
     .enum(["razorpay", "stripe"])
     .default("razorpay")
@@ -41,7 +39,6 @@ function validateEnv() {
     VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
     VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
     VITE_ENABLE_AI_SEARCH: import.meta.env.VITE_ENABLE_AI_SEARCH,
-    VITE_APP_URL: import.meta.env.VITE_APP_URL,
     VITE_PAYMENT_PROVIDER: import.meta.env.VITE_PAYMENT_PROVIDER,
     VITE_GOOGLE_ANALYTICS_ID: import.meta.env.VITE_GOOGLE_ANALYTICS_ID,
   });
