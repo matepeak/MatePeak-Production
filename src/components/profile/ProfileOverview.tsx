@@ -2,8 +2,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Heart,
-  Target,
+  Sparkles,
   Handshake,
   Video,
   MessageSquare,
@@ -11,11 +18,30 @@ import {
   Star,
   Quote,
   IndianRupee,
-  CheckCircle2,
+  Calendar,
+  Clock3,
+  Trophy,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SERVICE_CONFIG } from "@/config/serviceConfig";
+
+interface ServiceListItem {
+  key: string;
+  name: string;
+  description: string;
+  price: number;
+  discount_price: number | null;
+  hasFreeDemo: boolean;
+  icon: any;
+}
+
+interface ServiceStats {
+  averageRating: number;
+  reviewCount: number;
+  completedSessions: number;
+  latestSessionDate: string | null;
+}
 
 interface ProfileOverviewProps {
   mentor: any;
@@ -30,6 +56,12 @@ export default function ProfileOverview({
   stats,
 }: ProfileOverviewProps) {
   const [featuredReviews, setFeaturedReviews] = useState<any[]>([]);
+  const [selectedService, setSelectedService] = useState<ServiceListItem | null>(
+    null
+  );
+  const [serviceStatsByType, setServiceStatsByType] = useState<
+    Record<string, ServiceStats>
+  >({});
   const [showMore, setShowMore] = useState({
     introduction: false,
     motivation: false,
@@ -38,6 +70,10 @@ export default function ProfileOverview({
 
   useEffect(() => {
     fetchFeaturedReviews();
+  }, [mentor.id]);
+
+  useEffect(() => {
+    fetchServiceStats();
   }, [mentor.id]);
 
   const fetchFeaturedReviews = async () => {
@@ -73,7 +109,115 @@ export default function ProfileOverview({
     }
   };
 
-  const getServicesList = () => {
+  const getPriceUnit = (serviceKey: string) => {
+    if (serviceKey === "oneOnOneSession") return "/ session";
+    if (serviceKey === "chatAdvice") return "/ consultation";
+    if (serviceKey === "notes") return "/ resource";
+    if (serviceKey === "digitalProducts") return "/ product";
+    return "";
+  };
+
+  const fetchServiceStats = async () => {
+    try {
+      const { data: bookings, error: bookingsError } = await supabase
+        .from("bookings")
+        .select("id, session_type, status, scheduled_date")
+        .eq("expert_id", mentor.id)
+        .neq("status", "cancelled");
+
+      if (bookingsError) {
+        console.error("Error fetching service bookings:", bookingsError);
+        setServiceStatsByType({});
+        return;
+      }
+
+      const bookingMap = new Map<string, any>();
+      const aggregated: Record<
+        string,
+        {
+          totalRating: number;
+          reviewCount: number;
+          completedSessions: number;
+          latestSessionDate: string | null;
+        }
+      > = {};
+
+      (bookings || []).forEach((booking: any) => {
+        if (!booking?.id || !booking?.session_type) return;
+
+        bookingMap.set(booking.id, booking);
+
+        if (!aggregated[booking.session_type]) {
+          aggregated[booking.session_type] = {
+            totalRating: 0,
+            reviewCount: 0,
+            completedSessions: 0,
+            latestSessionDate: null,
+          };
+        }
+
+        if (booking.status === "completed") {
+          aggregated[booking.session_type].completedSessions += 1;
+        }
+
+        if (
+          booking.scheduled_date &&
+          (!aggregated[booking.session_type].latestSessionDate ||
+            new Date(booking.scheduled_date) >
+              new Date(aggregated[booking.session_type].latestSessionDate!))
+        ) {
+          aggregated[booking.session_type].latestSessionDate =
+            booking.scheduled_date;
+        }
+      });
+
+      const { data: reviews, error: reviewsError } = await supabase
+        .from("reviews")
+        .select("rating, booking_id")
+        .eq("expert_id", mentor.id);
+
+      if (reviewsError) {
+        console.error("Error fetching service reviews:", reviewsError);
+      } else {
+        (reviews || []).forEach((review: any) => {
+          const booking = bookingMap.get(review.booking_id);
+          if (!booking?.session_type) return;
+
+          if (!aggregated[booking.session_type]) {
+            aggregated[booking.session_type] = {
+              totalRating: 0,
+              reviewCount: 0,
+              completedSessions: 0,
+              latestSessionDate: null,
+            };
+          }
+
+          aggregated[booking.session_type].totalRating += Number(review.rating) || 0;
+          aggregated[booking.session_type].reviewCount += 1;
+        });
+      }
+
+      const finalStats: Record<string, ServiceStats> = {};
+      Object.entries(aggregated).forEach(([serviceType, values]) => {
+        finalStats[serviceType] = {
+          averageRating:
+            values.reviewCount > 0
+              ? values.totalRating / values.reviewCount
+              : 0,
+          reviewCount: values.reviewCount,
+          completedSessions: values.completedSessions,
+          latestSessionDate: values.latestSessionDate,
+        };
+      });
+
+      setServiceStatsByType(finalStats);
+    } catch (error) {
+      console.error("Error calculating service stats:", error);
+      setServiceStatsByType({});
+    }
+  };
+
+  const getServicesList = (): ServiceListItem[] => {
     console.log("🎯 Building services list from unified service_pricing:");
     console.log("   service_pricing:", mentor.service_pricing);
     console.log("   legacy pricing:", mentor.pricing);
@@ -84,6 +228,7 @@ export default function ProfileOverview({
     if (!mentor.service_pricing && mentor.pricing !== undefined && mentor.pricing !== null) {
       console.log("   📦 Using legacy pricing system");
       services.push({
+        key: "oneOnOneSession",
         name: SERVICE_CONFIG.oneOnOneSession.name,
         description: SERVICE_CONFIG.oneOnOneSession.description,
         price: mentor.pricing,
@@ -111,7 +256,8 @@ export default function ProfileOverview({
       const actualPrice = value.price !== undefined && value.price !== null ? value.price : 0;
 
       // Build service object
-      const service: any = {
+      const service: ServiceListItem = {
+        key,
         name: value.name,
         description: value.description,
         price: actualPrice,
@@ -221,9 +367,9 @@ export default function ProfileOverview({
       <Card className="shadow-none border-0 bg-gray-50 rounded-2xl">
         <CardContent className="p-6">
           <div className="flex items-center gap-2 mb-4">
-            <Target className="h-5 w-5 text-gray-600" />
+            <Sparkles className="h-5 w-5 text-gray-600" />
             <h2 className="text-lg font-semibold text-gray-900">
-              An Ideal Relationship To Me
+              AI Based Summary
             </h2>
           </div>
           <p
@@ -267,20 +413,35 @@ export default function ProfileOverview({
               {services.map((service, index) => {
                 const ServiceIcon = service.icon;
                 return (
-                  <div
+                    <button
+                      type="button"
+                      onClick={() => setSelectedService(service)}
                     key={index}
-                    className="group relative bg-white rounded-xl border-2 border-gray-200 hover:border-matepeak-primary p-5 transition-all duration-300 hover:shadow-lg"
-                  >
+                      className="group relative w-full text-left bg-white rounded-2xl border border-gray-200 hover:border-gray-300 p-5 transition-all duration-200 hover:shadow-sm"
+                    >
                     {/* Service Icon */}
                     <div className="flex items-start justify-between mb-3">
-                      <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-matepeak-primary/10 to-matepeak-secondary/10 flex items-center justify-center group-hover:from-matepeak-primary/20 group-hover:to-matepeak-secondary/20 transition-colors">
+                      <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center transition-colors">
                         <ServiceIcon className="h-6 w-6 text-matepeak-primary" />
                       </div>
+                      <div className="flex items-center gap-2">
+                        {serviceStatsByType[service.key]?.reviewCount > 0 ? (
+                          <div className="inline-flex items-center gap-1 rounded-full bg-gray-50 border border-gray-200 px-2 py-0.5 text-xs text-gray-700 font-medium">
+                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                            {serviceStatsByType[service.key].averageRating.toFixed(1)}
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-1 rounded-full bg-gray-50 border border-gray-200 px-2 py-0.5 text-xs text-gray-500 font-medium">
+                            <Star className="h-3 w-3" />
+                            No rating yet
+                          </div>
+                        )}
                       {service.hasFreeDemo && (
                         <Badge className="bg-green-50 text-green-700 border-green-200 hover:bg-green-50 hover:text-green-700 text-xs font-medium px-2 py-0.5 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 pointer-events-none">
                           Free Demo
                         </Badge>
                       )}
+                      </div>
                     </div>
 
                     {/* Service Info */}
@@ -340,7 +501,7 @@ export default function ProfileOverview({
                           <span className="text-sm text-gray-500 ml-1">
                             {service.name === SERVICE_CONFIG.oneOnOneSession.name
                               ? "/ session"
-                              : service.name === SERVICE_CONFIG.priorityDm.name
+                              : service.name === SERVICE_CONFIG.chatAdvice.name
                               ? "/ consultation"
                               : service.name === SERVICE_CONFIG.notes.name
                               ? "/ resource"
@@ -352,9 +513,8 @@ export default function ProfileOverview({
                       )}
                     </div>
 
-                    {/* Hover Effect Indicator */}
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-matepeak-primary to-matepeak-secondary rounded-b-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  </div>
+                    <p className="mt-3 text-xs text-gray-500">View details</p>
+                    </button>
                 );
               })}
             </div>
@@ -412,6 +572,133 @@ export default function ProfileOverview({
           </CardContent>
         </Card>
       )}
+
+      <Dialog
+        open={Boolean(selectedService)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedService(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-[560px] p-0 overflow-hidden rounded-3xl border border-gray-200 shadow-xl">
+          {selectedService && (
+            <>
+              <DialogHeader className="px-7 pt-7 pb-4 bg-white border-b border-gray-100">
+                <div className="flex items-start gap-4">
+                  <div className="h-11 w-11 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center">
+                    <selectedService.icon className="h-6 w-6 text-matepeak-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <DialogTitle className="text-[22px] font-semibold tracking-tight text-gray-900 leading-tight">
+                      {selectedService.name}
+                    </DialogTitle>
+                    <DialogDescription className="mt-1.5 text-sm text-gray-500 leading-relaxed">
+                      {selectedService.description || "Personalized mentoring service."}
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+
+              <div className="px-7 py-6 space-y-6 bg-white">
+                <div className="flex items-end gap-1">
+                  <IndianRupee className="h-5 w-5 text-gray-700 mb-1" />
+                  <span className="text-[32px] leading-none font-semibold tracking-tight text-gray-900">
+                    {selectedService.discount_price || selectedService.price}
+                  </span>
+                  <span className="text-sm text-gray-500 ml-1 mb-1">
+                    {getPriceUnit(selectedService.key)}
+                  </span>
+                  {selectedService.discount_price && (
+                    <span className="text-sm text-gray-400 line-through ml-2 mb-1">
+                      ₹{selectedService.price}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-3.5">
+                    <div className="flex items-center gap-1.5 text-gray-500 text-[11px] uppercase tracking-wide mb-1.5">
+                      <Star className="h-3.5 w-3.5" />
+                      Rating
+                    </div>
+                    <p className="text-lg font-semibold tracking-tight text-gray-900">
+                      {serviceStatsByType[selectedService.key]?.reviewCount > 0
+                        ? `${serviceStatsByType[selectedService.key].averageRating.toFixed(1)} / 5`
+                        : "Not rated yet"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-3.5">
+                    <div className="flex items-center gap-1.5 text-gray-500 text-[11px] uppercase tracking-wide mb-1.5">
+                      <Trophy className="h-3.5 w-3.5" />
+                      Sessions
+                    </div>
+                    <p className="text-lg font-semibold tracking-tight text-gray-900">
+                      {serviceStatsByType[selectedService.key]?.completedSessions || 0}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-3.5">
+                    <div className="flex items-center gap-1.5 text-gray-500 text-[11px] uppercase tracking-wide mb-1.5">
+                      <Clock3 className="h-3.5 w-3.5" />
+                      Reviews
+                    </div>
+                    <p className="text-lg font-semibold tracking-tight text-gray-900">
+                      {serviceStatsByType[selectedService.key]?.reviewCount || 0}
+                    </p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-3.5">
+                  <h4 className="text-sm font-semibold tracking-tight text-gray-900">Service Details</h4>
+                  <div className="space-y-2 text-sm text-gray-700">
+                    <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3.5 py-2.5">
+                      <span>Delivery Type</span>
+                      <span className="font-medium">
+                        {SERVICE_CONFIG[selectedService.key]?.typeLabel || "Mentoring Service"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3.5 py-2.5">
+                      <span>Scheduling</span>
+                      <span className="font-medium">
+                        {SERVICE_CONFIG[selectedService.key]?.requiresScheduling
+                          ? "Appointment based"
+                          : "Instant / self-paced"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3.5 py-2.5">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3.5 w-3.5" />
+                        Latest Booking
+                      </span>
+                      <span className="font-medium">
+                        {serviceStatsByType[selectedService.key]?.latestSessionDate
+                          ? new Date(
+                              serviceStatsByType[selectedService.key].latestSessionDate as string
+                            ).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })
+                          : "No bookings yet"}
+                      </span>
+                    </div>
+
+                    {selectedService.hasFreeDemo && (
+                      <div className="rounded-xl bg-gray-50 border border-gray-200 px-3.5 py-2.5 text-gray-700 font-medium">
+                        Includes a free demo option.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

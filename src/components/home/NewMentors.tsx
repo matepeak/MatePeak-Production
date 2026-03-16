@@ -182,9 +182,9 @@ const NewMentors = ({ sectionRef }: NewMentorsProps) => {
             {/* View All Button */}
             <div className="text-center">
               <Link to="/explore">
-                <Button className="bg-gradient-to-r from-matepeak-primary to-matepeak-secondary hover:opacity-90 text-white transition-all duration-200 shadow-lg hover:shadow-xl">
+                <Button className="group bg-gradient-to-r from-matepeak-primary to-matepeak-secondary text-white hover:from-matepeak-primary/90 hover:to-matepeak-secondary/90 rounded-full transition-all duration-300">
                   Explore All Mentors
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
                 </Button>
               </Link>
             </div>

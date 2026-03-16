@@ -1,11 +1,10 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import {
   Twitter,
   Facebook,
   Instagram,
-  Pin,
+  Linkedin,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -51,72 +50,130 @@ const Footer = () => {
     }
   };
 
+  const footerLinks = [
+    { label: "Explore", to: "/explore" },
+    { label: "How It Works", to: "/how-it-works" },
+    { label: "About", to: "/about-us" },
+    { label: "Support", href: "mailto:support@matepeak.com" },
+  ];
+
+  const utilityLinks = [
+    { label: "Browse Mentors", to: "/mentors" },
+    { label: "For Students", to: "/explore" },
+    { label: "Become a Mentor", action: handleBecomeMentor },
+    { label: "Privacy", to: "/privacy" },
+    { label: "About Us", to: "/about-us" },
+  ];
+
   return (
     <>
-      <footer className="bg-white mt-20 mb-6">
-        <div className="max-w-7xl mx-auto px-6 md:px-8 py-10">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
-            <Link to="/" className="inline-block">
-              <img
-                src="/lovable-uploads/MatePeak_logo_with_name (1).png"
-                alt="MatePeak Logo"
-                className="h-12"
-              />
-            </Link>
+      <footer className="bg-white mt-24">
+        <div className="max-w-7xl mx-auto px-6 md:px-8 py-12 md:py-14">
+          <div className="flex flex-col gap-12">
+            <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
+              <Link to="/" className="inline-block shrink-0">
+                <img
+                  src="/lovable-uploads/MatePeak_logo_with_name (1).png"
+                  alt="MatePeak Logo"
+                  className="h-12"
+                />
+              </Link>
 
-            <nav className="flex flex-wrap items-center gap-x-8 gap-y-3 text-sm font-medium text-gray-900">
-              <Link
-                to="/explore"
-                className="hover:text-matepeak-primary transition-colors"
-                onClick={() =>
-                  setTimeout(
-                    () => window.scrollTo({ top: 0, behavior: "smooth" }),
-                    0
+              <nav className="flex flex-wrap items-center gap-x-8 gap-y-4 text-[15px] font-semibold text-gray-900 lg:justify-center">
+                {footerLinks.map((item) =>
+                  item.to ? (
+                    <Link
+                      key={item.label}
+                      to={item.to}
+                      className="hover:text-matepeak-primary transition-colors"
+                    >
+                      {item.label}
+                    </Link>
+                  ) : (
+                    <a
+                      key={item.label}
+                      href={item.href}
+                      className="hover:text-matepeak-primary transition-colors"
+                    >
+                      {item.label}
+                    </a>
                   )
-                }
-              >
-                Browse Mentors
-              </Link>
-              <Button
-                variant="link"
-                className="h-auto p-0 text-sm font-medium text-gray-900 hover:text-matepeak-primary"
-                onClick={handleBecomeMentor}
-              >
-                Become a Mentor
-              </Button>
-              <Link
-                to="/how-it-works"
-                className="hover:text-matepeak-primary transition-colors"
-              >
-                How It Works
-              </Link>
-              <Link
-                to="/about-us"
-                className="hover:text-matepeak-primary transition-colors"
-              >
-                About
-              </Link>
-              <Link
-                to="/contact"
-                className="hover:text-matepeak-primary transition-colors"
-              >
-                Support
-              </Link>
-            </nav>
+                )}
+              </nav>
 
-            <div className="flex items-center gap-4 text-gray-900">
-              <a href="#" aria-label="X" className="hover:text-matepeak-primary transition-colors">
-                <Twitter className="w-5 h-5" />
-              </a>
-              <a href="#" aria-label="Facebook" className="hover:text-matepeak-primary transition-colors">
-                <Facebook className="w-5 h-5" />
-              </a>
-              <a href="#" aria-label="Instagram" className="hover:text-matepeak-primary transition-colors">
-                <Instagram className="w-5 h-5" />
-              </a>
-              <a href="#" aria-label="Pinterest" className="hover:text-matepeak-primary transition-colors">
-                <Pin className="w-5 h-5" />
-              </a>
+              <div className="flex items-center gap-5 text-gray-900 lg:justify-end">
+                <a
+                  href="https://x.com/MatePeak"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="X"
+                  className="hover:text-matepeak-primary transition-colors"
+                >
+                  <Twitter className="w-5 h-5" />
+                </a>
+                <a
+                  href="https://www.facebook.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Facebook"
+                  className="hover:text-matepeak-primary transition-colors"
+                >
+                  <Facebook className="w-5 h-5" />
+                </a>
+                <a
+                  href="https://www.instagram.com/matepeakofficial"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram"
+                  className="hover:text-matepeak-primary transition-colors"
+                >
+                  <Instagram className="w-5 h-5" />
+                </a>
+                <a
+                  href="https://www.linkedin.com/company/matepeak"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="LinkedIn"
+                  className="hover:text-matepeak-primary transition-colors"
+                >
+                  <Linkedin className="w-5 h-5" />
+                </a>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-5 border-t border-black/5 pt-6 text-sm text-gray-600 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+                <span>© {new Date().getFullYear()} MatePeak</span>
+                <a
+                  href="mailto:support@matepeak.com"
+                  className="hover:text-matepeak-primary transition-colors"
+                >
+                  Support
+                </a>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-3 lg:justify-end">
+                {utilityLinks.map((item) =>
+                  item.action ? (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={(e) => item.action?.(e)}
+                      className="text-left hover:text-matepeak-primary transition-colors"
+                    >
+                      {item.label}
+                    </button>
+                  ) : item.to ? (
+                    <Link
+                      key={item.label}
+                      to={item.to}
+                      className="hover:text-matepeak-primary transition-colors"
+                    >
+                      {item.label}
+                    </Link>
+                  ) : null
+                )}
+              </div>
             </div>
           </div>
         </div>

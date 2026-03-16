@@ -116,6 +116,16 @@
     @apply bg-background text-foreground;
   }
 
+  ::selection {
+    background-color: #000000;
+    color: #ffffff;
+  }
+
+  ::-moz-selection {
+    background-color: #000000;
+    color: #ffffff;
+  }
+
   /* Global placeholder styling */
   input::placeholder,
   textarea::placeholder {
