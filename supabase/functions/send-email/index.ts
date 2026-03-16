@@ -16,6 +16,22 @@ interface EmailRequest {
   from?: string;
 }
 
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "Unknown error occurred";
+};
+
+const getErrorStack = (error: unknown) => {
+  if (error instanceof Error) {
+    return error.stack;
+  }
+
+  return undefined;
+};
+
 console.info("send-email function started");
 
 Deno.serve(async (req) => {
@@ -36,7 +52,7 @@ Deno.serve(async (req) => {
       to,
       subject,
       html,
-      from = "MatePeak <onboarding@resend.dev>",
+      from = "MatePeak <support@matepeak.com>",
     }: EmailRequest = requestBody;
 
     // Validate required fields
@@ -80,7 +96,7 @@ Deno.serve(async (req) => {
           statusCode: res.status,
         }),
         {
-          status: 200, // Return 200 so client can read the error details
+          status: res.status,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
@@ -97,11 +113,11 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || "Unknown error occurred",
-        stack: error.stack,
+        error: getErrorMessage(error),
+        stack: getErrorStack(error),
       }),
       {
-        status: 200, // Return 200 so client can read the error
+        status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );

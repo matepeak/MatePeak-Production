@@ -383,7 +383,7 @@ const HowItWorks = ({
               <div
                 className={`absolute ${
                   index % 2 === 0 ? "left-0 md:-left-8" : "right-0 md:-right-8"
-                } text-[120px] md:text-[180px] font-black leading-none pointer-events-none select-none z-0 transition-all duration-700 ${
+                } hidden md:block md:text-[180px] font-black leading-none pointer-events-none select-none z-0 transition-all duration-700 ${
                   activeStep === index
                     ? "opacity-20 scale-100"
                     : "opacity-10 scale-95"
@@ -469,9 +469,8 @@ const HowItWorks = ({
         {/* Bottom CTA */}
         <div className="text-center mt-20 md:mt-28">
           <a href="/explore">
-            <button className="group relative px-10 py-4 bg-gradient-to-r from-matepeak-primary to-matepeak-secondary text-white font-bold rounded-full hover:shadow-2xl hover:shadow-matepeak-primary/30 hover:-translate-y-1 transition-all duration-300 text-base overflow-hidden">
-              <span className="relative z-10">Get Started Today</span>
-              <div className="absolute inset-0 bg-gradient-to-r from-matepeak-secondary to-matepeak-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <button className="bg-gradient-to-r from-matepeak-primary to-matepeak-secondary text-white hover:from-matepeak-primary/90 hover:to-matepeak-secondary/90 font-bold text-sm rounded-full h-11 px-6 transition-all duration-300 font-poppins">
+              Get Started Today
             </button>
           </a>
           <p className="text-xs text-gray-500 mt-3">

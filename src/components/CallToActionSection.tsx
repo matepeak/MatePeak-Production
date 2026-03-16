@@ -106,7 +106,7 @@ const CallToActionSection = () => {
                 <img
                   src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&h=150&fit=crop&crop=faces"
                   alt="Priya Sharma"
-                  className="w-10 h-10 rounded-full border-2 border-white object-cover hover:scale-110 transition-transform duration-200"
+                  className="w-8 h-8 rounded-full border-2 border-white object-cover"
                   title="Priya Sharma"
                   loading="eager"
                 />
@@ -115,7 +115,7 @@ const CallToActionSection = () => {
                 <img
                   src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=faces"
                   alt="Rahul Kumar"
-                  className="w-10 h-10 rounded-full border-2 border-white object-cover hover:scale-110 transition-transform duration-200"
+                  className="w-8 h-8 rounded-full border-2 border-white object-cover"
                   title="Rahul Kumar"
                   loading="eager"
                 />
@@ -124,7 +124,7 @@ const CallToActionSection = () => {
                 <img
                   src="https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&h=150&fit=crop&crop=faces"
                   alt="Ananya Singh"
-                  className="w-10 h-10 rounded-full border-2 border-white object-cover hover:scale-110 transition-transform duration-200"
+                  className="w-8 h-8 rounded-full border-2 border-white object-cover"
                   title="Ananya Singh"
                   loading="eager"
                 />
@@ -133,7 +133,7 @@ const CallToActionSection = () => {
                 <img
                   src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&crop=faces"
                   alt="Arjun Patel"
-                  className="w-10 h-10 rounded-full border-2 border-white object-cover hover:scale-110 transition-transform duration-200"
+                  className="w-8 h-8 rounded-full border-2 border-white object-cover"
                   title="Arjun Patel"
                   loading="eager"
                 />

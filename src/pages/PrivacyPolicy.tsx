@@ -142,10 +142,10 @@ const PrivacyPolicy = () => (
       If you have any questions or concerns about this Privacy Policy or our
       data practices, please contact us at{" "}
       <a
-        href="mailto:iteshofficial@gmail.com"
+        href="mailto:support@matepeak.com"
         className="text-matepeak-primary underline"
       >
-        iteshofficial@gmail.com
+        support@matepeak.com
       </a>
       .
     </p>

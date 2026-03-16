@@ -24,7 +24,7 @@ const SignInRoleSelection = ({ open, onOpenChange }: SignInRoleSelectionProps) =
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[640px] p-8">
         <DialogHeader>
           <DialogTitle className="text-2xl text-center">Sign In to MatePeak</DialogTitle>
           <DialogDescription className="text-center">
@@ -32,22 +32,22 @@ const SignInRoleSelection = ({ open, onOpenChange }: SignInRoleSelectionProps) =
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid md:grid-cols-2 gap-4 mt-4">
+        <div className="grid md:grid-cols-2 gap-5 mt-6">
           <Card 
-            className="cursor-pointer transition-all hover:scale-105 hover:shadow-lg border-2 border-transparent hover:border-matepeak-primary"
+            className="cursor-pointer bg-[#f2f2f2] transition-all hover:scale-105 hover:shadow-lg border-2 border-transparent hover:border-matepeak-primary"
             onClick={() => handleRoleSelect('student')}
           >
-            <CardHeader className="text-center pb-3">
-              <div className="mx-auto mb-3 w-16 h-16 bg-matepeak-primary/10 rounded-full flex items-center justify-center">
+            <CardHeader className="text-center pb-4 pt-6">
+              <div className="mx-auto mb-4 w-16 h-16 bg-matepeak-primary/10 rounded-full flex items-center justify-center">
                 <GraduationCap className="w-8 h-8 text-matepeak-primary" />
               </div>
               <CardTitle className="text-xl">I'm a Student</CardTitle>
-              <CardDescription className="text-sm">
+              <CardDescription className="text-sm pt-1">
                 Access your learning dashboard
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-0">
-              <ul className="space-y-1.5 text-xs text-muted-foreground">
+            <CardContent className="pt-0 pb-6 px-6">
+              <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-center">
                   <span className="mr-2">✓</span>
                   View your sessions
@@ -65,20 +65,20 @@ const SignInRoleSelection = ({ open, onOpenChange }: SignInRoleSelectionProps) =
           </Card>
 
           <Card 
-            className="cursor-pointer transition-all hover:scale-105 hover:shadow-lg border-2 border-transparent hover:border-matepeak-primary"
+            className="cursor-pointer bg-[#f2f2f2] transition-all hover:scale-105 hover:shadow-lg border-2 border-transparent hover:border-matepeak-primary"
             onClick={() => handleRoleSelect('mentor')}
           >
-            <CardHeader className="text-center pb-3">
-              <div className="mx-auto mb-3 w-16 h-16 bg-matepeak-primary/10 rounded-full flex items-center justify-center">
+            <CardHeader className="text-center pb-4 pt-6">
+              <div className="mx-auto mb-4 w-16 h-16 bg-matepeak-primary/10 rounded-full flex items-center justify-center">
                 <Users className="w-8 h-8 text-matepeak-primary" />
               </div>
               <CardTitle className="text-xl">I'm a Mentor</CardTitle>
-              <CardDescription className="text-sm">
+              <CardDescription className="text-sm pt-1">
                 Access your expert dashboard
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-0">
-              <ul className="space-y-1.5 text-xs text-muted-foreground">
+            <CardContent className="pt-0 pb-6 px-6">
+              <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-center">
                   <span className="mr-2">✓</span>
                   Manage your sessions

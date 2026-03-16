@@ -1,4 +1,4 @@
-﻿import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
@@ -10,6 +10,7 @@ const Hero = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+  const [isMobileView, setIsMobileView] = useState(false);
   const navigate = useNavigate();
 
   const fields = [
@@ -219,6 +220,16 @@ const Hero = () => {
     }
   }, []);
 
+  useEffect(() => {
+    const updateView = () => {
+      setIsMobileView(window.innerWidth < 640);
+    };
+
+    updateView();
+    window.addEventListener("resize", updateView);
+    return () => window.removeEventListener("resize", updateView);
+  }, []);
+
   const popularOptions = ["Career Growth", "Mental Health", "Interview Prep"];
 
   const handleSearch = (e: React.FormEvent) => {
@@ -280,21 +291,21 @@ const Hero = () => {
   return (
     <section
       id="hero-section"
-      className="py-20 md:py-32 opacity-0 transition-opacity duration-700"
+      className="py-12 sm:py-16 md:py-32 opacity-0 transition-opacity duration-700"
     >
       <div className="max-w-7xl mx-auto px-4 md:px-8 xl:px-12">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div className="text-center lg:text-left lg:pl-0 -mt-32">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+          <div className="text-center lg:text-left lg:pl-0 mt-0 sm:-mt-8 lg:-mt-32">
             <div className="mb-4">
-              <h1 className="text-[2rem] md:text-[2.75rem] font-poppins text-gray-900 mb-2 leading-tight">
+              <h1 className="text-[2.05rem] sm:text-[2.2rem] md:text-[2.75rem] font-poppins text-gray-900 mb-3 leading-tight max-w-[320px] sm:max-w-[420px] lg:max-w-none mx-auto lg:mx-0">
                 <span className="font-light">Turn </span>
                 <span className="font-bold">Questions</span>
                 <span className="font-light"> Into </span>
                 <span className="font-bold">Conversations</span>
               </h1>
-              <p className="text-lg text-gray-600 font-poppins font-light flex items-center justify-center lg:justify-start gap-2 mb-10">
-                <span>Get 1-on-1 advice on</span>
-                <span className="inline-block min-w-[180px] text-left">
+              <p className="text-base sm:text-lg text-gray-600 font-poppins font-light flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-0.5 sm:gap-2 mb-8 sm:mb-10">
+                <span className="whitespace-nowrap">Get 1-on-1 advice on</span>
+                <span className="inline-block min-w-[130px] sm:min-w-[180px] text-center sm:text-left">
                   <span className="text-matepeak-primary font-semibold">
                     {displayText}
                   </span>
@@ -304,10 +315,10 @@ const Hero = () => {
             </div>
 
             {/* Search Bar */}
-            <div className="flex flex-col justify-center lg:justify-start mb-8 mt-10">
+            <div className="flex flex-col justify-center lg:justify-start items-center lg:items-start mb-8 mt-6 sm:mt-8">
               <form
                 onSubmit={handleSearch}
-                className="relative w-full max-w-2xl mb-4"
+                className="relative w-full max-w-xl mb-4"
               >
                 <div className="relative">
                   <input
@@ -322,14 +333,18 @@ const Hero = () => {
                         setSelectedSuggestionIndex(-1);
                       }, 200)
                     }
-                    placeholder="What type of mentor are you interested in?"
-                    className="w-full h-14 pl-6 pr-14 rounded-full bg-gray-50 hover:bg-white focus:bg-white border border-gray-200 text-gray-700 placeholder:text-sm placeholder:text-gray-500 outline-none hover:border-gray-300 focus:border-matepeak-primary focus:ring-2 focus:ring-matepeak-primary/20 transition-all"
+                    placeholder={
+                      isMobileView
+                        ? "What mentor are you interested in?"
+                        : "What type of mentor are you interested in?"
+                    }
+                    className="w-full h-12 sm:h-14 pl-4 sm:pl-6 pr-12 sm:pr-14 rounded-full bg-gray-50 hover:bg-white focus:bg-white border border-gray-200 text-gray-700 placeholder:text-xs sm:placeholder:text-sm placeholder:text-gray-500 outline-none hover:border-gray-300 focus:border-matepeak-primary focus:ring-2 focus:ring-matepeak-primary/20 transition-all"
                   />
                   <button
                     type="submit"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black flex items-center justify-center hover:bg-gray-800 transition-all shadow-sm"
+                    className="absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-black flex items-center justify-center hover:bg-gray-800 transition-all shadow-sm"
                   >
-                    <Search className="w-4 h-4 text-white" />
+                    <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
                   </button>
                 </div>
 
@@ -370,22 +385,123 @@ const Hero = () => {
               </form>
 
               {/* Popular Tags */}
-              <div className="flex items-center gap-2.5 flex-wrap max-w-lg">
-                <span className="text-sm font-bold text-gray-900 font-poppins">
-                  Try:
-                </span>
-                {popularOptions.map((option) => (
-                  <button
-                    key={option}
-                    onClick={() => handlePopularClick(option)}
-                    className="text-sm px-3.5 py-1 rounded-full bg-white border border-gray-200 text-gray-700 hover:border-matepeak-primary hover:text-matepeak-primary transition-all font-poppins"
-                  >
-                    {option}
-                  </button>
-                ))}
+              <div className="w-full max-w-xl">
+                <div className="mx-auto lg:mx-0 flex w-fit items-center gap-1.5 sm:gap-2.5 flex-nowrap">
+                  <span className="text-[11px] sm:text-sm font-bold text-gray-900 font-poppins whitespace-nowrap leading-none">
+                    Try:
+                  </span>
+                  <div className="flex items-center gap-1 sm:gap-2 flex-nowrap">
+                    {popularOptions.map((option) => (
+                      <button
+                        key={option}
+                        onClick={() => handlePopularClick(option)}
+                        className="h-6 sm:h-8 inline-flex items-center justify-center text-[10px] sm:text-sm px-2 sm:px-3.5 rounded-full bg-white border border-gray-200 text-gray-700 hover:border-matepeak-primary hover:text-matepeak-primary transition-all font-poppins whitespace-nowrap leading-none"
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+          <div className="lg:hidden overflow-hidden pt-2 relative">
+            <div className="absolute left-0 top-0 bottom-0 w-10 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
+            <div className="absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
+
+            <div className="flex gap-4 animate-scroll-left pt-8">
+              {mentorCards.map((mentor) => (
+                <div key={`mobile-${mentor.id}`} className="flex-shrink-0">
+                  <div
+                    className="bg-white rounded-2xl border border-gray-200/60 p-5 pt-14 w-56 h-56 relative"
+                    style={{ boxShadow: "0 10px 30px -5px rgba(0, 0, 0, 0.1)" }}
+                  >
+                    <div className="flex flex-col items-center h-full">
+                      <div className="w-16 h-16 rounded-full overflow-hidden ring-2 ring-white shadow-md absolute -top-8 left-1/2 -translate-x-1/2">
+                        <img
+                          src={mentor.image}
+                          alt={mentor.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <h3 className="text-base font-semibold text-gray-900 mb-1 font-poppins text-center">
+                        {mentor.name}
+                      </h3>
+                      <p className="text-gray-500 text-xs mb-3 font-poppins text-center">
+                        {mentor.title}
+                      </p>
+                      <div className="w-full border-t border-gray-100 pt-3 mt-auto text-center">
+                        <span className="text-xs font-medium text-gray-700 font-poppins">
+                          {mentor.company}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {mentorCards.map((mentor) => (
+                <div key={`mobile-${mentor.id}-duplicate`} className="flex-shrink-0">
+                  <div
+                    className="bg-white rounded-2xl border border-gray-200/60 p-5 pt-14 w-56 h-56 relative"
+                    style={{ boxShadow: "0 10px 30px -5px rgba(0, 0, 0, 0.1)" }}
+                  >
+                    <div className="flex flex-col items-center h-full">
+                      <div className="w-16 h-16 rounded-full overflow-hidden ring-2 ring-white shadow-md absolute -top-8 left-1/2 -translate-x-1/2">
+                        <img
+                          src={mentor.image}
+                          alt={mentor.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <h3 className="text-base font-semibold text-gray-900 mb-1 font-poppins text-center">
+                        {mentor.name}
+                      </h3>
+                      <p className="text-gray-500 text-xs mb-3 font-poppins text-center">
+                        {mentor.title}
+                      </p>
+                      <div className="w-full border-t border-gray-100 pt-3 mt-auto text-center">
+                        <span className="text-xs font-medium text-gray-700 font-poppins">
+                          {mentor.company}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 text-center">
+              <p className="text-gray-600 text-sm font-poppins mb-4">
+                Our experts are ready to help
+              </p>
+              <div className="flex items-center justify-center gap-3">
+                {expertProfiles.map((expert, index) => (
+                  <div
+                    key={`mobile-expert-${expert.id}`}
+                    className="relative"
+                    style={{
+                      marginLeft: index > 0 ? "-14px" : "0",
+                      zIndex: expertProfiles.length - index,
+                    }}
+                  >
+                    <div className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-white shadow-sm">
+                      <img
+                        src={expert.image}
+                        alt={expert.name}
+                        className="w-full h-full object-cover"
+                        title={expert.name}
+                      />
+                    </div>
+                  </div>
+                ))}
+                <div className="ml-1 text-xs font-medium text-gray-700 font-poppins">
+                  and many more..
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="hidden lg:block overflow-hidden pt-0 relative -mt-16">
             {/* Left fade gradient */}
             <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
@@ -474,7 +590,7 @@ const Hero = () => {
                       zIndex: expertProfiles.length - index,
                     }}
                   >
-                    <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white shadow-sm hover:scale-110 transition-transform duration-200">
+                    <div className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-white shadow-sm">
                       <img
                         src={expert.image}
                         alt={expert.name}

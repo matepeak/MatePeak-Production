@@ -301,7 +301,7 @@ async function sendReminderEmail(
     </div>
     
     <div class="footer">
-      <p>Need to reschedule? <a href="mailto:iteshofficial@gmail.com">Contact Support</a></p>
+      <p>Need to reschedule? <a href="mailto:support@matepeak.com">Contact Support</a></p>
       <p>&copy; 2025 MatePeak - Be a Solopreneur. All rights reserved.</p>
     </div>
   </div>
@@ -316,7 +316,7 @@ async function sendReminderEmail(
       Authorization: `Bearer ${RESEND_API_KEY}`,
     },
     body: JSON.stringify({
-      from: "MatePeak - Be a Solopreneur <onboarding@resend.dev>",
+      from: "MatePeak - Be a Solopreneur <support@matepeak.com>",
       to: [to],
       subject,
       html,

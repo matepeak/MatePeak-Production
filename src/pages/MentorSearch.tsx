@@ -9,6 +9,7 @@ import { MentorProfile } from "@/components/MentorCard";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import SEO from "@/components/SEO";
 
 const MentorSearch = () => {
   const location = useLocation();
@@ -154,6 +155,11 @@ const MentorSearch = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <SEO
+        title="Find Mentors | MatePeak"
+        description="Search and compare expert mentors on MatePeak by category, skills, and experience to find the best fit for your learning goals."
+        canonicalPath="/mentors"
+      />
       <Navbar />
 
       <main className="flex-grow">

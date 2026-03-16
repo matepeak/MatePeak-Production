@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import ProfileHeader from "@/components/profile/ProfileHeader";
@@ -14,6 +13,7 @@ import ProfileExperiences from "@/components/profile/ProfileExperiences";
 import ProfileReviews from "@/components/profile/ProfileReviews";
 import ProfileAbout from "@/components/profile/ProfileAbout";
 import AvailabilityPreview from "@/components/profile/AvailabilityPreview";
+import SEO from "@/components/SEO";
 
 export type ProfileTab =
   | "overview"
@@ -68,6 +68,28 @@ export default function MentorPublicProfile() {
     totalSessions: 0,
     completedSessions: 0,
   });
+
+  const profileTitle = mentor
+    ? `${mentor.full_name} | Mentor at MatePeak`
+    : "Mentor Profile | MatePeak";
+
+  const profileDescription = mentor
+    ? `Book 1-on-1 mentorship with ${mentor.full_name}${mentor.category ? ` in ${mentor.category}` : ""}. Explore services, availability, and reviews on MatePeak.`
+    : "Explore mentor profile, services, and availability on MatePeak.";
+
+  const profileStructuredData = mentor
+    ? {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        name: mentor.full_name,
+        url: `https://www.matepeak.com/mentor/${mentor.username}`,
+        description: mentor.bio || mentor.headline || "Mentor on MatePeak",
+        image:
+          mentor.profile_picture_url ||
+          mentor.profiles?.avatar_url ||
+          "https://www.matepeak.com/lovable-uploads/14bf0eea-1bc9-4675-9231-356df10eb82d.png",
+      }
+    : undefined;
 
   useEffect(() => {
     if (username) {
@@ -178,12 +200,24 @@ export default function MentorPublicProfile() {
       <div className="min-h-screen flex flex-col bg-gray-50">
         <Navbar />
         <div className="flex-grow flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-matepeak-primary mx-auto mb-4" />
-            <p className="text-sm text-gray-600">Loading mentor profile...</p>
-          </div>
+          <svg
+            className="animate-arc-spin h-10 w-10"
+            viewBox="0 0 40 40"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle cx="20" cy="20" r="16" stroke="#e5e7eb" strokeWidth="3" />
+            <circle
+              cx="20"
+              cy="20"
+              r="16"
+              stroke="#111827"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeDasharray="75 26"
+            />
+          </svg>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -232,6 +266,13 @@ export default function MentorPublicProfile() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
+      <SEO
+        title={profileTitle}
+        description={profileDescription}
+        canonicalPath={username ? `/mentor/${username}` : "/mentors"}
+        type="profile"
+        structuredData={profileStructuredData}
+      />
       <Navbar />
 
       <main className="flex-grow py-8">

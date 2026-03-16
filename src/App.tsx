@@ -19,6 +19,7 @@ import Dashboard from "./pages/Dashboard";
 import HowItWorks from "./pages/HowItWorks";
 import NotFound from "./pages/NotFound";
 import AboutUs from "./pages/AboutUs";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RoleSelection from "./pages/RoleSelection";
 import StudentSignup from "./pages/StudentSignup";
 import StudentLogin from "./pages/StudentLogin";
@@ -87,6 +88,7 @@ const App = () => {
               <Route path="/student/dashboard" element={<StudentDashboard />} />
               <Route path="/how-it-works" element={<HowItWorks />} />
               <Route path="/about-us" element={<AboutUs />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/signup" element={<RoleSelection />} />
               <Route path="/student/signup" element={<StudentSignup />} />
               <Route path="/student/login" element={<StudentLogin />} />
