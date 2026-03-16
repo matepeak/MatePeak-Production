@@ -111,7 +111,7 @@ export default function ProfileOverview({
 
   const getPriceUnit = (serviceKey: string) => {
     if (serviceKey === "oneOnOneSession") return "/ session";
-    if (serviceKey === "chatAdvice") return "/ consultation";
+    if (serviceKey === "priorityDm") return "/ consultation";
     if (serviceKey === "notes") return "/ resource";
     if (serviceKey === "digitalProducts") return "/ product";
     return "";
@@ -263,6 +263,7 @@ export default function ProfileOverview({
         price: actualPrice,
         discount_price: value.discount_price,
         hasFreeDemo: value.hasFreeDemo || false,
+        icon: Star,
       };
 
       // Use shared SERVICE_CONFIG for consistent naming across the app
@@ -481,15 +482,7 @@ export default function ProfileOverview({
                             </div>
                           </div>
                           <span className="text-sm text-gray-500">
-                            {service.name === SERVICE_CONFIG.oneOnOneSession.name
-                              ? "/ session"
-                              : service.name === SERVICE_CONFIG.priorityDm.name
-                              ? "/ consultation"
-                              : service.name === SERVICE_CONFIG.notes.name
-                              ? "/ resource"
-                              : service.name === SERVICE_CONFIG.digitalProducts.name
-                              ? "/ product"
-                              : ""}
+                            {getPriceUnit(service.key)}
                           </span>
                         </div>
                       ) : (
@@ -499,15 +492,7 @@ export default function ProfileOverview({
                             {service.price}
                           </span>
                           <span className="text-sm text-gray-500 ml-1">
-                            {service.name === SERVICE_CONFIG.oneOnOneSession.name
-                              ? "/ session"
-                              : service.name === SERVICE_CONFIG.chatAdvice.name
-                              ? "/ consultation"
-                              : service.name === SERVICE_CONFIG.notes.name
-                              ? "/ resource"
-                              : service.name === SERVICE_CONFIG.digitalProducts.name
-                              ? "/ product"
-                              : ""}
+                            {getPriceUnit(service.key)}
                           </span>
                         </div>
                       )}
