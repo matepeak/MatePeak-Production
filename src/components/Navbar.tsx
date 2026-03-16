@@ -367,8 +367,8 @@ const Navbar = () => {
     <>
       <nav
         className={`${
-          isMainPage ? "sticky top-0 z-50" : "relative"
-        } border-b border-gray-100 bg-white pt-4 pb-4`}
+          isMainPage ? "sticky top-0 z-50" : "sticky top-0 z-50 md:relative"
+        } border-b border-gray-100 bg-white/95 supports-[backdrop-filter]:bg-white/90 backdrop-blur-sm pt-4 pb-4`}
       >
         <div className="container mx-auto px-6 sm:px-8 lg:px-12">
           <div className="flex items-center gap-4">
