@@ -358,6 +358,11 @@ const Navbar = () => {
 
   const location = useLocation();
   const isMainPage = location.pathname === "/";
+
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location.pathname]);
+
   return (
     <>
       <nav
@@ -600,122 +605,191 @@ const Navbar = () => {
           </div>
         </div>
 
-        {isMenuOpen && (
-          <div className="md:hidden bg-white py-4 px-4 mt-2 shadow-lg border-t border-gray-200 rounded-b-xl">
-            {user ? (
-              <div className="flex flex-col space-y-2">
-                <div className="flex items-center gap-3 pb-3 border-b border-gray-200">
-                  <Avatar className="h-10 w-10 ring-2 ring-gray-200">
-                    <AvatarImage
-                      src={profile?.avatar_url}
-                      alt={getDisplayName()}
-                    />
-                    <AvatarFallback
-                      className={`${getAvatarColor(
-                        getDisplayName()
-                      )} text-white font-semibold`}
-                    >
-                      {getInitials(getDisplayName())}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="text-gray-900 font-semibold text-sm">
-                      {getDisplayName()}
-                    </p>
-                    <p className="text-gray-500 text-xs capitalize">
-                      {userRole || "User"}
-                    </p>
+        <div
+          className={`md:hidden fixed inset-0 z-[70] ${
+            isMenuOpen ? "pointer-events-auto" : "pointer-events-none"
+          }`}
+        >
+          <button
+            aria-label="Close mobile menu overlay"
+            className={`absolute inset-0 bg-black/30 transition-opacity duration-300 ${
+              isMenuOpen ? "opacity-100" : "opacity-0"
+            }`}
+            onClick={() => setIsMenuOpen(false)}
+          />
+
+          <aside
+            className={`absolute right-0 top-0 h-full w-[78%] max-w-[320px] bg-white border-l border-gray-200 shadow-2xl transition-transform duration-300 ${
+              isMenuOpen ? "translate-x-0" : "translate-x-full"
+            }`}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+              <span className="text-base font-semibold text-gray-900">Menu</span>
+              <button
+                onClick={() => setIsMenuOpen(false)}
+                className="p-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                aria-label="Close menu"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="h-[calc(100%-61px)] overflow-y-auto px-4 py-4">
+              <div className="flex flex-col gap-2 pb-4 border-b border-gray-200">
+                <Button
+                  variant="ghost"
+                  className="text-gray-700 hover:bg-gray-100 w-full font-medium justify-start rounded-xl h-11"
+                  onClick={() => {
+                    navigate("/");
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  Home
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="text-gray-700 hover:bg-gray-100 w-full font-medium justify-start rounded-xl h-11"
+                  onClick={() => {
+                    handleBrowseCategories();
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  Explore
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="text-gray-700 hover:bg-gray-100 w-full font-medium justify-start rounded-xl h-11"
+                  onClick={() => {
+                    handleBrowseAllMentors();
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  Browse All Mentors
+                </Button>
+              </div>
+
+              {user ? (
+                <div className="pt-4 flex flex-col gap-2">
+                  <div className="flex items-center gap-3 px-2 pb-3 border-b border-gray-200 mb-1">
+                    <Avatar className="h-10 w-10 ring-2 ring-gray-200">
+                      <AvatarImage
+                        src={profile?.avatar_url}
+                        alt={getDisplayName()}
+                      />
+                      <AvatarFallback
+                        className={`${getAvatarColor(
+                          getDisplayName()
+                        )} text-white font-semibold`}
+                      >
+                        {getInitials(getDisplayName())}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="text-gray-900 font-semibold text-sm">
+                        {getDisplayName()}
+                      </p>
+                      <p className="text-gray-500 text-xs capitalize">
+                        {userRole || "User"}
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                {/* Resume Onboarding - Only for mentors with saved drafts */}
-                {userRole === "mentor" && onboardingDraft && (
-                  <Button
-                    variant="ghost"
-                    className="text-amber-700 hover:bg-amber-50 w-full font-medium justify-start transition-all duration-200 rounded-xl h-11"
-                    onClick={() => {
-                      handleResumeOnboarding();
-                      setIsMenuOpen(false);
-                    }}
-                  >
-                    <FileEdit className="mr-3 h-4 w-4 text-amber-600" />
-                    Resume Onboarding
-                  </Button>
-                )}
-
-                {/* View Public Profile - Only for fully onboarded mentors with username */}
-                {userRole === "mentor" &&
-                  profile?.username &&
-                  profile?.onboarding_complete === true && (
+                  {userRole === "mentor" && onboardingDraft && (
                     <Button
                       variant="ghost"
-                      className="text-gray-700 hover:bg-gray-100 w-full font-medium justify-start transition-all duration-200 rounded-xl h-11"
+                      className="text-amber-700 hover:bg-amber-50 w-full font-medium justify-start rounded-xl h-11"
                       onClick={() => {
-                        handleViewProfile();
+                        handleResumeOnboarding();
                         setIsMenuOpen(false);
                       }}
                     >
-                      <User className="mr-3 h-4 w-4 text-gray-500" />
-                      View Public Profile
+                      <FileEdit className="mr-3 h-4 w-4 text-amber-600" />
+                      Resume Onboarding
                     </Button>
                   )}
 
-                {/* Dashboard - Only for fully onboarded mentors or all students */}
-                {((userRole === "mentor" &&
-                  profile?.onboarding_complete === true) ||
-                  userRole === "student") && (
-                  <Button
-                    variant="ghost"
-                    className="text-gray-700 hover:bg-gray-100 w-full font-medium justify-start transition-all duration-200 rounded-xl h-11"
-                    onClick={() => {
-                      handleDashboardClick();
-                      setIsMenuOpen(false);
-                    }}
-                  >
-                    <LayoutDashboard className="mr-3 h-4 w-4 text-gray-500" />
-                    Dashboard
-                  </Button>
-                )}
+                  {userRole === "mentor" &&
+                    profile?.username &&
+                    profile?.onboarding_complete === true && (
+                      <Button
+                        variant="ghost"
+                        className="text-gray-700 hover:bg-gray-100 w-full font-medium justify-start rounded-xl h-11"
+                        onClick={() => {
+                          handleViewProfile();
+                          setIsMenuOpen(false);
+                        }}
+                      >
+                        <User className="mr-3 h-4 w-4 text-gray-500" />
+                        View Public Profile
+                      </Button>
+                    )}
 
-                <div className="pt-2 border-t border-gray-200">
+                  {((userRole === "mentor" &&
+                    profile?.onboarding_complete === true) ||
+                    userRole === "student") && (
+                    <Button
+                      variant="ghost"
+                      className="text-gray-700 hover:bg-gray-100 w-full font-medium justify-start rounded-xl h-11"
+                      onClick={() => {
+                        handleDashboardClick();
+                        setIsMenuOpen(false);
+                      }}
+                    >
+                      <LayoutDashboard className="mr-3 h-4 w-4 text-gray-500" />
+                      Dashboard
+                    </Button>
+                  )}
+
+                  <div className="pt-2 mt-1 border-t border-gray-200">
+                    <Button
+                      variant="ghost"
+                      className="text-red-600 hover:bg-red-50 w-full font-medium justify-start rounded-xl h-11"
+                      onClick={() => {
+                        handleLogout();
+                        setIsMenuOpen(false);
+                      }}
+                    >
+                      <LogOut className="mr-3 h-4 w-4" />
+                      Log Out
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="pt-4 flex flex-col gap-3">
                   <Button
                     variant="ghost"
-                    className="text-red-600 hover:bg-red-50 w-full font-medium justify-start transition-all duration-200 rounded-xl h-11"
+                    className="text-gray-700 hover:bg-gray-100 w-full font-medium justify-start rounded-xl h-11"
                     onClick={() => {
-                      handleLogout();
+                      setIsFeedbackOpen(true);
                       setIsMenuOpen(false);
                     }}
                   >
-                    <LogOut className="mr-3 h-4 w-4" />
-                    Log Out
+                    Share Your Feedback
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="bg-[#f2f2f2] text-matepeak-primary border-0 shadow-none hover:bg-black hover:text-white hover:shadow-none w-full font-semibold justify-center rounded-full h-10 px-6 transition-colors duration-150 font-poppins"
+                    onClick={() => {
+                      handleSignInClick();
+                      setIsMenuOpen(false);
+                    }}
+                  >
+                    Sign In
+                  </Button>
+                  <Button
+                    className="bg-gradient-to-r from-matepeak-primary to-matepeak-secondary text-white hover:from-matepeak-primary/90 hover:to-matepeak-secondary/90 w-full font-bold rounded-full h-12"
+                    onClick={() => {
+                      handleGetStartedClick();
+                      setIsMenuOpen(false);
+                    }}
+                  >
+                    Create account
                   </Button>
                 </div>
-              </div>
-            ) : (
-              <div className="flex flex-col space-y-3">
-                <Button
-                  variant="outline"
-                  className="text-matepeak-primary border border-matepeak-primary/30 hover:bg-matepeak-primary hover:text-white w-full font-semibold justify-center transition-all duration-300 rounded-full"
-                  onClick={() => {
-                    handleSignInClick();
-                    setIsMenuOpen(false);
-                  }}
-                >
-                  Sign In
-                </Button>
-                <Button
-                  className="bg-gradient-to-r from-matepeak-primary to-matepeak-secondary text-white hover:from-matepeak-primary/90 hover:to-matepeak-secondary/90 w-full font-bold rounded-full h-12 transition-all duration-300"
-                  onClick={() => {
-                    handleGetStartedClick();
-                    setIsMenuOpen(false);
-                  }}
-                >
-                  Create account
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          </aside>
+        </div>
 
         <RoleSelectionModal
           open={isRoleModalOpen}
