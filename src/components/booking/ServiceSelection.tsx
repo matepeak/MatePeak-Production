@@ -15,9 +15,9 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { SelectedService } from "./BookingDialog";
+import type { SelectedService } from "./BookingDialog";
 import { useState } from "react";
-import { SERVICE_CONFIG } from "@/config/serviceConfig";
+import { SERVICE_CONFIG, normalizeServiceType } from "@/config/serviceConfig";
 
 interface ServiceSelectionProps {
   servicePricing: any; // Unified service_pricing structure
@@ -36,6 +36,9 @@ export default function ServiceSelection({
   totalReviews = 0,
   oneOnOneOnly = false,
 }: ServiceSelectionProps) {
+  const isServiceEnabled = (value: any) =>
+    value === true || value === "true" || value === 1 || value === "1";
+
   const [selectedDurations, setSelectedDurations] = useState<
     Record<string, number>
   >({});
@@ -54,15 +57,30 @@ export default function ServiceSelection({
 
   // Get all enabled services
   const enabledServices = Object.entries(servicePricing)
-    .filter(([_, value]: [string, any]) => value?.enabled)
+    .filter(([_, value]: [string, any]) => isServiceEnabled(value?.enabled))
     .filter(([key]) => (oneOnOneOnly ? key === "oneOnOneSession" : true))
     .map(([key, value]) => ({ key, ...value }));
 
-  const handleSelect = (serviceKey: string, serviceName: string, servicePrice: number, hasFreeDemo: boolean) => {
-    const config = SERVICE_CONFIG[serviceKey];
+  const resolveServiceType = (serviceKey: string, rawType?: string) => {
+    return (
+      (rawType ? normalizeServiceType(rawType) : null) ||
+      normalizeServiceType(serviceKey) ||
+      "oneOnOneSession"
+    );
+  };
+
+  const handleSelect = (
+    serviceKey: string,
+    rawType: string | undefined,
+    serviceName: string,
+    servicePrice: number,
+    hasFreeDemo: boolean
+  ) => {
+    const normalizedServiceType = resolveServiceType(serviceKey, rawType);
+    const config = SERVICE_CONFIG[normalizedServiceType] || SERVICE_CONFIG.oneOnOneSession;
     // Store a valid, non-zero duration for non-scheduled services to satisfy DB constraints.
     const duration =
-      serviceKey === "oneOnOneSession"
+      normalizedServiceType === "oneOnOneSession"
         ? selectedDurations[serviceKey] || 30
         : 30;
 
@@ -72,7 +90,8 @@ export default function ServiceSelection({
     const actualPrice = servicePrice !== undefined && servicePrice !== null ? servicePrice : 0;
 
     onServiceSelect({
-      type: serviceKey as any,
+      type: normalizedServiceType,
+      serviceKey,
       name: serviceName || config?.shortName || serviceKey, // Prioritize custom name
       duration,
       price: isFreeDemo ? 0 : actualPrice,
@@ -115,15 +134,16 @@ export default function ServiceSelection({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {enabledServices.map((service) => {
           const serviceKey = service.key;
-          const isPredefined = SERVICE_CONFIG[serviceKey];
+          const resolvedServiceType = resolveServiceType(serviceKey, service.type);
+          const isPredefined = SERVICE_CONFIG[resolvedServiceType];
           
           // Allow mentors to customize predefined service names/descriptions
           // Use custom name/description if provided, otherwise fall back to SERVICE_CONFIG
           const config = isPredefined ? {
-            ...SERVICE_CONFIG[serviceKey],
-            name: service.name || SERVICE_CONFIG[serviceKey].name,
-            shortName: service.name || SERVICE_CONFIG[serviceKey].shortName,
-            description: service.description || SERVICE_CONFIG[serviceKey].description,
+            ...SERVICE_CONFIG[resolvedServiceType],
+            name: service.name || SERVICE_CONFIG[resolvedServiceType].name,
+            shortName: service.name || SERVICE_CONFIG[resolvedServiceType].shortName,
+            description: service.description || SERVICE_CONFIG[resolvedServiceType].description,
           } : {
             icon: Star,
             name: service.name,
@@ -284,7 +304,13 @@ export default function ServiceSelection({
                   <Button
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleSelect(serviceKey, service.name, service.price, service.hasFreeDemo);
+                      handleSelect(
+                        serviceKey,
+                        service.type,
+                        service.name,
+                        service.price,
+                        service.hasFreeDemo
+                      );
                     }}
                     className={cn(
                       "font-semibold transition-all rounded-lg px-4 py-2 h-auto text-sm group/button shrink-0",

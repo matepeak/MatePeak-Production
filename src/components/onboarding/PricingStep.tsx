@@ -1,5 +1,5 @@
 import { UseFormReturn } from "react-hook-form";
-import { DollarSign, HelpCircle, Coins, Gift, MessageSquare, ShoppingBag, Video } from "lucide-react";
+import { DollarSign, HelpCircle, Coins, Gift, Link2, MessageSquare, ShoppingBag, Video } from "lucide-react";
 import {
   FormField,
   FormItem,
@@ -224,6 +224,7 @@ export default function PricingStep({ form }: { form: UseFormReturn<any> }) {
                           field.onChange(checked);
                           if (!checked) {
                             form.setValue("servicePricing.digitalProducts.price", 0);
+                            form.setValue("servicePricing.digitalProducts.productLink", "");
                           }
                         }}
                         className="data-[state=checked]:bg-matepeak-primary"
@@ -234,36 +235,63 @@ export default function PricingStep({ form }: { form: UseFormReturn<any> }) {
               />
 
               {form.watch("servicePricing.digitalProducts.enabled") && (
-                <FormField
-                  control={form.control}
-                  name="servicePricing.digitalProducts.price"
-                  render={({ field }) => (
-                    <FormItem className="animate-fade-in">
-                      <FormLabel className="flex items-center gap-2">
-                        <DollarSign className="w-4 h-4 text-matepeak-primary" />
-                        Starting price (INR)
-                      </FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-matepeak-primary">
-                            ₹
-                          </span>
+                <div className="space-y-4 animate-fade-in">
+                  <FormField
+                    control={form.control}
+                    name="servicePricing.digitalProducts.price"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <DollarSign className="w-4 h-4 text-matepeak-primary" />
+                          Starting price (INR)
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-matepeak-primary">
+                              ₹
+                            </span>
+                            <Input
+                              type="number"
+                              placeholder="999"
+                              className="pl-10 text-lg"
+                              value={field.value || ''}
+                              onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Base price for your digital products (courses, ebooks, etc.)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="servicePricing.digitalProducts.productLink"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Link2 className="w-4 h-4 text-matepeak-primary" />
+                          Digital product link
+                        </FormLabel>
+                        <FormControl>
                           <Input
-                            type="number"
-                            placeholder="999"
-                            className="pl-10 text-lg"
-                            value={field.value || ''}
-                            onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                            type="url"
+                            placeholder="https://example.com/your-product"
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(e.target.value)}
                           />
-                        </div>
-                      </FormControl>
-                      <FormDescription className="text-xs">
-                        Base price for your digital products (courses, ebooks, etc.)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Students receive this link after booking your digital product.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               )}
             </CardContent>
           </Card>

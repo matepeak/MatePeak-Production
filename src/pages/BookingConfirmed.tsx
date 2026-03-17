@@ -46,6 +46,7 @@ interface BookingDetails {
   student_name: string;
   student_email: string;
   meeting_link?: string;
+  digital_product_link?: string;
 }
 
 const BookingConfirmed = () => {
@@ -97,6 +98,7 @@ const BookingConfirmed = () => {
             status,
             total_amount,
             meeting_link,
+            digital_product_link,
             user_name,
             user_email,
             created_at
@@ -211,6 +213,7 @@ const BookingConfirmed = () => {
           student_name: studentName,
           student_email: studentEmail,
           meeting_link: bookingData.meeting_link,
+          digital_product_link: bookingData.digital_product_link,
         };
 
         setBooking(formattedBooking);
@@ -433,6 +436,8 @@ const BookingConfirmed = () => {
   const isOneOnOne = normalizedServiceType === "oneOnOneSession";
   const isPriorityDm = normalizedServiceType === "priorityDm";
   const isDigitalProduct = normalizedServiceType === "digitalProducts";
+  const hasDigitalProductLink =
+    isDigitalProduct && Boolean(booking.digital_product_link?.trim());
 
   const serviceDisplayName = formatServiceType(normalizedServiceType);
   const serviceIcon = isPriorityDm
@@ -463,7 +468,9 @@ const BookingConfirmed = () => {
       : isPriorityDm
       ? "Your mentor will review your message and reply in Priority DM."
       : isDigitalProduct
-      ? "Your mentor will share the requested resources from dashboard flow."
+      ? hasDigitalProductLink
+        ? "Your digital product is ready. Use the access link below."
+        : "Your mentor will share the requested resources from dashboard flow."
       : "Your request was submitted successfully."
     : isOneOnOne
     ? "Review details and prepare for the upcoming session."
@@ -489,7 +496,9 @@ const BookingConfirmed = () => {
       ]
     : [
         "Your request is now visible to the mentor.",
-        "The mentor will provide the digital resource through platform flow.",
+        hasDigitalProductLink
+          ? "Your digital product access link is now available below."
+          : "The mentor will provide the digital resource through platform flow.",
         "Track status and updates from your dashboard.",
       ];
 
@@ -928,6 +937,31 @@ const BookingConfirmed = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
+                </div>
+              )}
+
+              {hasDigitalProductLink && (
+                <div className="p-8 bg-emerald-50 border-b border-gray-100">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                      <Package className="w-5 h-5 text-emerald-700" />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900">
+                      Digital Product Access
+                    </h3>
+                  </div>
+                  <p className="text-gray-700 mb-4">
+                    Your purchase is ready. Use this link to access your digital product.
+                  </p>
+                  <a
+                    href={booking.digital_product_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    Access Product
+                    <ArrowLeft className="w-4 h-4 rotate-180" />
+                  </a>
                 </div>
               )}
 

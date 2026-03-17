@@ -91,6 +91,7 @@ interface Service {
   enabled: boolean;
   serviceType: string;
   hasFreeDemo?: boolean;
+  productLink?: string;
 }
 
 interface ServicePricing {
@@ -110,6 +111,7 @@ interface ServicePricing {
     enabled: boolean;
     price: number;
     discount_price?: number;
+    productLink?: string;
   };
 }
 
@@ -201,6 +203,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
     enabled: true,
     serviceType: "oneOnOneSession",
     hasFreeDemo: false,
+    productLink: "",
   });
 
   // Edit form state
@@ -243,6 +246,8 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
             enabled: value.enabled || false,
             serviceType: isCustom ? (value.type || "custom") : key,
             hasFreeDemo: value.hasFreeDemo || false,
+            productLink:
+              value.productLink || value.product_url || value.product_link || "",
             order: value.order ?? index,
           });
         }
@@ -287,6 +292,16 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
         return;
       }
 
+      if (
+        service.serviceType === "digitalProducts" &&
+        !isValidHttpsUrl(editForm.productLink)
+      ) {
+        toast.error(
+          "Please add a valid https digital product link for this service"
+        );
+        return;
+      }
+
       const updatedService = { ...service, ...editForm };
       console.log("✏️ Updated service object:", updatedService);
 
@@ -301,6 +316,10 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
           price: updatedService.price,
           discount_price: updatedService.discount_price,
           hasFreeDemo: updatedService.hasFreeDemo || false,
+          productLink:
+            service.serviceType === "digitalProducts"
+              ? updatedService.productLink || null
+              : null,
           type: service.serviceType,
           order: updatedService.order,
         },
@@ -378,6 +397,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
           discount_price: service.discount_price,
           enabled: updatedEnabled,
           hasFreeDemo: service.hasFreeDemo || false,
+          productLink: service.productLink || "",
         });
         toast.success("Service enabled! You can update details in the edit modal.");
       } else {
@@ -450,6 +470,16 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
         return;
       }
 
+      if (
+        newService.serviceType === "digitalProducts" &&
+        !isValidHttpsUrl(newService.productLink)
+      ) {
+        toast.error(
+          "Please add a valid https digital product link for this service"
+        );
+        return;
+      }
+
       // Generate unique ID
       const serviceId = `custom_${Date.now()}_${Math.random()
         .toString(36)
@@ -464,6 +494,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
         enabled: newService.enabled ?? true,
         serviceType: newService.serviceType || "oneOnOneSession",
         hasFreeDemo: newService.hasFreeDemo ?? false,
+        productLink: newService.productLink || "",
       };
 
       // Add to service_pricing (unified structure)
@@ -476,6 +507,10 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
           price: service.price,
           discount_price: service.discount_price,
           hasFreeDemo: service.hasFreeDemo,
+          productLink:
+            service.serviceType === "digitalProducts"
+              ? service.productLink || null
+              : null,
           type: service.serviceType,
         },
       };
@@ -512,6 +547,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       enabled: false,
       serviceType: service.serviceType || "oneOnOneSession",
       hasFreeDemo: service.hasFreeDemo || false,
+      productLink: service.productLink || "",
     });
     setAddingNew(true);
     toast.info("Service duplicated. Edit and save the new service.");
@@ -642,6 +678,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       price: service.price,
       enabled: service.enabled,
       hasFreeDemo: service.hasFreeDemo,
+      productLink: service.productLink || "",
     });
   };
 
@@ -659,7 +696,18 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       enabled: true,
       serviceType: "oneOnOneSession",
       hasFreeDemo: false,
+      productLink: "",
     });
+  };
+
+  const isValidHttpsUrl = (value?: string) => {
+    if (!value?.trim()) return false;
+    try {
+      const parsed = new URL(value.trim());
+      return parsed.protocol === "https:";
+    } catch {
+      return false;
+    }
   };
 
   const editingServiceData = services.find((service) => service.id === editingService) || null;
@@ -1016,7 +1064,14 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                 <Select
                   value={newService.serviceType || "oneOnOneSession"}
                   onValueChange={(serviceType) =>
-                    setNewService({ ...newService, serviceType })
+                    setNewService({
+                      ...newService,
+                      serviceType,
+                      hasFreeDemo:
+                        serviceType === "digitalProducts"
+                          ? false
+                          : newService.hasFreeDemo,
+                    })
                   }
                 >
                   <SelectTrigger id="new-service-type">
@@ -1090,6 +1145,27 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
               </p>
             </div>
 
+            {newService.serviceType === "digitalProducts" && (
+              <div className="space-y-2">
+                <Label htmlFor="new-product-link">Digital Product Link *</Label>
+                <Input
+                  id="new-product-link"
+                  type="url"
+                  value={newService.productLink || ""}
+                  onChange={(e) =>
+                    setNewService({
+                      ...newService,
+                      productLink: e.target.value,
+                    })
+                  }
+                  placeholder="https://example.com/your-product"
+                />
+                <p className="text-xs text-gray-500">
+                  This access link will be shared with students after purchase.
+                </p>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
                 <div className="flex items-center gap-3">
@@ -1111,25 +1187,27 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                 />
               </div>
 
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                    <AlertCircle className="h-5 w-5 text-blue-600" />
+              {newService.serviceType !== "digitalProducts" && (
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                      <AlertCircle className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Free Demo Available</p>
+                      <p className="text-xs text-gray-500">
+                        Offer a free trial or demo session
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-sm">Free Demo Available</p>
-                    <p className="text-xs text-gray-500">
-                      Offer a free trial or demo session
-                    </p>
-                  </div>
+                  <Switch
+                    checked={newService.hasFreeDemo}
+                    onCheckedChange={(hasFreeDemo) =>
+                      setNewService({ ...newService, hasFreeDemo })
+                    }
+                  />
                 </div>
-                <Switch
-                  checked={newService.hasFreeDemo}
-                  onCheckedChange={(hasFreeDemo) =>
-                    setNewService({ ...newService, hasFreeDemo })
-                  }
-                />
-              </div>
+              )}
             </div>
             </div>
           </div>
@@ -1147,7 +1225,13 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
               </Button>
               <Button
                 onClick={handleAddService}
-                disabled={saving || !newService.name || !newService.description}
+                disabled={
+                  saving ||
+                  !newService.name ||
+                  !newService.description ||
+                  (newService.serviceType === "digitalProducts" &&
+                    !isValidHttpsUrl(newService.productLink))
+                }
               >
                 {saving ? (
                   <>
@@ -1478,6 +1562,29 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                   maxLength={500}
                 />
               </div>
+
+              {editingServiceData.serviceType === "digitalProducts" && (
+                <div className="space-y-2">
+                  <Label htmlFor="modal-edit-product-link">
+                    Digital Product Link *
+                  </Label>
+                  <Input
+                    id="modal-edit-product-link"
+                    type="url"
+                    value={editForm.productLink || ""}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        productLink: e.target.value,
+                      })
+                    }
+                    placeholder="https://example.com/your-product"
+                  />
+                  <p className="text-xs text-gray-500">
+                    This link is sent to students after a successful purchase.
+                  </p>
+                </div>
+              )}
 
               {editingServiceData.serviceType !== "digitalProducts" && (
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">

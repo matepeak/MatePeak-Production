@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { format, addDays, startOfWeek, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
-import { SelectedService, SelectedDateTime } from "./BookingDialog";
+import type { SelectedService, SelectedDateTime } from "./BookingDialog";
 import {
   Select,
   SelectContent,

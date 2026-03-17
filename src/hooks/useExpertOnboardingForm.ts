@@ -87,6 +87,11 @@ const pricingSchema = z.object({
       .object({
         enabled: z.boolean().optional(),
         price: z.number().min(50, "Price must be at least ₹50").max(20000, "Price cannot exceed ₹20,000").optional(),
+        productLink: z
+          .string()
+          .url("Please enter a valid product URL")
+          .or(z.literal(""))
+          .optional(),
       })
       .optional(),
   }),
@@ -284,7 +289,7 @@ export function useExpertOnboardingForm() {
       servicePricing: {
         oneOnOneSession: { enabled: false, price: 0, hasFreeDemo: false },
         priorityDm: { enabled: false, price: 0, hasFreeDemo: false },
-        digitalProducts: { enabled: false, price: 0 },
+        digitalProducts: { enabled: false, price: 0, productLink: "" },
       },
       profilePictureUrl: "",
       socialLinks: {
