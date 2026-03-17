@@ -112,6 +112,13 @@
     @apply border-border;
   }
 
+  html,
+  body,
+  #root {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -149,7 +156,7 @@
     border-color: hsl(var(--border));
   }
 
-  input:not([type="checkbox"]):not([type="radio"]):focus,
+  input:not([type="checkbox"]):not([type="radio"]):not(.hero-search-input):focus,
   textarea:focus,
   button[role="combobox"]:focus {
     background-color: hsl(0 0% 100%);
@@ -159,7 +166,7 @@
   }
 
   /* Focus visible for better accessibility */
-  input:not([type="checkbox"]):not([type="radio"]):focus-visible,
+  input:not([type="checkbox"]):not([type="radio"]):not(.hero-search-input):focus-visible,
   textarea:focus-visible,
   button[role="combobox"]:focus-visible {
     background-color: hsl(0 0% 100%);
@@ -170,6 +177,29 @@
 }
 
 @layer components {
+  .hero-search-input {
+    background-color: #f5f5f5 !important;
+    border: 2px solid transparent !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  .hero-search-input:hover {
+    background-color: #ffffff !important;
+    border-color: #f5f5f5 !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  .hero-search-input:focus,
+  .hero-search-input:active,
+  .hero-search-input:focus-visible {
+    background-color: #ffffff !important;
+    border-color: #f5f5f5 !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
   .gradient-text {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-matepeak-primary via-[#FFD966] to-matepeak-primary bg-size-200 animate-gradient-x;
   }
@@ -474,22 +504,36 @@
 }
 
 /* Infinite scroll animation for mentor cards */
-@keyframes scroll-left {
+@keyframes scroll-left-mobile {
   0% {
     transform: translateX(0);
   }
   100% {
-    transform: translateX(
-      calc(-264px * 15)
-    ); /* 15 cards × (256px width + 24px gap) */
+    transform: translateX(calc(-240px * 15)); /* 15 cards × (224px width + 16px gap) */
   }
 }
 
-.animate-scroll-left {
-  animation: scroll-left 90s linear infinite; /* 6 seconds per card */
+@keyframes scroll-left-desktop {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(calc(-280px * 15)); /* 15 cards × (256px width + 24px gap) */
+  }
 }
 
-.animate-scroll-left:hover {
+.animate-scroll-left-mobile {
+  animation: scroll-left-mobile 90s linear infinite;
+  will-change: transform;
+}
+
+.animate-scroll-left-desktop {
+  animation: scroll-left-desktop 90s linear infinite;
+  will-change: transform;
+}
+
+.animate-scroll-left-mobile:hover,
+.animate-scroll-left-desktop:hover {
   animation-play-state: paused;
 }
 
