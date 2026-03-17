@@ -111,7 +111,7 @@ export default function ProfileOverview({
 
   const getPriceUnit = (serviceKey: string) => {
     if (serviceKey === "oneOnOneSession") return "/ session";
-    if (serviceKey === "chatAdvice") return "/ consultation";
+    if (serviceKey === "priorityDm") return "/ consultation";
     if (serviceKey === "notes") return "/ resource";
     if (serviceKey === "digitalProducts") return "/ product";
     return "";
@@ -273,6 +273,7 @@ export default function ProfileOverview({
         price: actualPrice,
         discount_price: value.discount_price,
         hasFreeDemo: value.hasFreeDemo || false,
+        icon: Star,
       };
 
       // Use shared SERVICE_CONFIG for consistent naming across the app
@@ -463,8 +464,8 @@ export default function ProfileOverview({
                         {service.description ||
                           (service.name === SERVICE_CONFIG.oneOnOneSession.name &&
                             SERVICE_CONFIG.oneOnOneSession.description) ||
-                          (service.name === SERVICE_CONFIG.chatAdvice.name &&
-                            SERVICE_CONFIG.chatAdvice.description) ||
+                          (service.name === SERVICE_CONFIG.priorityDm.name &&
+                            SERVICE_CONFIG.priorityDm.description) ||
                           (service.name === SERVICE_CONFIG.digitalProducts.name &&
                             SERVICE_CONFIG.digitalProducts.description) ||
                           (service.name === SERVICE_CONFIG.notes.name &&

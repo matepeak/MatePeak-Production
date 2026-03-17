@@ -70,7 +70,7 @@ const BookingSuccess = () => {
   const getSessionTypeName = (type: string) => {
     const typeMap: { [key: string]: string } = {
       oneOnOneSession: "1:1 Mentoring Session",
-      chatAdvice: "Chat Advice",
+      priorityDm: "Priority DM",
       digitalProducts: "Digital Product",
       notes: "Session Notes",
     };

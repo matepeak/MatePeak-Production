@@ -37,7 +37,7 @@ const basicInfoSchema = z.object({
 
 const serviceTypesSchema = z.object({
   oneOnOneSession: z.boolean().optional(),
-  chatAdvice: z.boolean().optional(),
+  priorityDm: z.boolean().optional(),
   digitalProducts: z.boolean().optional(),
   notes: z.boolean().optional(),
 });
@@ -77,7 +77,7 @@ const pricingSchema = z.object({
         hasFreeDemo: z.boolean().optional(),
       })
       .optional(),
-    chatAdvice: z
+    priorityDm: z
       .object({
         enabled: z.boolean().optional(),
         price: z.number().min(50, "Price must be at least ₹50").max(20000, "Price cannot exceed ₹20,000").optional(),
@@ -283,7 +283,7 @@ export function useExpertOnboardingForm() {
       },
       suggestedServices: [],
       oneOnOneSession: false,
-      chatAdvice: false,
+      priorityDm: false,
       digitalProducts: false,
       notes: false,
       availability: [],
@@ -291,7 +291,7 @@ export function useExpertOnboardingForm() {
       timezone: "Asia/Kolkata",
       servicePricing: {
         oneOnOneSession: { enabled: false, price: 0, hasFreeDemo: false },
-        chatAdvice: { enabled: false, price: 0, hasFreeDemo: false },
+        priorityDm: { enabled: false, price: 0, hasFreeDemo: false },
         digitalProducts: { enabled: false, price: 0 },
         notes: { enabled: false, price: 0 },
       },

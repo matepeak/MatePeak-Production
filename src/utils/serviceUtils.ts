@@ -81,7 +81,7 @@ export function getConnectionOptions(
   const options: string[] = [];
 
   if (services?.oneOnOneSession) options.push("1:1 Call");
-  if (services?.chatAdvice) options.push("Chat");
+  if (services?.priorityDm) options.push("Chat");
   if (services?.digitalProducts) options.push("Document Review");
   if (services?.notes) options.push("Group Session");
 

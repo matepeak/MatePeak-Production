@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import StudentDashboardLayout from '@/components/dashboard/student/StudentDashboardLayout';
 import StudentOverview from '@/components/dashboard/student/StudentOverview';
 import MySessions from '@/components/dashboard/student/MySessions';
-import StudentMessaging from '@/components/dashboard/student/StudentMessaging';
+import StudentPriorityDmInbox from '@/components/dashboard/student/StudentPriorityDmInbox';
 import MyMentors from '@/components/dashboard/student/MyMentors';
 import StudentReviews from '@/components/dashboard/student/StudentReviews';
 import StudentProfile from '@/components/dashboard/student/StudentProfile';
@@ -139,7 +139,7 @@ export default function StudentDashboard() {
       )}
       {activeView === 'sessions' && <MySessions studentProfile={studentProfile} />}
       {activeView === 'time-request' && <StudentTimeRequest studentProfile={studentProfile} />}
-      {activeView === 'messages' && <StudentMessaging studentProfile={studentProfile} />}
+      {activeView === 'messages' && <StudentPriorityDmInbox studentProfile={studentProfile} />}
       {activeView === 'mentors' && <MyMentors studentProfile={studentProfile} />}
       {activeView === 'reviews' && <StudentReviews studentProfile={studentProfile} />}
       {activeView === 'profile' && (

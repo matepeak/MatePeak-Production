@@ -23,7 +23,7 @@ interface SuggestedService {
   name: string;
   description: string;
   defaultPrice: number;
-  serviceType: "oneOnOneSession" | "chatAdvice" | "digitalProducts";
+  serviceType: "oneOnOneSession" | "priorityDm" | "digitalProducts";
 }
 
 function generateSuggestedServices(formData: any): SuggestedService[] {
@@ -88,14 +88,14 @@ function generateSuggestedServices(formData: any): SuggestedService[] {
       name: "7-day Chat Support",
       description: "Ongoing guidance via text for one week",
       defaultPrice: 799,
-      serviceType: "chatAdvice",
+      serviceType: "priorityDm",
     });
   }
 
   // Career Clarity - Ask Anything (default chat option)
   if (
     services.length > 0 &&
-    !services.some((s) => s.serviceType === "chatAdvice")
+    !services.some((s) => s.serviceType === "priorityDm")
   ) {
     services.push({
       id: "quickAdvice",
@@ -103,7 +103,7 @@ function generateSuggestedServices(formData: any): SuggestedService[] {
       name: "Career Clarity – Ask Anything",
       description: "Get clear direction on your next step",
       defaultPrice: 99,
-      serviceType: "chatAdvice",
+      serviceType: "priorityDm",
     });
   }
 

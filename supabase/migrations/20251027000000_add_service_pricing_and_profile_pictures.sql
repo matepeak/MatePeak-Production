@@ -1,4 +1,6 @@
 -- Add new columns to expert_profiles table
+-- NOTE (March 2026): The 'chatAdvice' service type referenced in this file has been renamed to 'priorityDm'
+-- See migration 20260317000100_rename_chatadvice_to_prioritydm.sql for the rename operation.
 ALTER TABLE public.expert_profiles 
 ADD COLUMN IF NOT EXISTS service_pricing jsonb DEFAULT '{}'::jsonb,
 ADD COLUMN IF NOT EXISTS profile_picture_url text;

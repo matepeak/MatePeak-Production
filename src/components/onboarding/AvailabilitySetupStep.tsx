@@ -194,7 +194,7 @@ export const AvailabilitySetupStep = ({
   // Check which services require scheduling
   const hasSchedulingService = useMemo(() => {
     const servicePricing = form.getValues('servicePricing');
-    return servicePricing?.oneOnOneSession?.enabled || servicePricing?.chatAdvice?.enabled;
+    return servicePricing?.oneOnOneSession?.enabled || servicePricing?.priorityDm?.enabled;
   }, [form.watch('servicePricing')]);
 
   // Helper function to sort time slots
