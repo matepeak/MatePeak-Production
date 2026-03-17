@@ -236,7 +236,11 @@ export async function createBooking(data: CreateBookingData) {
     }
 
     // 9. Create booking record with server-validated price
-    // During BETA: All bookings are FREE and auto-confirmed
+    // Paid bookings must stay pending until payment verification confirms them.
+    const isPaidBooking = Number(serverCalculatedPrice) > 0;
+    const initialStatus = isPaidBooking ? "pending" : "confirmed";
+    const initialPaymentStatus = isPaidBooking ? "pending" : "free";
+
     const { data: booking, error } = await supabase
       .from("bookings")
       .insert({
@@ -248,12 +252,12 @@ export async function createBooking(data: CreateBookingData) {
         duration: data.duration,
         message: sanitizedMessage,
         total_amount: serverCalculatedPrice, // Keep original price for records
-        status: "confirmed", // AUTO-CONFIRM during beta (was 'pending')
+        status: initialStatus,
         user_name: sanitizedName,
         user_email: data.user_email,
         user_phone: sanitizedPhone,
         price_verified: true,
-        payment_status: "free", // Use 'free' for beta bookings without payment
+        payment_status: initialPaymentStatus,
       })
       .select()
       .single();
@@ -267,48 +271,50 @@ export async function createBooking(data: CreateBookingData) {
       };
     }
 
-    // 10. Generate meeting link for confirmed booking
-    try {
-      // Fetch mentor name for meeting room
-      const { data: mentorProfile } = await supabase
-        .from("expert_profiles")
-        .select("full_name, username")
-        .eq("id", data.expert_id)
-        .single();
+    // 10. Generate meeting link only for confirmed bookings
+    if (!isPaidBooking) {
+      try {
+        // Fetch mentor name for meeting room
+        const { data: mentorProfile } = await supabase
+          .from("expert_profiles")
+          .select("full_name, username")
+          .eq("id", data.expert_id)
+          .single();
 
-      const mentorName =
-        mentorProfile?.full_name || mentorProfile?.username || "mentor";
+        const mentorName =
+          mentorProfile?.full_name || mentorProfile?.username || "mentor";
 
-      // Generate Jitsi meeting link (free, no API key needed)
-      const meetingConfig = generateMeetingLink(
-        booking.id,
-        mentorName,
-        data.session_type,
-        "jitsi"
-      );
+        // Generate Jitsi meeting link (free, no API key needed)
+        const meetingConfig = generateMeetingLink(
+          booking.id,
+          mentorName,
+          data.session_type,
+          "jitsi"
+        );
 
-      // Update booking with meeting link
-      const { error: updateError } = await supabase
-        .from("bookings")
-        .update({
-          meeting_link: meetingConfig.meetingLink,
-          meeting_provider: meetingConfig.provider,
-          meeting_id: meetingConfig.meetingId,
-        })
-        .eq("id", booking.id);
+        // Update booking with meeting link
+        const { error: updateError } = await supabase
+          .from("bookings")
+          .update({
+            meeting_link: meetingConfig.meetingLink,
+            meeting_provider: meetingConfig.provider,
+            meeting_id: meetingConfig.meetingId,
+          })
+          .eq("id", booking.id);
 
-      if (updateError) {
-        console.error("Failed to add meeting link:", updateError);
-        // Don't fail the booking, just log the error
-      } else {
-        // Add meeting link to returned booking data
-        booking.meeting_link = meetingConfig.meetingLink;
-        booking.meeting_provider = meetingConfig.provider;
-        booking.meeting_id = meetingConfig.meetingId;
+        if (updateError) {
+          console.error("Failed to add meeting link:", updateError);
+          // Don't fail the booking, just log the error
+        } else {
+          // Add meeting link to returned booking data
+          booking.meeting_link = meetingConfig.meetingLink;
+          booking.meeting_provider = meetingConfig.provider;
+          booking.meeting_id = meetingConfig.meetingId;
+        }
+      } catch (meetingError) {
+        console.error("Meeting link generation error:", meetingError);
+        // Don't fail the booking if meeting link generation fails
       }
-    } catch (meetingError) {
-      console.error("Meeting link generation error:", meetingError);
-      // Don't fail the booking if meeting link generation fails
     }
 
     return {

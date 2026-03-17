@@ -504,22 +504,48 @@ const BookingPage = () => {
         const shouldRedirectToPayment = totalAmount > 0;
 
         if (shouldRedirectToPayment) {
-          // Render gateway currently fails for long UUID booking IDs in create-order receipt generation.
-          // Use a payment-safe short id while passing full id as actualBookingId for backend reconciliation.
-          const fullBookingId = result.data.id as string;
-          const gatewayBookingId = fullBookingId.slice(0, 18);
+          const bookingId = result.data.id as string;
 
-          const checkoutUrl = paymentService.getHostedGatewayCheckoutUrl({
-            amount: totalAmount,
-            bookingId: gatewayBookingId,
-            actualBookingId: fullBookingId,
-            mentorId: mentorId || undefined,
-            sessionType: selectedService.type,
-          });
+          const orderResult = await paymentService.createOrder(totalAmount, bookingId);
+          if (!orderResult.success || !orderResult.order || !orderResult.razorpayKey) {
+            toast.error(orderResult.error || "Failed to initialize payment");
+            return;
+          }
 
-          toast.success("Booking created. Redirecting to payment gateway...");
-          window.location.href = checkoutUrl;
-          return;
+          try {
+            const paymentResponse = await paymentService.openCheckout({
+              key: orderResult.razorpayKey,
+              order: orderResult.order,
+              bookingId,
+              customerName: details.name,
+              customerEmail: details.email,
+              customerPhone: details.phone,
+              description: `${selectedService.name} with ${mentorData.full_name}`,
+            });
+
+            const verifyResult = await paymentService.verifyPayment(
+              bookingId,
+              paymentResponse
+            );
+
+            if (!verifyResult.success) {
+              toast.error(verifyResult.error || "Payment verification failed");
+              return;
+            }
+
+            if (verifyResult.data?.booking_status !== "confirmed") {
+              toast.error("Payment verified but booking is not confirmed yet. Please retry.");
+              return;
+            }
+
+            toast.success("Payment successful! Booking confirmed.");
+            navigate(`/booking/confirmed/${bookingId}`);
+            return;
+          } catch (paymentError: any) {
+            await paymentService.markPaymentFailed(bookingId);
+            toast.error(paymentError?.message || "Payment cancelled or failed");
+            return;
+          }
         }
 
         // Send confirmation emails (async, don't wait)

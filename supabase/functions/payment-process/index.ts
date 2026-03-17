@@ -15,10 +15,16 @@ interface PaymentRequest {
   amount: number
   currency?: string
   booking_id?: string 
-  // For local development to avoid uploading secrets
-  razorpay_key_id?: string
-  razorpay_key_secret?: string
 }
+
+const buildReceipt = (bookingId?: string): string => {
+  const prefix = "rcpt_";
+  const fallback = `${Date.now()}`;
+  const raw = (bookingId || fallback).replace(/[^a-zA-Z0-9_-]/g, "");
+  const maxBodyLength = 40 - prefix.length;
+  const body = raw.slice(0, maxBodyLength) || fallback.slice(0, maxBodyLength);
+  return `${prefix}${body}`;
+};
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -52,14 +58,11 @@ Deno.serve(async (req) => {
     const { 
       amount, 
       currency = "INR", 
-      booking_id,
-      razorpay_key_id: req_key_id,
-      razorpay_key_secret: req_key_secret 
+      booking_id
     } = await req.json() as PaymentRequest;
 
-    // Use keys from request (passed from frontend .env) OR from environment variables
-    const final_key_id = req_key_id || Deno.env.get("RAZORPAY_KEY_ID");
-    const final_key_secret = req_key_secret || Deno.env.get("RAZORPAY_KEY_SECRET");
+    const final_key_id = Deno.env.get("RAZORPAY_KEY_ID");
+    const final_key_secret = Deno.env.get("RAZORPAY_KEY_SECRET");
 
     if (!amount) {
       return new Response(
@@ -93,7 +96,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         amount: Math.round(amount * 100), // Razorpay expects amount in paise
         currency: currency,
-        receipt: `receipt_${booking_id || Date.now()}`,
+        receipt: buildReceipt(booking_id),
         notes: {
           user_id: user.id,
           booking_id: booking_id || ""

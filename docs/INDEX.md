@@ -58,6 +58,7 @@
 - [Dashboard Testing Guide](./testing/DASHBOARD_TESTING_GUIDE.md) - Dashboard test procedures
 - [Dashboard Test Report](./testing/DASHBOARD_TEST_REPORT.md) - Test results and reports
 - [Booking Testing Guide](./testing/BOOKING_TESTING_GUIDE.md) - Booking system tests
+- [Payment Webhook Testing Guide](./testing/PAYMENT_WEBHOOK_TESTING_GUIDE.md) - verify-payment success/failure and email flow tests
 - [Production Multi-User Testing](./testing/PRODUCTION_MULTIUSER_TESTING.md) - Production testing guide
 - [Email Testing](./testing/test-time-request-email.md) - Email functionality tests
 
