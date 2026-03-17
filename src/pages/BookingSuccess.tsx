@@ -72,7 +72,6 @@ const BookingSuccess = () => {
       oneOnOneSession: "1:1 Mentoring Session",
       priorityDm: "Priority DM",
       digitalProducts: "Digital Product",
-      notes: "Session Notes",
     };
     return typeMap[type] || type;
   };

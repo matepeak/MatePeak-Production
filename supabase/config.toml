@@ -14,3 +14,15 @@ verify_jwt = true
 
 [functions.admin-metrics]
 verify_jwt = true
+
+[functions.payment-process]
+verify_jwt = true
+
+[functions.verify-payment]
+verify_jwt = false
+
+[functions.email-otp]
+verify_jwt = false
+
+[functions.payment-success-emails]
+verify_jwt = false

@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { generateMeetingLink } from "./meetingService";
 import { enforceRateLimit } from "@/services/rateLimitService";
+import { normalizeServiceType } from "@/config/serviceConfig";
 
 /**
  * BOOKING SLOT AVAILABILITY SYSTEM
@@ -23,6 +24,7 @@ import { enforceRateLimit } from "@/services/rateLimitService";
 export interface CreateBookingData {
   expert_id: string;
   session_type: string;
+  service_key?: string;
   scheduled_date: string; // YYYY-MM-DD format
   scheduled_time: string; // HH:MM format
   duration: number; // minutes
@@ -32,6 +34,7 @@ export interface CreateBookingData {
   user_email?: string;
   user_phone?: string;
   add_recording?: boolean;
+  digital_product_link?: string;
 }
 
 export interface AvailabilitySlot {
@@ -49,6 +52,48 @@ export interface TimeSlot {
   booked?: boolean;
 }
 
+function resolveServicePricingByType(
+  servicePricing: Record<string, any> | undefined,
+  sessionType: string,
+  serviceKey?: string
+) {
+  if (!servicePricing) return null;
+
+  // Exact lookup by the selected service key when provided.
+  if (serviceKey && servicePricing[serviceKey]) {
+    return servicePricing[serviceKey];
+  }
+
+  // Primary lookup for canonical keys.
+  if (servicePricing[sessionType]) {
+    return servicePricing[sessionType];
+  }
+
+  const targetType = normalizeServiceType(sessionType) || sessionType;
+
+  // Fallback lookup for legacy keys that normalize to the same type.
+  const byNormalizedKey = Object.entries(servicePricing).find(([key]) => {
+    const normalizedKeyType = normalizeServiceType(key) || key;
+    return normalizedKeyType === targetType;
+  });
+
+  if (byNormalizedKey) {
+    return byNormalizedKey[1];
+  }
+
+  // Fallback lookup for custom keys storing canonical type in value.type.
+  const matchedEntry = Object.values(servicePricing).find((entry: any) => {
+    const entryType = normalizeServiceType(entry?.type || "") || entry?.type;
+    return entryType === targetType;
+  });
+
+  return matchedEntry || null;
+}
+
+function isServiceEnabled(value: any): boolean {
+  return value === true || value === "true" || value === 1 || value === "1";
+}
+
 /**
  * Validate and calculate booking price server-side
  */
@@ -56,7 +101,8 @@ async function validateBookingPrice(
   expertId: string,
   sessionType: string,
   duration: number,
-  addRecording: boolean = false
+  addRecording: boolean = false,
+  serviceKey?: string
 ): Promise<{ success: boolean; price?: number; error?: string }> {
   try {
     // Fetch mentor's service pricing from database
@@ -73,9 +119,13 @@ async function validateBookingPrice(
       };
     }
 
-    const servicePricing = profile.service_pricing?.[sessionType];
+    const servicePricing = resolveServicePricingByType(
+      profile.service_pricing,
+      sessionType,
+      serviceKey
+    );
 
-    if (!servicePricing || !servicePricing.enabled) {
+    if (!servicePricing || !isServiceEnabled(servicePricing.enabled)) {
       return {
         success: false,
         error: "This service is not available",
@@ -182,7 +232,8 @@ export async function createBooking(data: CreateBookingData) {
       data.expert_id,
       data.session_type,
       data.duration,
-      data.add_recording
+      data.add_recording,
+      data.service_key
     );
 
     if (!priceValidation.success) {
@@ -219,24 +270,49 @@ export async function createBooking(data: CreateBookingData) {
     const sanitizedName = sanitizeInput(data.user_name || "");
     const sanitizedPhone = sanitizeInput(data.user_phone || "");
 
-    // 8. Check for existing booking conflicts
-    const conflictCheck = await checkBookingConflict(
-      data.expert_id,
-      data.scheduled_date,
-      data.scheduled_time,
-      data.duration
-    );
+    // For digital products, snapshot the current configured product link on the booking.
+    let digitalProductLink: string | null = null;
+    if (data.session_type === "digitalProducts") {
+      const linkResult = await getDigitalProductLink(
+        data.expert_id,
+        data.service_key
+      );
+      if (!linkResult.success || !linkResult.productLink) {
+        return {
+          success: false,
+          error:
+            linkResult.error ||
+            "This mentor has not configured a digital product link yet.",
+          data: null,
+        };
+      }
+      digitalProductLink = linkResult.productLink;
+    }
 
-    if (!conflictCheck.success) {
-      return {
-        success: false,
-        error: conflictCheck.error || "Booking conflict detected",
-        data: null,
-      };
+    // 8. Check booking conflicts only for scheduled one-on-one sessions.
+    if (data.session_type === "oneOnOneSession") {
+      const conflictCheck = await checkBookingConflict(
+        data.expert_id,
+        data.scheduled_date,
+        data.scheduled_time,
+        data.duration
+      );
+
+      if (!conflictCheck.success) {
+        return {
+          success: false,
+          error: conflictCheck.error || "Booking conflict detected",
+          data: null,
+        };
+      }
     }
 
     // 9. Create booking record with server-validated price
-    // During BETA: All bookings are FREE and auto-confirmed
+    // Paid bookings must stay pending until payment verification confirms them.
+    const isPaidBooking = Number(serverCalculatedPrice) > 0;
+    const initialStatus = isPaidBooking ? "pending" : "confirmed";
+    const initialPaymentStatus = isPaidBooking ? "pending" : "free";
+
     const { data: booking, error } = await supabase
       .from("bookings")
       .insert({
@@ -248,12 +324,16 @@ export async function createBooking(data: CreateBookingData) {
         duration: data.duration,
         message: sanitizedMessage,
         total_amount: serverCalculatedPrice, // Keep original price for records
-        status: "confirmed", // AUTO-CONFIRM during beta (was 'pending')
+        status: initialStatus,
         user_name: sanitizedName,
         user_email: data.user_email,
         user_phone: sanitizedPhone,
         price_verified: true,
-        payment_status: "free", // Use 'free' for beta bookings without payment
+        meeting_link: null,
+        meeting_provider: null,
+        meeting_id: null,
+        digital_product_link: digitalProductLink,
+        payment_status: initialPaymentStatus,
       })
       .select()
       .single();
@@ -267,48 +347,50 @@ export async function createBooking(data: CreateBookingData) {
       };
     }
 
-    // 10. Generate meeting link for confirmed booking
-    try {
-      // Fetch mentor name for meeting room
-      const { data: mentorProfile } = await supabase
-        .from("expert_profiles")
-        .select("full_name, username")
-        .eq("id", data.expert_id)
-        .single();
+    // 10. Generate meeting link only for oneOnOneSession bookings
+    if (data.session_type === "oneOnOneSession") {
+      try {
+        // Fetch mentor name for meeting room
+        const { data: mentorProfile } = await supabase
+          .from("expert_profiles")
+          .select("full_name, username")
+          .eq("id", data.expert_id)
+          .single();
 
-      const mentorName =
-        mentorProfile?.full_name || mentorProfile?.username || "mentor";
+        const mentorName =
+          mentorProfile?.full_name || mentorProfile?.username || "mentor";
 
-      // Generate Jitsi meeting link (free, no API key needed)
-      const meetingConfig = generateMeetingLink(
-        booking.id,
-        mentorName,
-        data.session_type,
-        "jitsi"
-      );
+        // Generate Jitsi meeting link (free, no API key needed)
+        const meetingConfig = generateMeetingLink(
+          booking.id,
+          mentorName,
+          data.session_type,
+          "jitsi"
+        );
 
-      // Update booking with meeting link
-      const { error: updateError } = await supabase
-        .from("bookings")
-        .update({
-          meeting_link: meetingConfig.meetingLink,
-          meeting_provider: meetingConfig.provider,
-          meeting_id: meetingConfig.meetingId,
-        })
-        .eq("id", booking.id);
+        // Update booking with meeting link
+        const { error: updateError } = await supabase
+          .from("bookings")
+          .update({
+            meeting_link: meetingConfig.meetingLink,
+            meeting_provider: meetingConfig.provider,
+            meeting_id: meetingConfig.meetingId,
+          })
+          .eq("id", booking.id);
 
-      if (updateError) {
-        console.error("Failed to add meeting link:", updateError);
-        // Don't fail the booking, just log the error
-      } else {
-        // Add meeting link to returned booking data
-        booking.meeting_link = meetingConfig.meetingLink;
-        booking.meeting_provider = meetingConfig.provider;
-        booking.meeting_id = meetingConfig.meetingId;
+        if (updateError) {
+          console.error("Failed to add meeting link:", updateError);
+          // Don't fail the booking, just log the error
+        } else {
+          // Add meeting link to returned booking data
+          booking.meeting_link = meetingConfig.meetingLink;
+          booking.meeting_provider = meetingConfig.provider;
+          booking.meeting_id = meetingConfig.meetingId;
+        }
+      } catch (meetingError) {
+        console.error("Meeting link generation error:", meetingError);
+        // Don't fail the booking if meeting link generation fails
       }
-    } catch (meetingError) {
-      console.error("Meeting link generation error:", meetingError);
-      // Don't fail the booking if meeting link generation fails
     }
 
     return {
@@ -344,6 +426,64 @@ function sanitizeInput(input: string): string {
     .replace(/<[^>]*>/g, "")
     .trim()
     .substring(0, 1000);
+}
+
+async function getDigitalProductLink(
+  expertId: string,
+  serviceKey?: string
+): Promise<{ success: boolean; productLink?: string; error?: string }> {
+  try {
+    const { data: profile, error } = await supabase
+      .from("expert_profiles")
+      .select("service_pricing")
+      .eq("id", expertId)
+      .single();
+
+    if (error || !profile) {
+      return { success: false, error: "Mentor profile not found" };
+    }
+
+    const digitalConfig = resolveServicePricingByType(
+      profile.service_pricing,
+      "digitalProducts",
+      serviceKey
+    );
+    if (!digitalConfig || !isServiceEnabled(digitalConfig.enabled)) {
+      return {
+        success: false,
+        error: "Digital product service is not enabled for this mentor",
+      };
+    }
+
+    const rawLink =
+      digitalConfig.productLink ||
+      digitalConfig.product_url ||
+      digitalConfig.product_link ||
+      "";
+    const productLink = String(rawLink).trim();
+
+    if (!isValidHttpsUrl(productLink)) {
+      return {
+        success: false,
+        error: "Mentor digital product link is invalid or missing",
+      };
+    }
+
+    return { success: true, productLink };
+  } catch (error: any) {
+    console.error("Error fetching digital product link:", error);
+    return { success: false, error: "Failed to resolve digital product link" };
+  }
+}
+
+function isValidHttpsUrl(value: string): boolean {
+  if (!value) return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -815,6 +955,7 @@ export interface StudentBooking {
   message?: string;
   total_amount: number;
   meeting_link?: string;
+  digital_product_link?: string;
   expert?: {
     id: string;
     full_name: string;

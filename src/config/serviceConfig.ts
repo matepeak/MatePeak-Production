@@ -1,10 +1,11 @@
 import { 
   Video, 
   MessageSquare, 
-  ShoppingBag, 
-  FileText 
+  ShoppingBag 
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
+
+export type ServiceType = "oneOnOneSession" | "priorityDm" | "digitalProducts";
 
 export interface ServiceConfigItem {
   icon: LucideIcon;
@@ -18,12 +19,39 @@ export interface ServiceConfigItem {
   requiresScheduling: boolean; // Whether this service needs availability/booking slots
 }
 
+const SERVICE_KEY_ALIASES: Record<string, ServiceType> = {
+  oneononesession: "oneOnOneSession",
+  one_on_one_session: "oneOnOneSession",
+  oneonone: "oneOnOneSession",
+  chatadvice: "priorityDm",
+  prioritydm: "priorityDm",
+  priority_dm: "priorityDm",
+  digitalproducts: "digitalProducts",
+  digitalproduct: "digitalProducts",
+  digital_products: "digitalProducts",
+  digital_product: "digitalProducts",
+};
+
+export const normalizeServiceType = (serviceKey: string): ServiceType | null => {
+  const direct = SERVICE_CONFIG[serviceKey] ? (serviceKey as ServiceType) : null;
+  if (direct) return direct;
+
+  const normalizedKey = serviceKey.replace(/[^a-zA-Z0-9_]/g, "").toLowerCase();
+  return SERVICE_KEY_ALIASES[normalizedKey] || null;
+};
+
+export const serviceRequiresScheduling = (serviceKey: string): boolean => {
+  const normalized = normalizeServiceType(serviceKey);
+  if (!normalized) return true;
+  return SERVICE_CONFIG[normalized].requiresScheduling;
+};
+
 /**
  * Shared service configuration used across the app
  * This ensures consistency between mentor public page and booking flow
  * 
  * Services that requiresScheduling=true: Need availability slots (oneOnOneSession)
- * Services that requiresScheduling=false: Direct access without booking (priorityDm, digitalProducts, notes)
+ * Services that requiresScheduling=false: Direct access without booking (priorityDm, digitalProducts)
  */
 export const SERVICE_CONFIG: Record<string, ServiceConfigItem> = {
   oneOnOneSession: {
@@ -61,17 +89,6 @@ export const SERVICE_CONFIG: Record<string, ServiceConfigItem> = {
     durations: [],
     typeLabel: "Digital Download",
     suggestedPrice: 2000,
-    requiresScheduling: false,
-  },
-  notes: {
-    icon: FileText,
-    name: "Session Notes & Resources",
-    shortName: "Notes & Resources",
-    description: "Study materials and guides",
-    benefits: [],
-    durations: [],
-    typeLabel: "Study Materials",
-    suggestedPrice: 300,
     requiresScheduling: false,
   },
 };

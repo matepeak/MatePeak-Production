@@ -39,7 +39,6 @@ const serviceTypesSchema = z.object({
   oneOnOneSession: z.boolean().optional(),
   priorityDm: z.boolean().optional(),
   digitalProducts: z.boolean().optional(),
-  notes: z.boolean().optional(),
 });
 
 const availabilitySchema = z.object({
@@ -88,12 +87,11 @@ const pricingSchema = z.object({
       .object({
         enabled: z.boolean().optional(),
         price: z.number().min(50, "Price must be at least ₹50").max(20000, "Price cannot exceed ₹20,000").optional(),
-      })
-      .optional(),
-    notes: z
-      .object({
-        enabled: z.boolean().optional(),
-        price: z.number().min(50, "Price must be at least ₹50").max(20000, "Price cannot exceed ₹20,000").optional(),
+        productLink: z
+          .string()
+          .url("Please enter a valid product URL")
+          .or(z.literal(""))
+          .optional(),
       })
       .optional(),
   }),
@@ -285,15 +283,13 @@ export function useExpertOnboardingForm() {
       oneOnOneSession: false,
       priorityDm: false,
       digitalProducts: false,
-      notes: false,
       availability: [],
       availableHours: {},
       timezone: "Asia/Kolkata",
       servicePricing: {
         oneOnOneSession: { enabled: false, price: 0, hasFreeDemo: false },
         priorityDm: { enabled: false, price: 0, hasFreeDemo: false },
-        digitalProducts: { enabled: false, price: 0 },
-        notes: { enabled: false, price: 0 },
+        digitalProducts: { enabled: false, price: 0, productLink: "" },
       },
       profilePictureUrl: "",
       socialLinks: {
