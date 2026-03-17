@@ -60,7 +60,6 @@ interface ProfileAvailabilityProps {
   mentorId: string;
   mentorName?: string;
   mentorTimezone?: string;
-  onBookSlot?: (date: Date, time: string, timezone: string) => void;
 }
 
 interface AvailabilitySlot {
@@ -201,7 +200,6 @@ export default function ProfileAvailability({
   mentorId,
   mentorName,
   mentorTimezone = "UTC",
-  onBookSlot,
 }: ProfileAvailabilityProps) {
   const [loading, setLoading] = useState(true);
   const [recurringSlots, setRecurringSlots] = useState<AvailabilitySlot[]>([]);
@@ -217,7 +215,6 @@ export default function ProfileAvailability({
     return today;
   });
   const [showUserTimezone, setShowUserTimezone] = useState(false);
-  const [hoveredSlot, setHoveredSlot] = useState<string | null>(null);
 
   // Session Type Selector state
   const [sessionTypes, setSessionTypes] = useState<string[]>([]);
@@ -325,12 +322,14 @@ export default function ProfileAvailability({
 
       if (mentorProfile) {
         const types: string[] = [];
+        const isServiceEnabled = (enabled: unknown) =>
+          enabled === true || enabled === "true" || enabled === 1;
         
         // Check new service_pricing field first
         if (mentorProfile.service_pricing) {
-          if (mentorProfile.service_pricing.oneOnOneSession?.enabled)
+          if (isServiceEnabled(mentorProfile.service_pricing.oneOnOneSession?.enabled))
             types.push(SERVICE_CONFIG.oneOnOneSession.name);
-          if (mentorProfile.service_pricing.priorityDm?.enabled)
+          if (isServiceEnabled(mentorProfile.service_pricing.priorityDm?.enabled))
             types.push(SERVICE_CONFIG.priorityDm.name);
         }
         // Fallback to old services field for backward compatibility
@@ -391,9 +390,8 @@ export default function ProfileAvailability({
     const now = new Date();
     const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-    // Show 30 days (1 month) of availability starting from currentWeekStart
-    // This allows navigation while showing 30 days at a time
-    for (let i = 0; i < 30; i++) {
+    // Show 7 days of availability starting from currentWeekStart
+    for (let i = 0; i < 7; i++) {
       const date = new Date(currentWeekStart);
       date.setDate(currentWeekStart.getDate() + i);
       const dateStr = getLocalDateString(date);
@@ -450,9 +448,9 @@ export default function ProfileAvailability({
 
   const navigateWeek = (direction: "prev" | "next") => {
     const newDate = new Date(currentWeekStart);
-    // Navigate by 30 days (1 month) at a time
+    // Navigate by 7 days at a time
     newDate.setDate(
-      currentWeekStart.getDate() + (direction === "next" ? 30 : -30)
+      currentWeekStart.getDate() + (direction === "next" ? 7 : -7)
     );
     
     // Don't allow going back before today
@@ -535,64 +533,8 @@ export default function ProfileAvailability({
         return;
       }
 
-      // User is authenticated, proceed with booking
-      // IMPORTANT: If user is viewing in their timezone, convert back to mentor's timezone
-      // The database should always store times in mentor's timezone
-      let actualDate = date;
-      let actualStartTime = startTime;
-      let actualEndTime = endTime;
-
-      if (showUserTimezone) {
-        // Convert times back from user timezone to mentor timezone
-        const convertedStart = convertTime(
-          startTime,
-          date,
-          userTimezone,
-          mentorTimezone
-        );
-        const convertedEnd = convertTime(
-          endTime,
-          date,
-          userTimezone,
-          mentorTimezone
-        );
-
-        actualStartTime = convertedStart.time;
-        actualEndTime = convertedEnd.time;
-
-        // Adjust date if needed (when time crosses midnight)
-        if (convertedStart.dateOffset !== 0) {
-          const dateObj = new Date(date + "T00:00:00");
-          dateObj.setDate(dateObj.getDate() + convertedStart.dateOffset);
-          actualDate = dateObj.toISOString().split("T")[0];
-        }
-      }
-
-      const dateObj = new Date(actualDate + "T00:00:00");
-
-      // Use the callback if provided
-      if (onBookSlot) {
-        // Always pass mentor's timezone - this is the source of truth
-        onBookSlot(dateObj, actualStartTime, mentorTimezone);
-      } else {
-        // Fallback to old navigation behavior
-        const bookingData = {
-          mentorId,
-          mentorName,
-          date: actualDate,
-          startTime: actualStartTime,
-          endTime: actualEndTime,
-          timezone: mentorTimezone, // Always use mentor's timezone for storage
-        };
-
-        // Store booking data in session storage for the booking page
-        sessionStorage.setItem("pendingBooking", JSON.stringify(bookingData));
-
-        // Navigate to booking page
-        navigate(`/booking/${mentorId}`, {
-          state: bookingData,
-        });
-      }
+      // Booking from availability tab is disabled.
+      toast.info("Booking from the Availability tab has been disabled.");
     } catch (error) {
       console.error("Auth check error:", error);
       toast.error("Something went wrong. Please try again.");
@@ -813,20 +755,20 @@ export default function ProfileAvailability({
     recurringSlots.length > 0 || specificSlots.length > 0;
 
   // Calculate current page number (1-based) for pagination
-  // Each page represents a 30-day period
+  // Each page represents a 7-day period
   const getCurrentPage = (): number => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const diffTime = currentWeekStart.getTime() - today.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    return Math.floor(diffDays / 30) + 1;
+    return Math.floor(diffDays / 7) + 1;
   };
 
   const goToPage = (pageNum: number) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const newDate = new Date(today);
-    newDate.setDate(today.getDate() + (pageNum - 1) * 30);
+    newDate.setDate(today.getDate() + (pageNum - 1) * 7);
     setCurrentWeekStart(newDate);
   };
 
@@ -984,7 +926,7 @@ export default function ProfileAvailability({
                   })}{" "}
                   -{" "}
                   {new Date(
-                    currentWeekStart.getTime() + 29 * 24 * 60 * 60 * 1000
+                    currentWeekStart.getTime() + 6 * 24 * 60 * 60 * 1000
                   ).toLocaleDateString("en-US", {
                     month: "long",
                     day: "numeric",
@@ -992,7 +934,7 @@ export default function ProfileAvailability({
                   })}
                 </h2>
                 <p className="text-xs text-gray-500 mt-1">
-                  Showing next 30 days · Click on any time slot to book
+                  Showing next 7 days
                 </p>
               </div>
               <div className="flex gap-2">
@@ -1034,7 +976,7 @@ export default function ProfileAvailability({
                       : day.isBlocked
                       ? "border-red-200 bg-red-50/50"
                       : day.slots.length > 0
-                      ? "border-green-400 bg-green-100/60 hover:border-green-500 hover:shadow-sm"
+                      ? "border-green-400 bg-green-100/60"
                       : "border-gray-100 bg-gray-50/50"
                   }`}
                 >
@@ -1074,7 +1016,6 @@ export default function ProfileAvailability({
                   ) : day.slots.length > 0 ? (
                     <div className="space-y-2">
                       {day.slots.slice(0, 3).map((slot, idx) => {
-                        const slotKey = `${day.dateStr}-${idx}`;
                         const duration = calculateDuration(
                           slot.start,
                           slot.end
@@ -1082,31 +1023,10 @@ export default function ProfileAvailability({
                         return (
                           <div
                             key={idx}
-                            className={`group relative flex items-center gap-2.5 p-2.5 rounded-lg border-2 transition-all duration-200 cursor-pointer ${
-                              hoveredSlot === slotKey
-                                ? "bg-matepeak-yellow/10 border-matepeak-primary shadow-md transform scale-[1.02]"
-                                : "bg-green-100/80 border-green-400 hover:bg-green-100 hover:border-green-500 hover:shadow-sm"
-                            }`}
-                            onMouseEnter={() => setHoveredSlot(slotKey)}
-                            onMouseLeave={() => setHoveredSlot(null)}
-                            onClick={() =>
-                              handleBookSlot(day.dateStr, slot.start, slot.end)
-                            }
+                            className="relative flex items-center gap-2.5 p-2.5 rounded-lg border-2 bg-green-100/80 border-green-400"
                           >
-                            <div
-                              className={`p-1.5 rounded-lg transition-colors ${
-                                hoveredSlot === slotKey
-                                  ? "bg-matepeak-primary/10"
-                                  : "bg-gray-100"
-                              }`}
-                            >
-                              <Clock
-                                className={`h-3.5 w-3.5 transition-colors ${
-                                  hoveredSlot === slotKey
-                                    ? "text-matepeak-primary"
-                                    : "text-gray-600"
-                                }`}
-                              />
+                            <div className="p-1.5 rounded-lg bg-gray-100">
+                              <Clock className="h-3.5 w-3.5 text-gray-600" />
                             </div>
                             <div className="flex-grow">
                               <span className="text-xs font-semibold text-gray-900 block">
@@ -1136,24 +1056,6 @@ export default function ProfileAvailability({
                                   return null;
                                 })()}
                             </div>
-                            <Button
-                              size="sm"
-                              className={`opacity-0 group-hover:opacity-100 transition-all h-7 text-xs font-semibold ${
-                                hoveredSlot === slotKey
-                                  ? "bg-matepeak-primary hover:bg-matepeak-secondary text-white"
-                                  : "bg-gray-900 hover:bg-gray-800 text-white"
-                              }`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleBookSlot(
-                                  day.dateStr,
-                                  slot.start,
-                                  slot.end
-                                );
-                              }}
-                            >
-                              Book
-                            </Button>
                           </div>
                         );
                       })}
@@ -1171,7 +1073,7 @@ export default function ProfileAvailability({
                             });
                             setShowAllSlotsModal(true);
                           }}
-                          className="w-full py-2 px-3 text-xs font-medium text-matepeak-primary hover:text-matepeak-secondary underline decoration-2 hover:bg-matepeak-yellow/10 rounded-lg transition-colors"
+                          className="w-full py-2 px-3 text-xs font-medium text-matepeak-primary underline decoration-2 rounded-lg"
                         >
                           View All {day.slots.length} Slots
                         </button>
@@ -1238,7 +1140,7 @@ export default function ProfileAvailability({
 
               {/* Helper Text */}
               <p className="text-center text-xs text-gray-500 mt-3">
-                Each page shows a 30-day period • Page {getCurrentPage()} of 10 (Next 300 days)
+                Each page shows a 7-day period • Page {getCurrentPage()} of 10 (Next 70 days)
               </p>
 
               {/* Request Custom Time CTA */}
@@ -1572,14 +1474,7 @@ export default function ProfileAvailability({
                   return (
                     <div
                       key={idx}
-                      className="group relative flex items-center gap-2.5 p-3 rounded-lg border-2 bg-green-100/80 border-green-400 hover:bg-green-100 hover:border-green-500 hover:shadow-sm transition-all duration-200 cursor-pointer"
-                      onClick={() => {
-                        const dateStr = selectedDaySlots.dateStr;
-                        const dateObj = new Date(dateStr);
-                        const formattedDate = getLocalDateString(dateObj);
-                        handleBookSlot(formattedDate, slot.start, slot.end);
-                        setShowAllSlotsModal(false);
-                      }}
+                      className="relative flex items-center gap-2.5 p-3 rounded-lg border-2 bg-green-100/80 border-green-400"
                     >
                       <div className="p-1.5 rounded-lg bg-gray-100">
                         <Clock className="h-4 w-4 text-gray-600" />
@@ -1593,20 +1488,6 @@ export default function ProfileAvailability({
                           {duration} min
                         </span>
                       </div>
-                      <Button
-                        size="sm"
-                        className="opacity-0 group-hover:opacity-100 transition-all h-8 text-xs font-semibold bg-matepeak-primary hover:bg-matepeak-secondary text-white"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const dateStr = selectedDaySlots.dateStr;
-                          const dateObj = new Date(dateStr);
-                          const formattedDate = getLocalDateString(dateObj);
-                          handleBookSlot(formattedDate, slot.start, slot.end);
-                          setShowAllSlotsModal(false);
-                        }}
-                      >
-                        Book
-                      </Button>
                     </div>
                   );
                 })}

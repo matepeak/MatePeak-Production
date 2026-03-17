@@ -2,6 +2,8 @@
 -- Date: 2025-11-01
 -- NOTE (March 2026): Session type 'chatAdvice' referenced in this file has been renamed to 'priorityDm'
 -- See migration 20260317000100_rename_chatadvice_to_prioritydm.sql for the rename operation.
+-- NOTE (March 2026): Legacy session type 'notes' was later consolidated into 'digitalProducts'
+-- See migration 20260317000200_remove_notes_service_type.sql for the consolidation.
 
 -- Add any missing columns to bookings table
 DO $$ 
@@ -60,7 +62,7 @@ WITH CHECK (auth.uid() = expert_id);
 
 -- Add comments for documentation
 COMMENT ON TABLE bookings IS 'Stores all booking/session records between students and mentors';
-COMMENT ON COLUMN bookings.session_type IS 'Type of session: oneOnOneSession, chatAdvice, digitalProducts, notes';
+COMMENT ON COLUMN bookings.session_type IS 'Legacy session type values from this point in history. Current supported values are oneOnOneSession, priorityDm, digitalProducts after follow-up migrations.';
 COMMENT ON COLUMN bookings.status IS 'Booking status: pending (awaiting confirmation), confirmed, completed, cancelled';
 COMMENT ON COLUMN bookings.scheduled_date IS 'Date of the scheduled session (YYYY-MM-DD)';
 COMMENT ON COLUMN bookings.scheduled_time IS 'Time of the scheduled session (HH:MM format)';

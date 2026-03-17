@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SERVICE_CONFIG } from "@/config/serviceConfig";
 import {
@@ -71,6 +71,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Service {
   order?: number;
@@ -84,6 +91,7 @@ interface Service {
   enabled: boolean;
   serviceType: string;
   hasFreeDemo?: boolean;
+  productLink?: string;
 }
 
 interface ServicePricing {
@@ -103,11 +111,7 @@ interface ServicePricing {
     enabled: boolean;
     price: number;
     discount_price?: number;
-  };
-  notes?: {
-    enabled: boolean;
-    price: number;
-    discount_price?: number;
+    productLink?: string;
   };
 }
 
@@ -116,7 +120,6 @@ const serviceTypeIcons: Record<string, any> = {
   oneOnOneSession: SERVICE_CONFIG.oneOnOneSession?.icon || Briefcase,
   priorityDm: SERVICE_CONFIG.priorityDm?.icon || MessageSquare,
   digitalProducts: SERVICE_CONFIG.digitalProducts?.icon || Package,
-  notes: SERVICE_CONFIG.notes?.icon || FileText,
   custom: Plus,
 };
 
@@ -124,7 +127,6 @@ const serviceTypeLabels: Record<string, string> = {
   oneOnOneSession: SERVICE_CONFIG.oneOnOneSession?.name || "1-on-1 Session",
   priorityDm: SERVICE_CONFIG.priorityDm?.name || "Priority DM",
   digitalProducts: SERVICE_CONFIG.digitalProducts?.name || "Digital Products",
-  notes: SERVICE_CONFIG.notes?.name || "Notes & Resources",
   custom: "Custom Service",
 };
 
@@ -135,7 +137,7 @@ const serviceTemplates = [
     description:
       "Comprehensive resume review with detailed feedback and suggestions for improvement",
     price: 999,
-    serviceType: "custom",
+    serviceType: "oneOnOneSession",
     hasFreeDemo: false,
   },
   {
@@ -143,7 +145,7 @@ const serviceTemplates = [
     description:
       "One hour mock interview with detailed feedback on your performance and areas to improve",
     price: 1499,
-    serviceType: "custom",
+    serviceType: "oneOnOneSession",
     hasFreeDemo: true,
   },
   {
@@ -151,7 +153,7 @@ const serviceTemplates = [
     description:
       "Personalized career roadmap with actionable steps and milestones for the next 6-12 months",
     price: 2499,
-    serviceType: "custom",
+    serviceType: "oneOnOneSession",
     hasFreeDemo: false,
   },
   {
@@ -159,7 +161,7 @@ const serviceTemplates = [
     description:
       "Complete LinkedIn profile makeover to increase visibility and attract recruiters",
     price: 799,
-    serviceType: "custom",
+    serviceType: "oneOnOneSession",
     hasFreeDemo: false,
   },
   {
@@ -167,7 +169,7 @@ const serviceTemplates = [
     description:
       "Learn proven strategies to negotiate better offers and maximize your compensation",
     price: 1999,
-    serviceType: "custom",
+    serviceType: "oneOnOneSession",
     hasFreeDemo: false,
   },
 ];
@@ -180,7 +182,6 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
   const [editingService, setEditingService] = useState<string | null>(null);
   const [deletingService, setDeletingService] = useState<string | null>(null);
   const [addingNew, setAddingNew] = useState(false);
-  const editingServiceRef = useRef<HTMLDivElement>(null);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -200,8 +201,9 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
     price: 0,
     discount_price: undefined,
     enabled: true,
-    serviceType: "custom",
+    serviceType: "oneOnOneSession",
     hasFreeDemo: false,
+    productLink: "",
   });
 
   // Edit form state
@@ -210,18 +212,6 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
   useEffect(() => {
     loadServices();
   }, [mentorId]);
-
-  // Scroll to editing service when it changes
-  useEffect(() => {
-    if (editingService && editingServiceRef.current) {
-      setTimeout(() => {
-        editingServiceRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      }, 100);
-    }
-  }, [editingService]);
 
   const loadServices = async () => {
     try {
@@ -245,7 +235,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       // Iterate through all services in service_pricing
       Object.entries(pricing).forEach(([key, value]: [string, any], index) => {
         if (value && typeof value === 'object') {
-          const isCustom = !["oneOnOneSession", "priorityDm", "digitalProducts", "notes"].includes(key);
+          const isCustom = !["oneOnOneSession", "priorityDm", "digitalProducts"].includes(key);
           
           allServices.push({
             id: key,
@@ -254,8 +244,10 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
             price: value.price || 0,
             discount_price: value.discount_price,
             enabled: value.enabled || false,
-            serviceType: isCustom ? "custom" : key,
+            serviceType: isCustom ? (value.type || "custom") : key,
             hasFreeDemo: value.hasFreeDemo || false,
+            productLink:
+              value.productLink || value.product_url || value.product_link || "",
             order: value.order ?? index,
           });
         }
@@ -300,6 +292,16 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
         return;
       }
 
+      if (
+        service.serviceType === "digitalProducts" &&
+        !isValidHttpsUrl(editForm.productLink)
+      ) {
+        toast.error(
+          "Please add a valid https digital product link for this service"
+        );
+        return;
+      }
+
       const updatedService = { ...service, ...editForm };
       console.log("✏️ Updated service object:", updatedService);
 
@@ -314,6 +316,10 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
           price: updatedService.price,
           discount_price: updatedService.discount_price,
           hasFreeDemo: updatedService.hasFreeDemo || false,
+          productLink:
+            service.serviceType === "digitalProducts"
+              ? updatedService.productLink || null
+              : null,
           type: service.serviceType,
           order: updatedService.order,
         },
@@ -391,8 +397,9 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
           discount_price: service.discount_price,
           enabled: updatedEnabled,
           hasFreeDemo: service.hasFreeDemo || false,
+          productLink: service.productLink || "",
         });
-        toast.success("Service enabled! Update details below.");
+        toast.success("Service enabled! You can update details in the edit modal.");
       } else {
         toast.success("Service disabled");
       }
@@ -411,7 +418,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
 
       // Can't delete predefined services, only disable them
       if (
-        ["oneOnOneSession", "priorityDm", "digitalProducts", "notes"].includes(
+        ["oneOnOneSession", "priorityDm", "digitalProducts"].includes(
           service.serviceType
         )
       ) {
@@ -463,6 +470,16 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
         return;
       }
 
+      if (
+        newService.serviceType === "digitalProducts" &&
+        !isValidHttpsUrl(newService.productLink)
+      ) {
+        toast.error(
+          "Please add a valid https digital product link for this service"
+        );
+        return;
+      }
+
       // Generate unique ID
       const serviceId = `custom_${Date.now()}_${Math.random()
         .toString(36)
@@ -475,8 +492,9 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
         price: newService.price,
         discount_price: newService.discount_price,
         enabled: newService.enabled ?? true,
-        serviceType: "custom",
+        serviceType: newService.serviceType || "oneOnOneSession",
         hasFreeDemo: newService.hasFreeDemo ?? false,
+        productLink: newService.productLink || "",
       };
 
       // Add to service_pricing (unified structure)
@@ -489,7 +507,11 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
           price: service.price,
           discount_price: service.discount_price,
           hasFreeDemo: service.hasFreeDemo,
-          type: "custom",
+          productLink:
+            service.serviceType === "digitalProducts"
+              ? service.productLink || null
+              : null,
+          type: service.serviceType,
         },
       };
 
@@ -503,15 +525,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       setServices((prev) => [...prev, service]);
       setServicePricing(updatedPricing);
       setAddingNew(false);
-      setNewService({
-        name: "",
-        description: "",
-        price: 0,
-        discount_price: undefined,
-        enabled: true,
-        serviceType: "custom",
-        hasFreeDemo: false,
-      });
+      resetNewServiceForm();
       toast.success("Service added successfully!");
     } catch (error: any) {
       console.error("Error adding service:", error);
@@ -531,8 +545,9 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       price: service.price,
       discount_price: service.discount_price,
       enabled: false,
-      serviceType: "custom",
+      serviceType: service.serviceType || "oneOnOneSession",
       hasFreeDemo: service.hasFreeDemo || false,
+      productLink: service.productLink || "",
     });
     setAddingNew(true);
     toast.info("Service duplicated. Edit and save the new service.");
@@ -663,6 +678,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       price: service.price,
       enabled: service.enabled,
       hasFreeDemo: service.hasFreeDemo,
+      productLink: service.productLink || "",
     });
   };
 
@@ -670,6 +686,31 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
     setEditingService(null);
     setEditForm({});
   };
+
+  const resetNewServiceForm = () => {
+    setNewService({
+      name: "",
+      description: "",
+      price: 0,
+      discount_price: undefined,
+      enabled: true,
+      serviceType: "oneOnOneSession",
+      hasFreeDemo: false,
+      productLink: "",
+    });
+  };
+
+  const isValidHttpsUrl = (value?: string) => {
+    if (!value?.trim()) return false;
+    try {
+      const parsed = new URL(value.trim());
+      return parsed.protocol === "https:";
+    } catch {
+      return false;
+    }
+  };
+
+  const editingServiceData = services.find((service) => service.id === editingService) || null;
 
   // Filter and search logic
   const filteredServices = services.filter((service) => {
@@ -856,31 +897,19 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                   <SelectItem value="oneOnOneSession" className="rounded-lg">
                     <div className="flex items-center gap-2">
                       <Video className="h-4 w-4 text-rose-500" />
-                      <span>{serviceTypeLabels.oneOnOneSession}</span>
+                      <span>1-on-1 Session</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="priorityDm" className="rounded-lg">
                     <div className="flex items-center gap-2">
                       <MessageSquare className="h-4 w-4 text-blue-500" />
-                      <span>{serviceTypeLabels.priorityDm}</span>
+                      <span>Priority DM</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="digitalProducts" className="rounded-lg">
                     <div className="flex items-center gap-2">
                       <Package className="h-4 w-4 text-purple-500" />
-                      <span>{serviceTypeLabels.digitalProducts}</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="notes" className="rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <FileStack className="h-4 w-4 text-amber-500" />
-                      <span>{serviceTypeLabels.notes}</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="custom" className="rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Wrench className="h-4 w-4 text-indigo-500" />
-                      <span>Custom Services</span>
+                      <span>Digital Products</span>
                     </div>
                   </SelectItem>
                 </SelectContent>
@@ -917,21 +946,17 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
 
       {/* Action Buttons */}
       <div className="flex gap-2">
-        {!addingNew && (
-          <>
-            <Button onClick={() => setAddingNew(true)} variant="default">
-              <Plus className="h-4 w-4 mr-2" />
-              Add New Service
-            </Button>
-            <Button
-              onClick={() => setShowTemplates(!showTemplates)}
-              variant="outline"
-            >
-              <Sparkles className="h-4 w-4 mr-2" />
-              Use Template
-            </Button>
-          </>
-        )}
+        <Button onClick={() => setAddingNew(true)} variant="default">
+          <Plus className="h-4 w-4 mr-2" />
+          Add New Service
+        </Button>
+        <Button
+          onClick={() => setShowTemplates(!showTemplates)}
+          variant="outline"
+        >
+          <Sparkles className="h-4 w-4 mr-2" />
+          Use Template
+        </Button>
       </div>
 
       {/* Service Templates */}
@@ -991,7 +1016,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       )}
 
       {/* Add New Service Button - Remove old one */}
-      {!addingNew && services.length === 0 && (
+      {services.length === 0 && (
         <div className="text-center py-8">
           <Button
             onClick={() => setAddingNew(true)}
@@ -1005,37 +1030,22 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       )}
 
       {/* Add New Service Form */}
-      {addingNew && (
-        <Card className="border-2 border-blue-200 bg-blue-50/50">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Add New Service</CardTitle>
-                <CardDescription>
-                  Create a custom service offering
-                </CardDescription>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setAddingNew(false);
-                  setNewService({
-                    name: "",
-                    description: "",
-                    price: 0,
-                    discount_price: undefined,
-                    enabled: true,
-                    serviceType: "custom",
-                    hasFreeDemo: false,
-                  });
-                }}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      <Dialog
+        open={addingNew}
+        onOpenChange={(open) => {
+          setAddingNew(open);
+          if (!open) {
+            resetNewServiceForm();
+          }
+        }}
+      >
+        <DialogContent className="flex w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] flex-col overflow-hidden p-0 sm:rounded-xl">
+          <DialogHeader className="border-b px-6 py-5 pr-12">
+            <DialogTitle>Add New Service</DialogTitle>
+            <DialogDescription>Create a service offering</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="new-name">Service Name *</Label>
@@ -1048,6 +1058,31 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                   placeholder="e.g., Resume Review Package"
                   maxLength={100}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-service-type">Service Type *</Label>
+                <Select
+                  value={newService.serviceType || "oneOnOneSession"}
+                  onValueChange={(serviceType) =>
+                    setNewService({
+                      ...newService,
+                      serviceType,
+                      hasFreeDemo:
+                        serviceType === "digitalProducts"
+                          ? false
+                          : newService.hasFreeDemo,
+                    })
+                  }
+                >
+                  <SelectTrigger id="new-service-type">
+                    <SelectValue placeholder="Select a service type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="oneOnOneSession">1-on-1 Session</SelectItem>
+                    <SelectItem value="priorityDm">Priority DM</SelectItem>
+                    <SelectItem value="digitalProducts">Digital Products</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="new-price">Price (₹) *</Label>
@@ -1102,6 +1137,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                 }
                 placeholder="Describe what's included in this service..."
                 rows={3}
+                className="h-32 resize-none overflow-y-auto"
                 maxLength={500}
               />
               <p className="text-xs text-gray-500">
@@ -1109,86 +1145,110 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
               </p>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Enable Service</p>
-                  <p className="text-xs text-gray-500">
-                    Make this service available to students
-                  </p>
-                </div>
+            {newService.serviceType === "digitalProducts" && (
+              <div className="space-y-2">
+                <Label htmlFor="new-product-link">Digital Product Link *</Label>
+                <Input
+                  id="new-product-link"
+                  type="url"
+                  value={newService.productLink || ""}
+                  onChange={(e) =>
+                    setNewService({
+                      ...newService,
+                      productLink: e.target.value,
+                    })
+                  }
+                  placeholder="https://example.com/your-product"
+                />
+                <p className="text-xs text-gray-500">
+                  This access link will be shared with students after purchase.
+                </p>
               </div>
-              <Switch
-                checked={newService.enabled}
-                onCheckedChange={(enabled) =>
-                  setNewService({ ...newService, enabled })
-                }
-              />
-            </div>
+            )}
 
-            <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <AlertCircle className="h-5 w-5 text-blue-600" />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Enable Service</p>
+                    <p className="text-xs text-gray-500">
+                      Make this service available to students
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium text-sm">Free Demo Available</p>
-                  <p className="text-xs text-gray-500">
-                    Offer a free trial or demo session
-                  </p>
-                </div>
+                <Switch
+                  checked={newService.enabled}
+                  onCheckedChange={(enabled) =>
+                    setNewService({ ...newService, enabled })
+                  }
+                />
               </div>
-              <Switch
-                checked={newService.hasFreeDemo}
-                onCheckedChange={(hasFreeDemo) =>
-                  setNewService({ ...newService, hasFreeDemo })
-                }
-              />
-            </div>
 
-            <div className="flex gap-2 pt-2">
-              <Button
-                onClick={handleAddService}
-                disabled={saving || !newService.name || !newService.description}
-                size="sm"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                    Adding...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-3.5 w-3.5 mr-1.5" />
-                    Add Service
-                  </>
-                )}
-              </Button>
+              {newService.serviceType !== "digitalProducts" && (
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                      <AlertCircle className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Free Demo Available</p>
+                      <p className="text-xs text-gray-500">
+                        Offer a free trial or demo session
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={newService.hasFreeDemo}
+                    onCheckedChange={(hasFreeDemo) =>
+                      setNewService({ ...newService, hasFreeDemo })
+                    }
+                  />
+                </div>
+              )}
+            </div>
+            </div>
+          </div>
+
+          <div className="border-t bg-background px-6 py-4">
+            <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
-                size="sm"
                 onClick={() => {
                   setAddingNew(false);
-                  setNewService({
-                    name: "",
-                    description: "",
-                    price: 0,
-                    discount_price: undefined,
-                    enabled: true,
-                    serviceType: "custom",
-                    hasFreeDemo: false,
-                  });
+                  resetNewServiceForm();
                 }}
               >
                 Cancel
               </Button>
+              <Button
+                onClick={handleAddService}
+                disabled={
+                  saving ||
+                  !newService.name ||
+                  !newService.description ||
+                  (newService.serviceType === "digitalProducts" &&
+                    !isValidHttpsUrl(newService.productLink))
+                }
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Add Service
+                  </>
+                )}
+              </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Services List */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
@@ -1211,154 +1271,25 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
         ) : (
           filteredServices.map((service, index) => {
             const Icon = serviceTypeIcons[service.serviceType] || Briefcase;
-            const isEditing = editingService === service.id;
             const isPredefined = [
               "oneOnOneSession",
               "priorityDm",
               "digitalProducts",
-              "notes",
             ].includes(service.serviceType);
 
             return (
               <Card
                 key={service.id}
-                ref={isEditing ? editingServiceRef : null}
                 className={`${service.enabled ? "" : "opacity-60"} ${
                   draggedService === service.id ? "opacity-50" : ""
                 }`}
-                draggable={!isEditing}
+                draggable
                 onDragStart={() => handleDragStart(service.id)}
                 onDragOver={handleDragOver}
                 onDrop={() => handleDrop(service.id)}
               >
                 <CardContent className="p-4">
-                  {isEditing ? (
-                    // Edit Mode
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <Label htmlFor={`edit-name-${service.id}`}>
-                            Service Name *
-                          </Label>
-                          <Input
-                            id={`edit-name-${service.id}`}
-                            value={editForm.name}
-                            onChange={(e) =>
-                              setEditForm({ ...editForm, name: e.target.value })
-                            }
-                            maxLength={100}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`edit-price-${service.id}`}>
-                            Price (₹) *
-                          </Label>
-                          <Input
-                            id={`edit-price-${service.id}`}
-                            type="number"
-                            min="0"
-                            value={editForm.price}
-                            onChange={(e) =>
-                              setEditForm({
-                                ...editForm,
-                                price: parseFloat(e.target.value) || 0,
-                              })
-                            }
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor={`edit-discount-price-${service.id}`}>
-                          Discounted Price (₹) - Optional
-                        </Label>
-                        <Input
-                          id={`edit-discount-price-${service.id}`}
-                          type="number"
-                          min="0"
-                          value={editForm.discount_price || ""}
-                          onChange={(e) =>
-                            setEditForm({
-                              ...editForm,
-                              discount_price: e.target.value
-                                ? parseFloat(e.target.value)
-                                : undefined,
-                            })
-                          }
-                        />
-                        <p className="text-xs text-gray-500">
-                          Leave empty to remove discount
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor={`edit-description-${service.id}`}>
-                          Description *
-                        </Label>
-                        <Textarea
-                          id={`edit-description-${service.id}`}
-                          value={editForm.description}
-                          onChange={(e) =>
-                            setEditForm({
-                              ...editForm,
-                              description: e.target.value,
-                            })
-                          }
-                          rows={2}
-                          maxLength={500}
-                        />
-                      </div>
-
-                      {service.serviceType !== "digitalProducts" &&
-                        service.serviceType !== "notes" && (
-                          <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
-                            <div>
-                              <p className="font-medium text-xs">
-                                Free Demo Available
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                Offer a free trial session
-                              </p>
-                            </div>
-                            <Switch
-                              checked={editForm.hasFreeDemo}
-                              onCheckedChange={(hasFreeDemo) =>
-                                setEditForm({ ...editForm, hasFreeDemo })
-                              }
-                            />
-                          </div>
-                        )}
-
-                      <div className="flex gap-2 pt-2">
-                        <Button
-                          onClick={() => handleSaveService(service.id)}
-                          disabled={saving}
-                          size="sm"
-                        >
-                          {saving ? (
-                            <>
-                              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                              Saving...
-                            </>
-                          ) : (
-                            <>
-                              <Save className="h-3.5 w-3.5 mr-1.5" />
-                              Save
-                            </>
-                          )}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={cancelEdit}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    // View Mode
-                    <div className="space-y-3">
+                  <div className="space-y-3">
                       <div className="flex items-start gap-3">
                         {/* Drag Handle */}
                         <div className="flex-shrink-0 pt-1 cursor-move">
@@ -1537,13 +1468,168 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                         </DropdownMenu>
                       </div>
                     </div>
-                  )}
                 </CardContent>
               </Card>
             );
           })
         )}
       </div>
+
+      {/* Edit Service Modal */}
+      <Dialog
+        open={!!editingService}
+        onOpenChange={(open) => {
+          if (!open) {
+            cancelEdit();
+          }
+        }}
+      >
+        <DialogContent className="flex w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] flex-col overflow-hidden p-0 sm:rounded-xl">
+          <DialogHeader className="border-b px-6 py-5 pr-12">
+            <DialogTitle>Edit Service</DialogTitle>
+            <DialogDescription>
+              Update the service details and save your changes.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editingServiceData && (
+            <>
+              <div className="flex-1 overflow-y-auto px-6 py-5">
+                <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="modal-edit-name">Service Name *</Label>
+                  <Input
+                    id="modal-edit-name"
+                    value={editForm.name}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, name: e.target.value })
+                    }
+                    maxLength={100}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="modal-edit-price">Price (₹) *</Label>
+                  <Input
+                    id="modal-edit-price"
+                    type="number"
+                    min="0"
+                    value={editForm.price}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        price: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="modal-edit-discount-price">
+                  Discounted Price (₹) - Optional
+                </Label>
+                <Input
+                  id="modal-edit-discount-price"
+                  type="number"
+                  min="0"
+                  value={editForm.discount_price || ""}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      discount_price: e.target.value
+                        ? parseFloat(e.target.value)
+                        : undefined,
+                    })
+                  }
+                />
+                <p className="text-xs text-gray-500">Leave empty to remove discount</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="modal-edit-description">Description *</Label>
+                <Textarea
+                  id="modal-edit-description"
+                  value={editForm.description}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      description: e.target.value,
+                    })
+                  }
+                  rows={4}
+                  className="h-32 resize-none overflow-y-auto"
+                  maxLength={500}
+                />
+              </div>
+
+              {editingServiceData.serviceType === "digitalProducts" && (
+                <div className="space-y-2">
+                  <Label htmlFor="modal-edit-product-link">
+                    Digital Product Link *
+                  </Label>
+                  <Input
+                    id="modal-edit-product-link"
+                    type="url"
+                    value={editForm.productLink || ""}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        productLink: e.target.value,
+                      })
+                    }
+                    placeholder="https://example.com/your-product"
+                  />
+                  <p className="text-xs text-gray-500">
+                    This link is sent to students after a successful purchase.
+                  </p>
+                </div>
+              )}
+
+              {editingServiceData.serviceType !== "digitalProducts" && (
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium text-sm">Free Demo Available</p>
+                      <p className="text-xs text-gray-500">Offer a free trial session</p>
+                    </div>
+                    <Switch
+                      checked={!!editForm.hasFreeDemo}
+                      onCheckedChange={(hasFreeDemo) =>
+                        setEditForm({ ...editForm, hasFreeDemo })
+                      }
+                    />
+                  </div>
+                )}
+                </div>
+              </div>
+
+              <div className="border-t bg-background px-6 py-4">
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={cancelEdit} disabled={saving}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => handleSaveService(editingServiceData.id)}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Changes
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog

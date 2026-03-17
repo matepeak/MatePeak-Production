@@ -19,6 +19,7 @@ import {
   Filter,
   Download,
   Eye,
+  Link2,
   IndianRupee,
   User,
   Mail,
@@ -598,6 +599,29 @@ export default function MySessions({ studentProfile }: MySessionsProps) {
                     </div>
                   </>
                 )}
+
+                {activeSession.session_type === "digitalProducts" &&
+                  activeSession.digital_product_link && (
+                    <>
+                      <Separator />
+                      <div className="space-y-3">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Digital Product Access
+                        </h3>
+                        <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200">
+                          <a
+                            href={activeSession.digital_product_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 text-sm text-emerald-700 hover:text-emerald-900 font-medium break-all"
+                          >
+                            <Link2 className="h-4 w-4" />
+                            Access your digital product
+                          </a>
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                 <Separator />
                 <div className="grid grid-cols-2 gap-4 text-sm">

@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import {
+import type {
   SelectedService,
   SelectedDateTime,
   BookingDetails,
@@ -130,8 +130,6 @@ export default function BookingConfirmation({
         return "What would you like to discuss?";
       case "digitalProducts":
         return "What are you looking to achieve with this product?";
-      case "notes":
-        return "What topics are you interested in?";
       default:
         return "What is the call about?";
     }
@@ -171,7 +169,6 @@ export default function BookingConfirmation({
               {selectedService.type === "priorityDm" &&
                 "Text-based Mentoring Session"}
               {selectedService.type === "digitalProducts" && "Digital Download"}
-              {selectedService.type === "notes" && "Session Notes & Materials"}
             </p>
           </div>
           {isFreeBooking ? (

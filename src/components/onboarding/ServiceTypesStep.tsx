@@ -1,6 +1,6 @@
 
 import { UseFormReturn } from "react-hook-form";
-import { Video, MessageSquare, ShoppingBag, FileText, CheckCircle2, Sparkles, Check } from "lucide-react";
+import { Video, MessageSquare, ShoppingBag, CheckCircle2, Sparkles, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   FormField,
@@ -28,12 +28,6 @@ const services = [
     icon: ShoppingBag,
     label: "Digital Products",
     description: "Sell courses, ebooks, templates, or other digital products",
-  },
-  {
-    name: "notes",
-    icon: FileText,
-    label: "Notes / Bootcamp Materials",
-    description: "Share study notes, bootcamp materials, and educational resources",
   },
 ];
 

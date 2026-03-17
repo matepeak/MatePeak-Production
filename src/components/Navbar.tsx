@@ -29,7 +29,7 @@ import FeedbackModal from "./FeedbackModal";
 import { toast } from "sonner";
 
 const Navbar = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [isSignInModalOpen, setIsSignInModalOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
@@ -39,6 +39,7 @@ const Navbar = () => {
   const [userRole, setUserRole] = useState<"student" | "mentor" | null>(null);
   const [isExploreDropdownOpen, setIsExploreDropdownOpen] = useState(false);
   const [onboardingDraft, setOnboardingDraft] = useState<{ phase: number; step: number; timestamp: number } | null>(null);
+  const [showHomeStickySearch, setShowHomeStickySearch] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -313,19 +314,6 @@ const Navbar = () => {
     navigate(`/explore?${params.toString()}`);
   };
 
-  const handleBrowseAllMentors = () => {
-    navigate("/mentors");
-  };
-
-  const handleBrowseCategories = () => {
-    navigate("/explore");
-  };
-
-  const handleBrowseAdvice = () => {
-    // Navigate to advice/articles section (you can create this page or redirect to a specific section)
-    navigate("/explore?tab=advice");
-  };
-
   const getInitials = (name: string) => {
     return name?.charAt(0)?.toUpperCase() || "U";
   };
@@ -360,8 +348,55 @@ const Navbar = () => {
   const isMainPage = location.pathname === "/";
 
   useEffect(() => {
-    setIsMenuOpen(false);
+    if (!isMainPage) {
+      setShowHomeStickySearch(false);
+      return;
+    }
+
+    const updateStickySearchVisibility = () => {
+      const heroSearch = document.getElementById("home-hero-search-anchor");
+      if (!heroSearch) {
+        setShowHomeStickySearch(false);
+        return;
+      }
+
+      const rect = heroSearch.getBoundingClientRect();
+      setShowHomeStickySearch(rect.bottom <= 88);
+    };
+
+    updateStickySearchVisibility();
+    window.addEventListener("scroll", updateStickySearchVisibility, {
+      passive: true,
+    });
+    window.addEventListener("resize", updateStickySearchVisibility);
+
+    return () => {
+      window.removeEventListener("scroll", updateStickySearchVisibility);
+      window.removeEventListener("resize", updateStickySearchVisibility);
+    };
+  }, [isMainPage]);
+
+  useEffect(() => {
+    setIsMobileNavOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isMobileNavOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsMobileNavOpen(false);
+    };
+
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isMobileNavOpen]);
 
   return (
     <>
@@ -371,18 +406,18 @@ const Navbar = () => {
         } border-b border-gray-100 bg-white/95 supports-[backdrop-filter]:bg-white/90 backdrop-blur-sm pt-4 pb-4`}
       >
         <div className="container mx-auto px-6 sm:px-8 lg:px-12">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between gap-3 md:justify-start md:gap-4">
             {/* Logo */}
             <Link
               to="/"
-              className="flex items-center gap-2 transition-transform duration-300 hover:scale-105"
+              className="flex min-w-0 items-center gap-2 transition-transform duration-300 hover:scale-105"
             >
               <img
                 src="/lovable-uploads/14bf0eea-1bc9-4675-9231-356df10eb82d.png"
                 alt="MatePeak Logo"
                 className="h-10 drop-shadow-sm mt-0.5"
               />
-              <span className="text-2xl font-extrabold font-poppins text-gray-900">
+              <span className="truncate text-xl sm:text-2xl font-extrabold font-poppins text-gray-900">
                 MatePeak
               </span>
             </Link>
@@ -465,6 +500,33 @@ const Navbar = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+
+            {isMainPage && showHomeStickySearch && (
+              <form
+                onSubmit={handleSearch}
+                className="hidden md:block relative w-full max-w-md ml-4"
+              >
+                <div className="relative">
+                  <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 z-10">
+                    <Search className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="What type of mentor are you interested in?"
+                    className="hero-search-input w-full h-11 pl-12 pr-12 rounded-full text-sm text-gray-700 placeholder:text-sm placeholder:text-gray-700 placeholder:font-normal appearance-none outline-none ring-0"
+                  />
+                  <button
+                    type="submit"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black flex items-center justify-center hover:bg-gray-800 transition-all shadow-sm border-0 outline-none"
+                    aria-label="Search mentors"
+                  >
+                    <Search className="w-3.5 h-3.5 text-white" />
+                  </button>
+                </div>
+              </form>
+            )}
 
             {/* Desktop User Actions */}
             <div className="hidden md:flex items-center space-x-4 ml-auto">
@@ -593,40 +655,42 @@ const Navbar = () => {
               )}
             </div>
 
-            {/* Mobile Menu Button */}
-            <div className="md:hidden absolute right-4">
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="text-matepeak-primary hover:text-matepeak-secondary p-2 rounded-lg hover:bg-matepeak-primary/5 transition-all duration-300"
-              >
-                {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-              </button>
-            </div>
+            <button
+              onClick={() => setIsMobileNavOpen(true)}
+              className="md:hidden ml-auto p-2 rounded-lg text-matepeak-primary hover:bg-matepeak-primary/5 transition-colors"
+              aria-label="Open navigation menu"
+            >
+              <Menu size={24} />
+            </button>
+
           </div>
         </div>
 
         <div
-          className={`md:hidden fixed inset-0 z-[70] ${
-            isMenuOpen ? "pointer-events-auto" : "pointer-events-none"
+          className={`md:hidden fixed inset-0 z-[90] transition-[visibility] duration-300 ${
+            isMobileNavOpen ? "visible" : "invisible"
           }`}
         >
           <button
-            aria-label="Close mobile menu overlay"
-            className={`absolute inset-0 bg-black/30 transition-opacity duration-300 ${
-              isMenuOpen ? "opacity-100" : "opacity-0"
+            aria-label="Close mobile navigation"
+            className={`absolute inset-0 bg-transparent transition-opacity duration-300 ${
+              isMobileNavOpen ? "opacity-100" : "opacity-0"
             }`}
-            onClick={() => setIsMenuOpen(false)}
+            onClick={() => setIsMobileNavOpen(false)}
           />
 
           <aside
-            className={`absolute right-0 top-0 h-full w-[78%] max-w-[320px] bg-white border-l border-gray-200 shadow-2xl transition-transform duration-300 ${
-              isMenuOpen ? "translate-x-0" : "translate-x-full"
+            className={`absolute inset-y-0 right-0 flex h-full min-h-screen max-h-[100dvh] w-[84vw] max-w-[340px] flex-col bg-white border-l border-gray-200 shadow-2xl transition-transform duration-300 ease-out ${
+              isMobileNavOpen ? "translate-x-0" : "translate-x-full"
             }`}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Mobile navigation panel"
           >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-white">
               <span className="text-base font-semibold text-gray-900">Menu</span>
               <button
-                onClick={() => setIsMenuOpen(false)}
+                onClick={() => setIsMobileNavOpen(false)}
                 className="p-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
                 aria-label="Close menu"
               >
@@ -634,14 +698,14 @@ const Navbar = () => {
               </button>
             </div>
 
-            <div className="h-[calc(100%-61px)] overflow-y-auto px-4 py-4">
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 pb-6 bg-white">
               <div className="flex flex-col gap-2 pb-4 border-b border-gray-200">
                 <Button
                   variant="ghost"
                   className="text-gray-700 hover:bg-gray-100 w-full font-medium justify-start rounded-xl h-11"
                   onClick={() => {
                     navigate("/");
-                    setIsMenuOpen(false);
+                    setIsMobileNavOpen(false);
                   }}
                 >
                   Home
@@ -650,21 +714,11 @@ const Navbar = () => {
                   variant="ghost"
                   className="text-gray-700 hover:bg-gray-100 w-full font-medium justify-start rounded-xl h-11"
                   onClick={() => {
-                    handleBrowseCategories();
-                    setIsMenuOpen(false);
+                    navigate("/explore");
+                    setIsMobileNavOpen(false);
                   }}
                 >
                   Explore
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="text-gray-700 hover:bg-gray-100 w-full font-medium justify-start rounded-xl h-11"
-                  onClick={() => {
-                    handleBrowseAllMentors();
-                    setIsMenuOpen(false);
-                  }}
-                >
-                  Browse All Mentors
                 </Button>
               </div>
 
@@ -700,7 +754,7 @@ const Navbar = () => {
                       className="text-amber-700 hover:bg-amber-50 w-full font-medium justify-start rounded-xl h-11"
                       onClick={() => {
                         handleResumeOnboarding();
-                        setIsMenuOpen(false);
+                        setIsMobileNavOpen(false);
                       }}
                     >
                       <FileEdit className="mr-3 h-4 w-4 text-amber-600" />
@@ -716,7 +770,7 @@ const Navbar = () => {
                         className="text-gray-700 hover:bg-gray-100 w-full font-medium justify-start rounded-xl h-11"
                         onClick={() => {
                           handleViewProfile();
-                          setIsMenuOpen(false);
+                          setIsMobileNavOpen(false);
                         }}
                       >
                         <User className="mr-3 h-4 w-4 text-gray-500" />
@@ -732,7 +786,7 @@ const Navbar = () => {
                       className="text-gray-700 hover:bg-gray-100 w-full font-medium justify-start rounded-xl h-11"
                       onClick={() => {
                         handleDashboardClick();
-                        setIsMenuOpen(false);
+                        setIsMobileNavOpen(false);
                       }}
                     >
                       <LayoutDashboard className="mr-3 h-4 w-4 text-gray-500" />
@@ -746,7 +800,7 @@ const Navbar = () => {
                       className="text-red-600 hover:bg-red-50 w-full font-medium justify-start rounded-xl h-11"
                       onClick={() => {
                         handleLogout();
-                        setIsMenuOpen(false);
+                        setIsMobileNavOpen(false);
                       }}
                     >
                       <LogOut className="mr-3 h-4 w-4" />
@@ -761,7 +815,7 @@ const Navbar = () => {
                     className="text-gray-700 hover:bg-gray-100 w-full font-medium justify-start rounded-xl h-11"
                     onClick={() => {
                       setIsFeedbackOpen(true);
-                      setIsMenuOpen(false);
+                      setIsMobileNavOpen(false);
                     }}
                   >
                     Share Your Feedback
@@ -771,7 +825,7 @@ const Navbar = () => {
                     className="bg-[#f2f2f2] text-matepeak-primary border-0 shadow-none hover:bg-black hover:text-white hover:shadow-none w-full font-semibold justify-center rounded-full h-10 px-6 transition-colors duration-150 font-poppins"
                     onClick={() => {
                       handleSignInClick();
-                      setIsMenuOpen(false);
+                      setIsMobileNavOpen(false);
                     }}
                   >
                     Sign In
@@ -780,7 +834,7 @@ const Navbar = () => {
                     className="bg-gradient-to-r from-matepeak-primary to-matepeak-secondary text-white hover:from-matepeak-primary/90 hover:to-matepeak-secondary/90 w-full font-bold rounded-full h-12"
                     onClick={() => {
                       handleGetStartedClick();
-                      setIsMenuOpen(false);
+                      setIsMobileNavOpen(false);
                     }}
                   >
                     Create account

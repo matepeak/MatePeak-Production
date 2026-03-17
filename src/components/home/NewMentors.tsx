@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles, Loader2 } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import MentorCard from "@/components/MentorCard";
 import { MentorProfile } from "@/components/MentorCard";
 import { supabase } from "@/integrations/supabase/client";
@@ -88,22 +87,19 @@ const NewMentors = ({ sectionRef }: NewMentorsProps) => {
   // Show error if present
   if (error) {
     return (
-      <section className="py-20 md:py-28" ref={sectionRef}>
-        <div className="w-full max-w-7xl mx-auto px-4 md:px-8 xl:px-0">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 bg-matepeak-primary/10 px-4 py-2 rounded-full mb-4">
-              <Sparkles className="h-5 w-5 text-matepeak-primary" />
-              <span className="text-sm font-semibold text-matepeak-primary">
-                Just Joined
-              </span>
-            </div>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-matepeak-primary via-matepeak-secondary to-orange-500 bg-clip-text text-transparent">
+      <section className="w-full bg-white py-24 sm:py-32" ref={sectionRef}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-16">
+            <p className="text-sm font-medium text-gray-400 tracking-widest uppercase mb-4">
+              Just Joined
+            </p>
+            <h2 className="text-4xl sm:text-5xl font-semibold text-gray-900 tracking-tight leading-tight">
               New Mentors
             </h2>
           </div>
-          <ConnectionStatus 
-            error={error} 
-            onRetry={fetchNewMentors} 
+          <ConnectionStatus
+            error={error}
+            onRetry={fetchNewMentors}
             isRetrying={loading}
           />
         </div>
@@ -114,24 +110,21 @@ const NewMentors = ({ sectionRef }: NewMentorsProps) => {
   // Don't render section if no new mentors and not loading
   if (!loading && newMentors.length === 0) {
     return (
-      <section className="py-20 md:py-28" ref={sectionRef}>
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 bg-matepeak-primary/10 px-4 py-2 rounded-full mb-4">
-              <Sparkles className="h-5 w-5 text-matepeak-primary" />
-              <span className="text-sm font-semibold text-matepeak-primary">
-                Just Joined
-              </span>
-            </div>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-matepeak-primary via-matepeak-secondary to-orange-500 bg-clip-text text-transparent">
+      <section className="w-full bg-white py-24 sm:py-32" ref={sectionRef}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="text-center">
+            <p className="text-sm font-medium text-gray-400 tracking-widest uppercase mb-4">
+              Just Joined
+            </p>
+            <h2 className="text-4xl sm:text-5xl font-semibold text-gray-900 tracking-tight leading-tight">
               New Mentors
             </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto mb-8 font-light">
-              Welcome our newest mentors to the platform! Connect with fresh
+            <p className="mt-5 text-base text-gray-500 max-w-xl mx-auto leading-relaxed">
+              Welcome our newest mentors to the platform. Connect with fresh
               perspectives and expertise.
             </p>
-            <p className="text-gray-500 font-light">
-              Be the first to connect with mentors as they join!
+            <p className="mt-4 text-sm text-gray-400">
+              Be the first to connect as they join.
             </p>
           </div>
         </div>
@@ -140,21 +133,18 @@ const NewMentors = ({ sectionRef }: NewMentorsProps) => {
   }
 
   return (
-    <section className="py-20 md:py-28" ref={sectionRef}>
-      <div className="w-full max-w-7xl mx-auto px-4 md:px-8 xl:px-0">
+    <section className="w-full bg-white py-24 sm:py-32" ref={sectionRef}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Section Header */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 bg-matepeak-primary/10 px-4 py-2 rounded-full mb-4">
-            <Sparkles className="h-5 w-5 text-matepeak-primary" />
-            <span className="text-sm font-semibold text-matepeak-primary">
-              Just Joined
-            </span>
-          </div>
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-matepeak-primary via-matepeak-secondary to-orange-500 bg-clip-text text-transparent">
+          <p className="text-sm font-medium text-gray-400 tracking-widest uppercase mb-4">
+            Just Joined
+          </p>
+          <h2 className="text-4xl sm:text-5xl font-semibold text-gray-900 tracking-tight leading-tight">
             New Mentors
           </h2>
-          <p className="text-gray-600 max-w-2xl mx-auto font-light">
-            Welcome our newest mentors to the platform! Connect with fresh
+          <p className="mt-5 text-base text-gray-500 max-w-xl mx-auto leading-relaxed">
+            Welcome our newest mentors to the platform. Connect with fresh
             perspectives and expertise.
           </p>
         </div>
@@ -162,14 +152,14 @@ const NewMentors = ({ sectionRef }: NewMentorsProps) => {
         {/* Loading State */}
         {loading && (
           <div className="flex justify-center items-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-matepeak-primary" />
+            <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
           </div>
         )}
 
         {/* Mentor Cards Grid */}
         {!loading && newMentors.length > 0 && (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-14">
               {newMentors.map((mentor, index) => (
                 <MentorCard
                   key={mentor.id || index}
@@ -179,13 +169,14 @@ const NewMentors = ({ sectionRef }: NewMentorsProps) => {
               ))}
             </div>
 
-            {/* View All Button */}
+            {/* View All Link */}
             <div className="text-center">
-              <Link to="/explore">
-                <Button className="group bg-gradient-to-r from-matepeak-primary to-matepeak-secondary text-white hover:from-matepeak-primary/90 hover:to-matepeak-secondary/90 rounded-full transition-all duration-300">
-                  Explore All Mentors
-                  <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
-                </Button>
+              <Link
+                to="/explore"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-900 border border-gray-200 rounded-full px-6 py-2.5 hover:bg-gray-50 transition-all duration-200 active:scale-95"
+              >
+                Explore all mentors
+                <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </>

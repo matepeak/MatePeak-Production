@@ -155,12 +155,6 @@ export default function ProfileAbout({ mentor }: ProfileAboutProps) {
                           <span>Digital Products & Resources</span>
                         </div>
                       )}
-                      {mentor.services.notes && (
-                        <div className="flex items-center gap-2 text-gray-700 text-sm">
-                          <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
-                          <span>Notes & Study Materials</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </>

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This system automatically sends review request emails to students 30 minutes after their session completes. Students can then rate and review their mentors, which appears in both the mentor dashboard and public profile.
+This system automatically sends review request emails to students after their scheduled session end time has passed (scheduled start + booked duration). Students can then rate and review their mentors, which appears in both the mentor dashboard and public profile.
 
 ## Components Implemented
 
@@ -32,7 +32,7 @@ This system automatically sends review request emails to students 30 minutes aft
 **Functionality:**
 
 - Runs on a cron schedule (recommended: every 15 minutes)
-- Finds sessions completed 30+ minutes ago
+- Finds sessions whose scheduled end time has passed
 - Checks if review request hasn't been sent
 - Checks if student hasn't already reviewed
 - Sends personalized email with review link
@@ -181,7 +181,7 @@ supabase functions invoke send-review-requests
 ```
 Session Completes
       ↓
-   +30 minutes
+Scheduled end time passed
       ↓
 Cron Job Runs (every 15 min)
       ↓
