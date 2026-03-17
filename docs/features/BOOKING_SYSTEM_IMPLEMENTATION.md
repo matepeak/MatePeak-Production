@@ -1,5 +1,7 @@
 # Booking System Implementation Guide
 
+> **📝 NOTE (March 2026):** "Chat Advice" service type has been renamed to "Priority DM" across all codebase (both TypeScript and database). This document uses legacy naming for historical reference. See [PRIORITY_DM_IMPLEMENTATION_SPEC.md](./PRIORITY_DM_IMPLEMENTATION_SPEC.md) for current naming.
+
 ## Overview
 
 Implemented a complete 3-step booking flow modal system inspired by TopMate's UX, integrated into the mentor public profile page.

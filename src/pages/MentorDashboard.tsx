@@ -8,7 +8,7 @@ import ProfileManagement from "@/components/dashboard/ProfileManagement";
 import SessionManagement from "@/components/dashboard/SessionManagement";
 import ReviewsManagement from "@/components/dashboard/ReviewsManagement";
 import AvailabilityCalendar from "@/components/dashboard/AvailabilityCalendar";
-import SessionMessaging from "@/components/dashboard/SessionMessaging";
+import MentorPriorityDmInbox from "@/components/dashboard/MentorPriorityDmInbox";
 import StudentDirectory from "@/components/dashboard/StudentDirectory";
 import CustomTimeRequests from "@/components/dashboard/CustomTimeRequests";
 import ServicesManagement from "@/components/dashboard/ServicesManagement";
@@ -192,7 +192,7 @@ const MentorDashboard = () => {
         <AvailabilityCalendar mentorProfile={mentorProfile} />
       )}
       {activeView === "messages" && (
-        <SessionMessaging mentorProfile={mentorProfile} />
+        <MentorPriorityDmInbox mentorProfile={mentorProfile} />
       )}
       {activeView === "students" && (
         <StudentDirectory mentorProfile={mentorProfile} />

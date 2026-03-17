@@ -330,15 +330,15 @@ export default function ProfileAvailability({
         if (mentorProfile.service_pricing) {
           if (mentorProfile.service_pricing.oneOnOneSession?.enabled)
             types.push(SERVICE_CONFIG.oneOnOneSession.name);
-          if (mentorProfile.service_pricing.chatAdvice?.enabled)
-            types.push(SERVICE_CONFIG.chatAdvice.name);
+          if (mentorProfile.service_pricing.priorityDm?.enabled)
+            types.push(SERVICE_CONFIG.priorityDm.name);
         }
         // Fallback to old services field for backward compatibility
         else if (mentorProfile.services) {
           if (mentorProfile.services.oneOnOneSession)
             types.push(SERVICE_CONFIG.oneOnOneSession.name);
-          if (mentorProfile.services.chatAdvice)
-            types.push(SERVICE_CONFIG.chatAdvice.name);
+          if (mentorProfile.services.priorityDm)
+            types.push(SERVICE_CONFIG.priorityDm.name);
           if (mentorProfile.services.freeDemo) types.push("Free Demo");
         }
         
