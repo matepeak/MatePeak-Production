@@ -66,7 +66,7 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <SEO
-        title="MatePeak | Turn Questions Into Conversations"
+        title="Matepeak- Be a Soloprenuer"
         description="Connect with expert mentors for 1-on-1 sessions in career growth, coding, interview prep, and more. Learn faster with personalized guidance on MatePeak."
         canonicalPath="/"
       />
