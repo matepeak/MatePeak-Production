@@ -52,6 +52,13 @@ export interface TimeSlot {
   booked?: boolean;
 }
 
+function getLocalDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function resolveServicePricingByType(
   servicePricing: Record<string, any> | undefined,
   sessionType: string,
@@ -643,12 +650,12 @@ export async function getAvailableTimeSlots(
   duration: number = 60
 ): Promise<{ success: boolean; data: TimeSlot[]; error?: string }> {
   try {
-    const dateStr = date.toISOString().split("T")[0];
+    const dateStr = getLocalDateString(date);
     const dayOfWeek = date.getDay();
 
     // Check if selected date is today
     const today = new Date();
-    const isToday = dateStr === today.toISOString().split("T")[0];
+    const isToday = dateStr === getLocalDateString(today);
     const currentTimeInMinutes = isToday
       ? today.getHours() * 60 + today.getMinutes()
       : 0;

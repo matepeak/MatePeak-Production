@@ -54,6 +54,13 @@ interface AvailabilityCalendarProps {
   mentorProfile: any;
 }
 
+interface BookedSession {
+  id: string;
+  scheduled_time: string;
+  duration: number;
+  user_name?: string;
+}
+
 const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
   const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -62,6 +69,8 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
   >([]);
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [bookedSessions, setBookedSessions] = useState<BookedSession[]>([]);
+  const [loadingBookedSessions, setLoadingBookedSessions] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [newSlots, setNewSlots] = useState<Partial<AvailabilitySlot>[]>([
@@ -279,6 +288,38 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
   useEffect(() => {
     fetchAvailability();
   }, [mentorProfile]);
+
+  useEffect(() => {
+    const fetchBookedSessionsForDate = async () => {
+      if (!selectedDate || !dialogOpen || !mentorProfile?.id) {
+        setBookedSessions([]);
+        return;
+      }
+
+      try {
+        setLoadingBookedSessions(true);
+        const selectedDateStr = getLocalDateString(selectedDate);
+
+        const { data, error } = await supabase
+          .from("bookings")
+          .select("id, scheduled_time, duration, user_name")
+          .eq("expert_id", mentorProfile.id)
+          .eq("scheduled_date", selectedDateStr)
+          .eq("status", "confirmed")
+          .order("scheduled_time", { ascending: true });
+
+        if (error) throw error;
+        setBookedSessions((data as BookedSession[]) || []);
+      } catch (error) {
+        console.error("Error fetching booked sessions for date:", error);
+        setBookedSessions([]);
+      } finally {
+        setLoadingBookedSessions(false);
+      }
+    };
+
+    fetchBookedSessionsForDate();
+  }, [selectedDate, dialogOpen, mentorProfile?.id]);
 
   const fetchAvailability = async () => {
     try {
@@ -1688,6 +1729,65 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
                         ))}
                       </div>
                     )}
+
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium text-gray-900">
+                        Confirmed Bookings
+                      </h4>
+                      {loadingBookedSessions ? (
+                        <div className="p-4 text-sm text-gray-500 bg-gray-50 rounded-xl border border-gray-200 flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Loading booked sessions...
+                        </div>
+                      ) : bookedSessions.length === 0 ? (
+                        <div className="p-4 text-sm text-gray-500 bg-gray-50 rounded-xl border border-gray-200">
+                          No confirmed bookings on this date.
+                        </div>
+                      ) : (
+                        bookedSessions.map((booking) => {
+                          const bookingStart = booking.scheduled_time.slice(0, 5);
+                          const startMinutes = timeToMinutes(bookingStart);
+                          const endMinutes = startMinutes + Number(booking.duration || 60);
+                          const endHours = Math.floor(endMinutes / 60)
+                            .toString()
+                            .padStart(2, "0");
+                          const endMins = (endMinutes % 60)
+                            .toString()
+                            .padStart(2, "0");
+
+                          return (
+                            <div
+                              key={booking.id}
+                              className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-2xl"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="h-9 w-9 rounded-full bg-white border border-amber-300 flex items-center justify-center">
+                                  <Clock className="h-4 w-4 text-amber-700" />
+                                </div>
+                                <div className="text-sm text-gray-900">
+                                  <span className="inline-flex items-baseline gap-1.5">
+                                    {renderTimeToken(bookingStart)}
+                                    <span className="text-gray-600">-</span>
+                                    {renderTimeToken(`${endHours}:${endMins}`)}
+                                  </span>
+                                  {booking.user_name ? (
+                                    <span className="block text-xs text-gray-600 mt-0.5">
+                                      Booked by {booking.user_name}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+                              <Badge
+                                variant="outline"
+                                className="text-xs border-amber-300 text-amber-800"
+                              >
+                                Booked
+                              </Badge>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
 
                     {/* Block/Unblock Date */}
                     <div className="flex justify-center">
