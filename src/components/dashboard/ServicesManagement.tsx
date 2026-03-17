@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SERVICE_CONFIG } from "@/config/serviceConfig";
 import {
@@ -71,6 +71,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface Service {
   order?: number;
@@ -180,7 +187,6 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
   const [editingService, setEditingService] = useState<string | null>(null);
   const [deletingService, setDeletingService] = useState<string | null>(null);
   const [addingNew, setAddingNew] = useState(false);
-  const editingServiceRef = useRef<HTMLDivElement>(null);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -210,18 +216,6 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
   useEffect(() => {
     loadServices();
   }, [mentorId]);
-
-  // Scroll to editing service when it changes
-  useEffect(() => {
-    if (editingService && editingServiceRef.current) {
-      setTimeout(() => {
-        editingServiceRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      }, 100);
-    }
-  }, [editingService]);
 
   const loadServices = async () => {
     try {
@@ -392,7 +386,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
           enabled: updatedEnabled,
           hasFreeDemo: service.hasFreeDemo || false,
         });
-        toast.success("Service enabled! Update details below.");
+        toast.success("Service enabled! You can update details in the edit modal.");
       } else {
         toast.success("Service disabled");
       }
@@ -670,6 +664,8 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
     setEditingService(null);
     setEditForm({});
   };
+
+  const editingServiceData = services.find((service) => service.id === editingService) || null;
 
   // Filter and search logic
   const filteredServices = services.filter((service) => {
@@ -1102,6 +1098,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                 }
                 placeholder="Describe what's included in this service..."
                 rows={3}
+                className="h-32 resize-none overflow-y-auto"
                 maxLength={500}
               />
               <p className="text-xs text-gray-500">
@@ -1211,7 +1208,6 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
         ) : (
           filteredServices.map((service, index) => {
             const Icon = serviceTypeIcons[service.serviceType] || Briefcase;
-            const isEditing = editingService === service.id;
             const isPredefined = [
               "oneOnOneSession",
               "priorityDm",
@@ -1222,143 +1218,16 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
             return (
               <Card
                 key={service.id}
-                ref={isEditing ? editingServiceRef : null}
                 className={`${service.enabled ? "" : "opacity-60"} ${
                   draggedService === service.id ? "opacity-50" : ""
                 }`}
-                draggable={!isEditing}
+                draggable
                 onDragStart={() => handleDragStart(service.id)}
                 onDragOver={handleDragOver}
                 onDrop={() => handleDrop(service.id)}
               >
                 <CardContent className="p-4">
-                  {isEditing ? (
-                    // Edit Mode
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                          <Label htmlFor={`edit-name-${service.id}`}>
-                            Service Name *
-                          </Label>
-                          <Input
-                            id={`edit-name-${service.id}`}
-                            value={editForm.name}
-                            onChange={(e) =>
-                              setEditForm({ ...editForm, name: e.target.value })
-                            }
-                            maxLength={100}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`edit-price-${service.id}`}>
-                            Price (₹) *
-                          </Label>
-                          <Input
-                            id={`edit-price-${service.id}`}
-                            type="number"
-                            min="0"
-                            value={editForm.price}
-                            onChange={(e) =>
-                              setEditForm({
-                                ...editForm,
-                                price: parseFloat(e.target.value) || 0,
-                              })
-                            }
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor={`edit-discount-price-${service.id}`}>
-                          Discounted Price (₹) - Optional
-                        </Label>
-                        <Input
-                          id={`edit-discount-price-${service.id}`}
-                          type="number"
-                          min="0"
-                          value={editForm.discount_price || ""}
-                          onChange={(e) =>
-                            setEditForm({
-                              ...editForm,
-                              discount_price: e.target.value
-                                ? parseFloat(e.target.value)
-                                : undefined,
-                            })
-                          }
-                        />
-                        <p className="text-xs text-gray-500">
-                          Leave empty to remove discount
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor={`edit-description-${service.id}`}>
-                          Description *
-                        </Label>
-                        <Textarea
-                          id={`edit-description-${service.id}`}
-                          value={editForm.description}
-                          onChange={(e) =>
-                            setEditForm({
-                              ...editForm,
-                              description: e.target.value,
-                            })
-                          }
-                          rows={2}
-                          maxLength={500}
-                        />
-                      </div>
-
-                      {service.serviceType !== "digitalProducts" &&
-                        service.serviceType !== "notes" && (
-                          <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
-                            <div>
-                              <p className="font-medium text-xs">
-                                Free Demo Available
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                Offer a free trial session
-                              </p>
-                            </div>
-                            <Switch
-                              checked={editForm.hasFreeDemo}
-                              onCheckedChange={(hasFreeDemo) =>
-                                setEditForm({ ...editForm, hasFreeDemo })
-                              }
-                            />
-                          </div>
-                        )}
-
-                      <div className="flex gap-2 pt-2">
-                        <Button
-                          onClick={() => handleSaveService(service.id)}
-                          disabled={saving}
-                          size="sm"
-                        >
-                          {saving ? (
-                            <>
-                              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                              Saving...
-                            </>
-                          ) : (
-                            <>
-                              <Save className="h-3.5 w-3.5 mr-1.5" />
-                              Save
-                            </>
-                          )}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={cancelEdit}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    // View Mode
-                    <div className="space-y-3">
+                  <div className="space-y-3">
                       <div className="flex items-start gap-3">
                         {/* Drag Handle */}
                         <div className="flex-shrink-0 pt-1 cursor-move">
@@ -1537,13 +1406,140 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                         </DropdownMenu>
                       </div>
                     </div>
-                  )}
                 </CardContent>
               </Card>
             );
           })
         )}
       </div>
+
+      {/* Edit Service Modal */}
+      <Dialog
+        open={!!editingService}
+        onOpenChange={(open) => {
+          if (!open) {
+            cancelEdit();
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Service</DialogTitle>
+            <DialogDescription>
+              Update the service details and save your changes.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editingServiceData && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="modal-edit-name">Service Name *</Label>
+                  <Input
+                    id="modal-edit-name"
+                    value={editForm.name}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, name: e.target.value })
+                    }
+                    maxLength={100}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="modal-edit-price">Price (₹) *</Label>
+                  <Input
+                    id="modal-edit-price"
+                    type="number"
+                    min="0"
+                    value={editForm.price}
+                    onChange={(e) =>
+                      setEditForm({
+                        ...editForm,
+                        price: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="modal-edit-discount-price">
+                  Discounted Price (₹) - Optional
+                </Label>
+                <Input
+                  id="modal-edit-discount-price"
+                  type="number"
+                  min="0"
+                  value={editForm.discount_price || ""}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      discount_price: e.target.value
+                        ? parseFloat(e.target.value)
+                        : undefined,
+                    })
+                  }
+                />
+                <p className="text-xs text-gray-500">Leave empty to remove discount</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="modal-edit-description">Description *</Label>
+                <Textarea
+                  id="modal-edit-description"
+                  value={editForm.description}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      description: e.target.value,
+                    })
+                  }
+                  rows={4}
+                  className="h-32 resize-none overflow-y-auto"
+                  maxLength={500}
+                />
+              </div>
+
+              {editingServiceData.serviceType !== "digitalProducts" &&
+                editingServiceData.serviceType !== "notes" && (
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium text-sm">Free Demo Available</p>
+                      <p className="text-xs text-gray-500">Offer a free trial session</p>
+                    </div>
+                    <Switch
+                      checked={!!editForm.hasFreeDemo}
+                      onCheckedChange={(hasFreeDemo) =>
+                        setEditForm({ ...editForm, hasFreeDemo })
+                      }
+                    />
+                  </div>
+                )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={cancelEdit} disabled={saving}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => handleSaveService(editingServiceData.id)}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog
