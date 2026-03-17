@@ -348,23 +348,38 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
     try {
       setSaving(true);
 
-      // Phase 1 (unverified) mentor validation: max 5 slots per week
-      const isUnverified = mentorProfile.verification_status !== 'verified' || 
-                          mentorProfile.mentor_tier === 'basic' || 
-                          !mentorProfile.phase_1_complete;
+      // Restriction rule:
+      // - Restrict only when mentor is explicitly incomplete/unverified
+      // - Legacy mentors with null/missing flags are treated as completed
+      // - New mentors (explicit false/pending values) remain restricted
+      const hasCompletedPhase1 = mentorProfile?.phase_1_complete !== false;
+      const hasCompletedPhase2 = mentorProfile?.phase_2_complete !== false;
+      const isVerified = mentorProfile?.verification_status
+        ? mentorProfile.verification_status === "verified"
+        : true;
+      const isRestricted =
+        mentorProfile?.phase_1_complete === false ||
+        mentorProfile?.phase_2_complete === false ||
+        !isVerified;
       
-      if (isUnverified) {
-        // Calculate the start and end of the current week (next 7 days from today)
-        const today = new Date();
-        const weekEnd = new Date(today);
-        weekEnd.setDate(today.getDate() + 6);
-        const todayStr = getLocalDateString(today);
-        const weekEndStr = getLocalDateString(weekEnd);
+      if (isRestricted) {
+        // Calculate week range based on selected date (Sun-Sat)
+        const selectedWeekStart = new Date(selectedDate);
+        selectedWeekStart.setHours(0, 0, 0, 0);
+        selectedWeekStart.setDate(
+          selectedWeekStart.getDate() - selectedWeekStart.getDay()
+        );
 
-        // Count existing slots within the next 7 days (excluding recurring slots)
+        const selectedWeekEnd = new Date(selectedWeekStart);
+        selectedWeekEnd.setDate(selectedWeekStart.getDate() + 6);
+
+        const weekStartStr = getLocalDateString(selectedWeekStart);
+        const weekEndStr = getLocalDateString(selectedWeekEnd);
+
+        // Count existing specific-date slots in that selected week
         const existingWeeklySlots = availabilitySlots.filter(slot => {
           if (slot.specific_date) {
-            return slot.specific_date >= todayStr && slot.specific_date <= weekEndStr;
+            return slot.specific_date >= weekStartStr && slot.specific_date <= weekEndStr;
           }
           return false;
         });
@@ -424,7 +439,7 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
       console.error("Error adding slot:", error);
       toast({
         title: "Error",
-        description: "Failed to add availability slot",
+        description: error?.message || "Failed to add availability slot",
         variant: "destructive",
       });
     } finally {
