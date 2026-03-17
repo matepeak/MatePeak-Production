@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { generateMeetingLink } from "./meetingService";
 import { enforceRateLimit } from "@/services/rateLimitService";
-import { normalizeServiceType } from "@/config/serviceConfig";
+import { normalizeServiceType, serviceRequiresScheduling } from "@/config/serviceConfig";
 
 /**
  * BOOKING SLOT AVAILABILITY SYSTEM
@@ -203,17 +203,20 @@ export async function createBooking(data: CreateBookingData) {
       };
     }
 
-    // 3. Validate date is not in the past
-    const bookingDate = new Date(data.scheduled_date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // 3. Validate date only for services that require scheduling.
+    const requiresScheduling = serviceRequiresScheduling(data.session_type);
+    if (requiresScheduling) {
+      const bookingDate = new Date(data.scheduled_date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-    if (bookingDate < today) {
-      return {
-        success: false,
-        error: "Cannot book sessions in the past",
-        data: null,
-      };
+      if (bookingDate < today) {
+        return {
+          success: false,
+          error: "Cannot book sessions in the past",
+          data: null,
+        };
+      }
     }
 
     // 4. Validate duration (only for video sessions)
