@@ -1,5 +1,5 @@
 import { UseFormReturn } from "react-hook-form";
-import { DollarSign, HelpCircle, Coins, Gift, MessageSquare, ShoppingBag, FileText, Video } from "lucide-react";
+import { DollarSign, HelpCircle, Coins, Gift, Link2, MessageSquare, ShoppingBag, Video } from "lucide-react";
 import {
   FormField,
   FormItem,
@@ -22,30 +22,26 @@ export default function PricingStep({ form }: { form: UseFormReturn<any> }) {
   const oneOnOneSession = form.watch("oneOnOneSession");
   const priorityDm = form.watch("priorityDm");
   const digitalProducts = form.watch("digitalProducts");
-  const notes = form.watch("notes");
 
   const serviceIcons = {
     oneOnOneSession: Video,
     priorityDm: MessageSquare,
     digitalProducts: ShoppingBag,
-    notes: FileText,
   };
 
   const serviceLabels = {
     oneOnOneSession: "1-on-1 Video Sessions",
     priorityDm: "Priority DM",
     digitalProducts: "Digital Products",
-    notes: "Notes & Resources",
   };
 
   const serviceDescriptions = {
     oneOnOneSession: "Live video mentoring sessions",
     priorityDm: "Text-based Q&A and guidance",
     digitalProducts: "Courses, ebooks, templates, etc.",
-    notes: "Study materials and resources",
   };
 
-  const hasAnyService = oneOnOneSession || priorityDm || digitalProducts || notes;
+  const hasAnyService = oneOnOneSession || priorityDm || digitalProducts;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -61,83 +57,6 @@ export default function PricingStep({ form }: { form: UseFormReturn<any> }) {
 
       {!hasAnyService && (
         <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="pt-6">
-            <p className="text-amber-800 text-sm">
-              ⚠️ You haven't selected any services yet. Please go back to the Services step and select at least one service.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="space-y-4">
-        {/* 1-on-1 Sessions */}
-        {oneOnOneSession && (
-          <Card className="border-2 border-matepeak-primary/20 hover:border-matepeak-primary/40 transition-all">
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-matepeak-primary/10 flex items-center justify-center">
-                  {serviceIcons.oneOnOneSession && <serviceIcons.oneOnOneSession className="w-5 h-5 text-matepeak-primary" />}
-                </div>
-                <div>
-                  <CardTitle className="text-lg">{serviceLabels.oneOnOneSession}</CardTitle>
-                  <CardDescription>{serviceDescriptions.oneOnOneSession}</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="servicePricing.oneOnOneSession.enabled"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between space-y-0">
-                    <div>
-                      <FormLabel className="text-base font-medium">Offer as paid service</FormLabel>
-                      <FormDescription>Toggle on to charge for this service</FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={(checked) => {
-                          field.onChange(checked);
-                          if (!checked) {
-                            form.setValue("servicePricing.oneOnOneSession.price", 0);
-                          }
-                        }}
-                        className="data-[state=checked]:bg-matepeak-primary"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              {form.watch("servicePricing.oneOnOneSession.enabled") && (
-                <div className="space-y-4 animate-fade-in">
-                  <FormField
-                    control={form.control}
-                    name="servicePricing.oneOnOneSession.price"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <DollarSign className="w-4 h-4 text-matepeak-primary" />
-                          Price per session (INR)
-                        </FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-matepeak-primary">
-                              ₹
-                            </span>
-                            <Input
-                              type="number"
-                              placeholder="1000"
-                              className="pl-10 text-lg"
-                              value={field.value || ''}
-                              onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
-                            />
-                          </div>
-                        </FormControl>
-                        <FormDescription className="text-xs">
-                          Recommended: ₹500 - ₹5000 per session
-                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -305,6 +224,7 @@ export default function PricingStep({ form }: { form: UseFormReturn<any> }) {
                           field.onChange(checked);
                           if (!checked) {
                             form.setValue("servicePricing.digitalProducts.price", 0);
+                            form.setValue("servicePricing.digitalProducts.productLink", "");
                           }
                         }}
                         className="data-[state=checked]:bg-matepeak-primary"
@@ -315,116 +235,68 @@ export default function PricingStep({ form }: { form: UseFormReturn<any> }) {
               />
 
               {form.watch("servicePricing.digitalProducts.enabled") && (
-                <FormField
-                  control={form.control}
-                  name="servicePricing.digitalProducts.price"
-                  render={({ field }) => (
-                    <FormItem className="animate-fade-in">
-                      <FormLabel className="flex items-center gap-2">
-                        <DollarSign className="w-4 h-4 text-matepeak-primary" />
-                        Starting price (INR)
-                      </FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-matepeak-primary">
-                            ₹
-                          </span>
+                <div className="space-y-4 animate-fade-in">
+                  <FormField
+                    control={form.control}
+                    name="servicePricing.digitalProducts.price"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <DollarSign className="w-4 h-4 text-matepeak-primary" />
+                          Starting price (INR)
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-matepeak-primary">
+                              ₹
+                            </span>
+                            <Input
+                              type="number"
+                              placeholder="999"
+                              className="pl-10 text-lg"
+                              value={field.value || ''}
+                              onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Base price for your digital products (courses, ebooks, etc.)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="servicePricing.digitalProducts.productLink"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Link2 className="w-4 h-4 text-matepeak-primary" />
+                          Digital product link
+                        </FormLabel>
+                        <FormControl>
                           <Input
-                            type="number"
-                            placeholder="999"
-                            className="pl-10 text-lg"
-                            value={field.value || ''}
-                            onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                            type="url"
+                            placeholder="https://example.com/your-product"
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(e.target.value)}
                           />
-                        </div>
-                      </FormControl>
-                      <FormDescription className="text-xs">
-                        Base price for your digital products (courses, ebooks, etc.)
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Students receive this link after booking your digital product.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               )}
             </CardContent>
           </Card>
         )}
 
-        {/* Notes */}
-        {notes && (
-          <Card className="border-2 border-matepeak-primary/20 hover:border-matepeak-primary/40 transition-all">
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-matepeak-primary/10 flex items-center justify-center">
-                  {serviceIcons.notes && <serviceIcons.notes className="w-5 h-5 text-matepeak-primary" />}
-                </div>
-                <div>
-                  <CardTitle className="text-lg">{serviceLabels.notes}</CardTitle>
-                  <CardDescription>{serviceDescriptions.notes}</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="servicePricing.notes.enabled"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between space-y-0">
-                    <div>
-                      <FormLabel className="text-base font-medium">Offer as paid service</FormLabel>
-                      <FormDescription>Toggle on to charge for this service</FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={(checked) => {
-                          field.onChange(checked);
-                          if (!checked) {
-                            form.setValue("servicePricing.notes.price", 0);
-                          }
-                        }}
-                        className="data-[state=checked]:bg-matepeak-primary"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              {form.watch("servicePricing.notes.enabled") && (
-                <FormField
-                  control={form.control}
-                  name="servicePricing.notes.price"
-                  render={({ field }) => (
-                    <FormItem className="animate-fade-in">
-                      <FormLabel className="flex items-center gap-2">
-                        <DollarSign className="w-4 h-4 text-matepeak-primary" />
-                        Price per resource pack (INR)
-                      </FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-matepeak-primary">
-                            ₹
-                          </span>
-                          <Input
-                            type="number"
-                            placeholder="299"
-                            className="pl-10 text-lg"
-                            value={field.value || ''}
-                            onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormDescription className="text-xs">
-                        Price for study materials and resource packs
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   );

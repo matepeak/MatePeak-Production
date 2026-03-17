@@ -1,9 +1,10 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
-import { Search } from "lucide-react";
+import { Clock3, Search, Trash2 } from "lucide-react";
 
 const Hero = () => {
+  const RECENT_SEARCHES_KEY = "matepeak-recent-searches";
   const [currentField, setCurrentField] = useState(0);
   const [displayText, setDisplayText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -11,6 +12,7 @@ const Hero = () => {
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
   const [isMobileView, setIsMobileView] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const navigate = useNavigate();
 
   const fields = [
@@ -232,9 +234,50 @@ const Hero = () => {
 
   const popularOptions = ["Career Growth", "Mental Health", "Interview Prep"];
 
+  useEffect(() => {
+    const savedRecentSearches = localStorage.getItem(RECENT_SEARCHES_KEY);
+    if (!savedRecentSearches) return;
+
+    try {
+      const parsed = JSON.parse(savedRecentSearches);
+      if (Array.isArray(parsed)) {
+        setRecentSearches(parsed.filter((item) => typeof item === "string"));
+      }
+    } catch {
+      setRecentSearches([]);
+    }
+  }, []);
+
+  const saveRecentSearches = (updatedSearches: string[]) => {
+    setRecentSearches(updatedSearches);
+    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updatedSearches));
+  };
+
+  const addRecentSearch = (query: string) => {
+    const normalizedQuery = query.trim();
+    if (!normalizedQuery) return;
+
+    const updatedSearches = [
+      normalizedQuery,
+      ...recentSearches.filter(
+        (item) => item.toLowerCase() !== normalizedQuery.toLowerCase()
+      ),
+    ].slice(0, 5);
+
+    saveRecentSearches(updatedSearches);
+  };
+
+  const removeRecentSearch = (queryToRemove: string) => {
+    const updatedSearches = recentSearches.filter(
+      (item) => item !== queryToRemove
+    );
+    saveRecentSearches(updatedSearches);
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
+      addRecentSearch(searchQuery);
       navigate(`/explore?q=${encodeURIComponent(searchQuery)}`);
     }
   };
@@ -245,9 +288,11 @@ const Hero = () => {
 
   // Get filtered suggestions
   const getFilteredSuggestions = () => {
-    return searchSuggestions
+    const filtered = searchSuggestions
       .filter((s) => s.toLowerCase().includes(searchQuery.toLowerCase()))
       .slice(0, 5);
+
+    return filtered.length > 0 ? filtered : searchSuggestions.slice(0, 5);
   };
 
   // Handle keyboard navigation
@@ -271,10 +316,12 @@ const Hero = () => {
       ) {
         const selectedSuggestion = filteredSuggestions[selectedSuggestionIndex];
         setSearchQuery(selectedSuggestion);
+        addRecentSearch(selectedSuggestion);
         setShowSearchDropdown(false);
         setSelectedSuggestionIndex(-1);
         navigate(`/explore?q=${encodeURIComponent(selectedSuggestion)}`);
       } else if (searchQuery.trim()) {
+        addRecentSearch(searchQuery);
         navigate(`/explore?q=${encodeURIComponent(searchQuery)}`);
       }
     } else if (e.key === "Escape") {
@@ -317,10 +364,14 @@ const Hero = () => {
             {/* Search Bar */}
             <div className="flex flex-col justify-center lg:justify-start items-center lg:items-start mb-8 mt-6 sm:mt-8">
               <form
+                id="home-hero-search-anchor"
                 onSubmit={handleSearch}
-                className="relative w-full max-w-xl mb-4"
+                className="relative w-full max-w-lg mb-4"
               >
                 <div className="relative">
+                  <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 z-10">
+                    <Search className="h-5 w-5 text-gray-400" />
+                  </div>
                   <input
                     type="text"
                     value={searchQuery}
@@ -338,25 +389,66 @@ const Hero = () => {
                         ? "What mentor are you interested in?"
                         : "What type of mentor are you interested in?"
                     }
-                    className="w-full h-12 sm:h-14 pl-4 sm:pl-6 pr-12 sm:pr-14 rounded-full bg-gray-50 hover:bg-white focus:bg-white border border-gray-200 text-gray-700 placeholder:text-xs sm:placeholder:text-sm placeholder:text-gray-500 outline-none hover:border-gray-300 focus:border-matepeak-primary focus:ring-2 focus:ring-matepeak-primary/20 transition-all"
+                    className="hero-search-input w-full h-12 sm:h-14 pl-12 sm:pl-14 pr-12 sm:pr-14 rounded-full bg-[#f2f2f2] text-sm sm:text-base text-gray-700 placeholder:text-xs sm:placeholder:text-sm placeholder:text-gray-700 placeholder:font-normal border-0 appearance-none outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 transition-colors"
+                    style={{ WebkitTapHighlightColor: "transparent" }}
                   />
                   <button
                     type="submit"
-                    className="absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-black flex items-center justify-center hover:bg-gray-800 transition-all shadow-sm"
+                    className="absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-black border-0 appearance-none flex items-center justify-center hover:bg-gray-800 transition-all shadow-sm outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 focus-visible:ring-0"
+                    style={{ WebkitTapHighlightColor: "transparent" }}
                   >
                     <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
                   </button>
                 </div>
 
                 {/* Search Dropdown */}
-                {showSearchDropdown && searchQuery.length > 0 && (
-                  <div className="absolute top-full mt-2 w-full bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
+                {showSearchDropdown && (
+                  <div className="absolute top-full mt-2 w-full max-h-[60vh] overflow-y-auto bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
+                    {recentSearches.length > 0 && (
+                      <>
+                        {recentSearches.map((recentSearch) => (
+                          <div
+                            key={recentSearch}
+                            className="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 transition-colors"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSearchQuery(recentSearch);
+                                addRecentSearch(recentSearch);
+                                setShowSearchDropdown(false);
+                                setSelectedSuggestionIndex(-1);
+                                navigate(
+                                  `/explore?q=${encodeURIComponent(recentSearch)}`
+                                );
+                              }}
+                              className="flex min-w-0 items-center gap-3 text-left text-sm text-gray-700 font-poppins border-0 appearance-none outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0"
+                              style={{ WebkitTapHighlightColor: "transparent" }}
+                            >
+                              <Clock3 className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                              <span className="truncate">{recentSearch}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeRecentSearch(recentSearch)}
+                              className="ml-2 p-1 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors border-0 appearance-none outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0"
+                              style={{ WebkitTapHighlightColor: "transparent" }}
+                              aria-label="Delete recent search"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                        <div className="mx-3 border-t border-gray-100" />
+                      </>
+                    )}
                     {getFilteredSuggestions().map((suggestion, index) => (
                       <button
                         key={index}
                         type="button"
                         onClick={() => {
                           setSearchQuery(suggestion);
+                          addRecentSearch(suggestion);
                           setShowSearchDropdown(false);
                           setSelectedSuggestionIndex(-1);
                           navigate(
@@ -364,11 +456,12 @@ const Hero = () => {
                           );
                         }}
                         onMouseEnter={() => setSelectedSuggestionIndex(index)}
-                        className={`w-full px-4 py-2.5 text-left transition-colors flex items-center gap-3 font-poppins ${
+                        className={`w-full px-4 py-2.5 text-left transition-colors flex items-center gap-3 font-poppins border-0 appearance-none outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0 ${
                           selectedSuggestionIndex === index
                             ? "bg-matepeak-primary/10 text-matepeak-primary"
                             : "hover:bg-gray-50 text-gray-700"
                         }`}
+                        style={{ WebkitTapHighlightColor: "transparent" }}
                       >
                         <Search
                           className={`w-4 h-4 ${
@@ -385,8 +478,8 @@ const Hero = () => {
               </form>
 
               {/* Popular Tags */}
-              <div className="w-full max-w-xl">
-                <div className="mx-auto lg:mx-0 flex w-fit items-center gap-1.5 sm:gap-2.5 flex-nowrap">
+              <div className="w-full max-w-xl overflow-x-auto">
+                <div className="mx-auto lg:mx-0 flex w-max items-center gap-1.5 sm:gap-2.5 flex-nowrap pr-1">
                   <span className="text-[11px] sm:text-sm font-bold text-gray-900 font-poppins whitespace-nowrap leading-none">
                     Try:
                   </span>
@@ -409,7 +502,7 @@ const Hero = () => {
             <div className="absolute left-0 top-0 bottom-0 w-10 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
             <div className="absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
 
-            <div className="flex gap-4 animate-scroll-left pt-8">
+            <div className="flex gap-4 animate-scroll-left-mobile pt-8">
               {mentorCards.map((mentor) => (
                 <div key={`mobile-${mentor.id}`} className="flex-shrink-0">
                   <div
@@ -508,7 +601,7 @@ const Hero = () => {
             {/* Right fade gradient */}
             <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
 
-            <div className="flex gap-6 animate-scroll-left hover:pause pt-12">
+            <div className="flex gap-6 animate-scroll-left-desktop pt-12">
               {/* First set of cards */}
               {mentorCards.map((mentor) => (
                 <div key={mentor.id} className="flex-shrink-0">

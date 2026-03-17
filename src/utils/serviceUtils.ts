@@ -4,7 +4,7 @@
  * Centralized service type utilities and constants
  * Eliminates duplicate service configuration across components
  */
-import { Video, MessageSquare, ShoppingBag, FileText } from "lucide-react";
+import { Video, MessageSquare, ShoppingBag } from "lucide-react";
 import { SERVICE_CONFIG as SHARED_SERVICE_CONFIG } from "@/config/serviceConfig";
 
 // Re-export the shared config for backward compatibility
@@ -83,7 +83,6 @@ export function getConnectionOptions(
   if (services?.oneOnOneSession) options.push("1:1 Call");
   if (services?.priorityDm) options.push("Chat");
   if (services?.digitalProducts) options.push("Document Review");
-  if (services?.notes) options.push("Group Session");
 
   return options;
 }

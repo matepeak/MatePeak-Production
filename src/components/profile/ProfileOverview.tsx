@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +56,9 @@ export default function ProfileOverview({
   mentor,
   stats,
 }: ProfileOverviewProps) {
+  const isServiceEnabled = (enabled: unknown) =>
+    enabled === true || enabled === "true" || enabled === 1;
+
   const [featuredReviews, setFeaturedReviews] = useState<any[]>([]);
   const [selectedService, setSelectedService] = useState<ServiceListItem | null>(
     null
@@ -112,9 +116,18 @@ export default function ProfileOverview({
   const getPriceUnit = (serviceKey: string) => {
     if (serviceKey === "oneOnOneSession") return "/ session";
     if (serviceKey === "priorityDm") return "/ consultation";
-    if (serviceKey === "notes") return "/ resource";
     if (serviceKey === "digitalProducts") return "/ product";
     return "";
+  };
+
+  const formatPrice = (value: number | null | undefined) => {
+    if (typeof value !== "number" || Number.isNaN(value)) {
+      return "0";
+    }
+
+    return new Intl.NumberFormat("en-IN", {
+      maximumFractionDigits: 0,
+    }).format(value);
   };
 
   const fetchServiceStats = async () => {
@@ -246,8 +259,7 @@ export default function ProfileOverview({
 
     // Iterate through all services in service_pricing
     Object.entries(mentor.service_pricing).forEach(([key, value]: [string, any]) => {
-      // Only skip if service is explicitly disabled
-      if (!value?.enabled) {
+      if (!isServiceEnabled(value?.enabled)) {
         console.log(`   ⏭️ Skipping ${key} (not enabled)`);
         return;
       }
@@ -410,22 +422,22 @@ export default function ProfileOverview({
                 Services & Pricing
               </h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
               {services.map((service, index) => {
                 const ServiceIcon = service.icon;
                 return (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedService(service)}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedService(service)}
                     key={index}
-                      className="group relative w-full text-left bg-white rounded-2xl border border-gray-200 hover:border-gray-300 p-5 transition-all duration-200 hover:shadow-sm"
-                    >
+                    className="group relative w-full text-left bg-white rounded-2xl border border-gray-200 p-5 transition-all duration-200 hover:border-gray-300 hover:bg-gray-50 h-full flex flex-col"
+                  >
                     {/* Service Icon */}
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center transition-colors">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center transition-colors group-hover:bg-matepeak-primary/5 group-hover:border-matepeak-primary/20">
                         <ServiceIcon className="h-6 w-6 text-matepeak-primary" />
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap justify-end">
                         {serviceStatsByType[service.key]?.reviewCount > 0 ? (
                           <div className="inline-flex items-center gap-1 rounded-full bg-gray-50 border border-gray-200 px-2 py-0.5 text-xs text-gray-700 font-medium">
                             <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
@@ -446,42 +458,40 @@ export default function ProfileOverview({
                     </div>
 
                     {/* Service Info */}
-                    <div className="space-y-2">
-                      <h3 className="font-bold text-gray-900 text-base leading-tight">
+                    <div className="space-y-2 min-h-[92px]">
+                      <h3 className="font-semibold text-gray-900 text-[1.05rem] leading-snug line-clamp-2">
                         {service.name}
                       </h3>
-                      <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
+                      <p className="text-sm text-gray-600 leading-relaxed line-clamp-2 min-h-[40px]">
                         {service.description ||
                           (service.name === SERVICE_CONFIG.oneOnOneSession.name &&
                             SERVICE_CONFIG.oneOnOneSession.description) ||
                           (service.name === SERVICE_CONFIG.priorityDm.name &&
                             SERVICE_CONFIG.priorityDm.description) ||
                           (service.name === SERVICE_CONFIG.digitalProducts.name &&
-                            SERVICE_CONFIG.digitalProducts.description) ||
-                          (service.name === SERVICE_CONFIG.notes.name &&
-                            "Download study materials and practice exercises")}
+                            SERVICE_CONFIG.digitalProducts.description)}
                       </p>
                     </div>
 
                     {/* Pricing */}
-                    <div className="mt-4 pt-4 border-t border-gray-100">
+                    <div className="mt-4 pt-4 border-t border-gray-100 bg-gray-50/60 rounded-xl px-3.5 py-3">
                       {service.discount_price ? (
-                        <div className="space-y-1">
+                        <div className="space-y-1.5">
                           <div className="flex items-baseline gap-2">
                             <div className="flex items-baseline gap-1">
                               <IndianRupee className="h-5 w-5 text-green-600 mt-0.5" />
                               <span className="text-2xl font-bold text-green-600">
-                                {service.discount_price}
+                                {formatPrice(service.discount_price)}
                               </span>
                             </div>
                             <div className="flex items-baseline gap-1 opacity-60">
                               <IndianRupee className="h-4 w-4 text-gray-500 mt-0.5" />
                               <span className="text-lg font-medium text-gray-500 line-through">
-                                {service.price}
+                                {formatPrice(service.price)}
                               </span>
                             </div>
                           </div>
-                          <span className="text-sm text-gray-500">
+                          <span className="text-xs text-gray-500 uppercase tracking-wide">
                             {getPriceUnit(service.key)}
                           </span>
                         </div>
@@ -489,17 +499,20 @@ export default function ProfileOverview({
                         <div className="flex items-baseline gap-1">
                           <IndianRupee className="h-5 w-5 text-gray-700 mt-0.5" />
                           <span className="text-2xl font-bold text-gray-900">
-                            {service.price}
+                            {formatPrice(service.price)}
                           </span>
-                          <span className="text-sm text-gray-500 ml-1">
+                          <span className="text-xs text-gray-500 uppercase tracking-wide ml-1">
                             {getPriceUnit(service.key)}
                           </span>
                         </div>
                       )}
                     </div>
 
-                    <p className="mt-3 text-xs text-gray-500">View details</p>
-                    </button>
+                    <div className="mt-3 flex items-center justify-between">
+                      <p className="text-xs text-gray-500 font-medium">View details</p>
+                      <span className="text-sm text-matepeak-primary opacity-80 group-hover:translate-x-0.5 transition-transform">→</span>
+                    </div>
+                  </button>
                 );
               })}
             </div>
@@ -587,14 +600,14 @@ export default function ProfileOverview({
                 <div className="flex items-end gap-1">
                   <IndianRupee className="h-5 w-5 text-gray-700 mb-1" />
                   <span className="text-[32px] leading-none font-semibold tracking-tight text-gray-900">
-                    {selectedService.discount_price || selectedService.price}
+                    {formatPrice(selectedService.discount_price || selectedService.price)}
                   </span>
                   <span className="text-sm text-gray-500 ml-1 mb-1">
                     {getPriceUnit(selectedService.key)}
                   </span>
                   {selectedService.discount_price && (
                     <span className="text-sm text-gray-400 line-through ml-2 mb-1">
-                      ₹{selectedService.price}
+                      ₹{formatPrice(selectedService.price)}
                     </span>
                   )}
                 </div>

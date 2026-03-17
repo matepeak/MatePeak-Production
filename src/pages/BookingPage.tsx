@@ -6,8 +6,13 @@ import { Card } from "@/components/ui/card";
 import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { createBooking } from "@/services/bookingService";
+import { paymentService } from "@/services/paymentService";
 import { createPriorityDm } from "@/services/priorityDmService";
 import { format } from "date-fns";
+import {
+  normalizeServiceType,
+  serviceRequiresScheduling,
+} from "@/config/serviceConfig";
 import Navbar from "@/components/Navbar";
 import ServiceSelection from "@/components/booking/ServiceSelection";
 import DateTimeSelection from "@/components/booking/DateTimeSelection";
@@ -16,7 +21,8 @@ import BookingConfirmation from "@/components/booking/BookingConfirmation";
 export type BookingStep = 1 | 2 | 3;
 
 export interface SelectedService {
-  type: "oneOnOneSession" | "priorityDm" | "digitalProducts" | "notes";
+  type: "oneOnOneSession" | "priorityDm" | "digitalProducts";
+  serviceKey?: string;
   name: string;
   duration: number;
   price: number;
@@ -49,7 +55,17 @@ interface MentorData {
   total_reviews: number;
 }
 
+const getLocalDateString = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const BookingPage = () => {
+  const isServiceEnabled = (value: any) =>
+    value === true || value === "true" || value === 1 || value === "1";
+
   const [searchParams] = useSearchParams();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -60,6 +76,9 @@ const BookingPage = () => {
   const preSelectedDate = searchParams.get("date");
   const preSelectedTime = searchParams.get("time");
   const preSelectedTimezone = searchParams.get("timezone");
+  const isAvailabilityFlow = Boolean(
+    preSelectedDate && preSelectedTime && preSelectedTimezone
+  );
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -133,7 +152,7 @@ const BookingPage = () => {
         const { data: reviews } = await supabase
           .from("reviews")
           .select("rating")
-          .eq("mentor_id", mentorId);
+          .eq("expert_id", mentorId);
 
         let averageRating = 0;
         let totalReviews = 0;
@@ -150,30 +169,42 @@ const BookingPage = () => {
           full_name: mentor.full_name,
           avatar_url: mentor.profile_picture_url || "",
           timezone: "Asia/Kolkata", // Default timezone since column doesn't exist
-          services: mentor.services || {},
           service_pricing: mentor.service_pricing || {},
           average_rating: averageRating,
           total_reviews: totalReviews,
         });
 
         // If serviceId is provided, auto-select the service
-        if (preSelectedServiceId && mentor.service_pricing) {
+        // For availability flow, only oneOnOneSession is allowed.
+        if (
+          preSelectedServiceId &&
+          mentor.service_pricing &&
+          (!isAvailabilityFlow || preSelectedServiceId === "oneOnOneSession")
+        ) {
           const serviceData = mentor.service_pricing[preSelectedServiceId];
-          if (serviceData?.enabled) {
+          const normalizedServiceType =
+            normalizeServiceType(serviceData?.type || "") ||
+            normalizeServiceType(preSelectedServiceId);
+          if (isServiceEnabled(serviceData?.enabled)) {
             // Use the exact price set by the mentor (even if it's 0)
             const actualPrice = serviceData.price !== undefined && serviceData.price !== null ? serviceData.price : 0;
 
             setSelectedService({
-              type: preSelectedServiceId as any,
+              type: normalizedServiceType || "oneOnOneSession",
+              serviceKey: preSelectedServiceId,
               name: serviceData.name || preSelectedServiceId,
               duration: 60,
               price: actualPrice,
               hasFreeDemo: serviceData.hasFreeDemo || false,
             });
 
-            // Auto-advance to appropriate step
-            if (preSelectedServiceId === "oneOnOneSession") {
-              setStep(2); // Date/time selection
+            // Auto-advance to appropriate step based on SERVICE_CONFIG
+            const requiresScheduling = serviceRequiresScheduling(
+              normalizedServiceType || preSelectedServiceId
+            );
+            
+            if (requiresScheduling) {
+              setStep(2); // Date/time selection needed
             } else {
               setStep(3); // Skip to confirmation for non-scheduled services
             }
@@ -219,12 +250,11 @@ const BookingPage = () => {
   const handleServiceSelect = (service: SelectedService) => {
     setSelectedService(service);
 
-    // For digital products and notes, skip date/time selection
-    if (
-      service.type === "digitalProducts" ||
-      service.type === "notes" ||
-      service.type === "priorityDm"
-    ) {
+    // Check if the service requires scheduling using SERVICE_CONFIG
+    const requiresScheduling = serviceRequiresScheduling(service.type);
+
+    // If service doesn't require scheduling (digitalProducts, priorityDm), skip directly to confirmation
+    if (!requiresScheduling) {
       setStep(3);
     } else {
       // If we have pre-selected date/time, skip to confirmation
@@ -243,8 +273,9 @@ const BookingPage = () => {
 
   const handleBack = () => {
     if (step === 3 && selectedService) {
-      const needsDateTime = selectedService.type === "oneOnOneSession";
-      setStep(needsDateTime ? 2 : 1);
+      // Check if service requires scheduling
+      const requiresScheduling = serviceRequiresScheduling(selectedService.type);
+      setStep(requiresScheduling ? 2 : 1);
     } else if (step === 2) {
       setStep(1);
     } else {
@@ -479,16 +510,18 @@ const BookingPage = () => {
       let scheduledTime = null;
 
       if (selectedDateTime) {
-        scheduledDate = selectedDateTime.date.toISOString().split("T")[0];
+        scheduledDate = getLocalDateString(selectedDateTime.date);
         scheduledTime = selectedDateTime.time;
       } else {
-        scheduledDate = new Date().toISOString().split("T")[0];
+        // Non-scheduled services still need a valid date field; use local today.
+        scheduledDate = getLocalDateString(new Date());
         scheduledTime = "00:00";
       }
 
       const bookingData = {
         expert_id: mentorId!,
         session_type: selectedService.type,
+        service_key: selectedService.serviceKey,
         scheduled_date: scheduledDate,
         scheduled_time: scheduledTime,
         duration:
@@ -508,6 +541,53 @@ const BookingPage = () => {
       const result = await createBooking(bookingData);
 
       if (result.success) {
+        const shouldRedirectToPayment = totalAmount > 0;
+
+        if (shouldRedirectToPayment) {
+          const bookingId = result.data.id as string;
+
+          const orderResult = await paymentService.createOrder(totalAmount, bookingId);
+          if (!orderResult.success || !orderResult.order || !orderResult.razorpayKey) {
+            toast.error(orderResult.error || "Failed to initialize payment");
+            return;
+          }
+
+          try {
+            const paymentResponse = await paymentService.openCheckout({
+              key: orderResult.razorpayKey,
+              order: orderResult.order,
+              bookingId,
+              customerName: details.name,
+              customerEmail: details.email,
+              customerPhone: details.phone,
+              description: `${selectedService.name} with ${mentorData.full_name}`,
+            });
+
+            const verifyResult = await paymentService.verifyPayment(
+              bookingId,
+              paymentResponse
+            );
+
+            if (!verifyResult.success) {
+              toast.error(verifyResult.error || "Payment verification failed");
+              return;
+            }
+
+            if (verifyResult.data?.booking_status !== "confirmed") {
+              toast.error("Payment verified but booking is not confirmed yet. Please retry.");
+              return;
+            }
+
+            toast.success("Payment successful! Booking confirmed.");
+            navigate(`/booking/confirmed/${bookingId}`);
+            return;
+          } catch (paymentError: any) {
+            await paymentService.markPaymentFailed(bookingId);
+            toast.error(paymentError?.message || "Payment cancelled or failed");
+            return;
+          }
+        }
+
         // Send confirmation emails (async, don't wait)
         sendConfirmationEmails(
           result.data,
@@ -554,12 +634,14 @@ const BookingPage = () => {
         if (selectedService?.type === "digitalProducts")
           return "Complete Purchase";
         if (selectedService?.type === "priorityDm") return "Priority DM";
-        if (selectedService?.type === "notes") return "Purchase Session Notes";
         return "Confirm Booking";
       default:
         return "Book a Session";
     }
   };
+
+  const isDigitalProductFlow = selectedService?.type === "digitalProducts";
+  const showStepTracking = selectedService?.type !== "priorityDm" && !isDigitalProductFlow;
 
   // Loading state
   if (loading) {
@@ -645,16 +727,18 @@ const BookingPage = () => {
                   <h1 className="text-2xl font-bold text-gray-900">
                     {getStepTitle()}
                   </h1>
-                  <p className="text-gray-500 mt-1 text-sm font-medium">
-                    {selectedService?.type === "priorityDm"
-                      ? `Step ${step === 3 ? 2 : step} of 2`
-                      : `Step ${step} of 3`}
-                  </p>
+                  {showStepTracking && (
+                    <p className="text-gray-500 mt-1 text-sm font-medium">
+                      {selectedService?.type === "priorityDm"
+                        ? `Step ${step === 3 ? 2 : step} of 2`
+                        : `Step ${step} of 3`}
+                    </p>
+                  )}
                 </div>
               </div>
 
               {/* Modern Step Indicator — hidden for Priority DM (2-step, no date/time) */}
-              {selectedService?.type !== "priorityDm" && (
+              {showStepTracking && (
               <div className="flex justify-center">
                 <div className="w-full max-w-md">
                   <div className="flex items-start justify-between relative px-8">
@@ -726,6 +810,7 @@ const BookingPage = () => {
                   onServiceSelect={handleServiceSelect}
                   averageRating={mentorData.average_rating}
                   totalReviews={mentorData.total_reviews}
+                  oneOnOneOnly={isAvailabilityFlow}
                 />
               )}
 

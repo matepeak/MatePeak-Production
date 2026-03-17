@@ -11,6 +11,8 @@ export interface ExpertProfileData {
   id: string;
   full_name: string;
   username: string;
+  average_rating?: number;
+  total_reviews?: number;
   category?: string;
   categories?: string[];
   expertise_tags?: string[];
@@ -156,7 +158,6 @@ export function transformToMentorCard(
       if (profile.services.oneOnOneSession) options.push(SERVICE_CONFIG.oneOnOneSession.name);
       if (profile.services.priorityDm) options.push(SERVICE_CONFIG.priorityDm.name);
       if (profile.services.digitalProducts) options.push(SERVICE_CONFIG.digitalProducts.name);
-      if (profile.services.notes) options.push(SERVICE_CONFIG.notes.name);
     }
 
     return options.length > 0 ? options : [SERVICE_CONFIG.oneOnOneSession.name];
@@ -176,8 +177,8 @@ export function transformToMentorCard(
     title: profile.category || categories[0] || "Expert",
     image: profile.profile_picture_url || profile.profiles?.avatar_url || "",
     categories: categories,
-    rating: 0, // Default rating for new mentors
-    reviewCount: 0, // Will be updated when reviews are added
+    rating: Number(profile.average_rating || 0),
+    reviewCount: Number(profile.total_reviews || 0),
     price: getLowestPrice(),
     bio: profile.bio || "",
     connectionOptions: getConnectionOptions(),
@@ -446,7 +447,7 @@ export async function updateMentorRating(mentorId: string): Promise<void> {
     const { data, error } = await supabase
       .from("reviews")
       .select("rating")
-      .eq("mentor_id", mentorId);
+      .eq("expert_id", mentorId);
 
     if (error) throw error;
 
@@ -454,11 +455,25 @@ export async function updateMentorRating(mentorId: string): Promise<void> {
       const totalRating = data.reduce((sum, review) => sum + review.rating, 0);
       const averageRating = totalRating / data.length;
 
-      // Note: We might want to store this in a separate table or cache
-      // For now, ratings will be calculated on-the-fly
+      await supabase
+        .from("expert_profiles")
+        .update({
+          average_rating: Number(averageRating.toFixed(2)),
+          total_reviews: data.length,
+        })
+        .eq("id", mentorId);
+
       console.log(
         `Mentor ${mentorId} rating updated: ${averageRating} (${data.length} reviews)`
       );
+    } else {
+      await supabase
+        .from("expert_profiles")
+        .update({
+          average_rating: 0,
+          total_reviews: 0,
+        })
+        .eq("id", mentorId);
     }
   } catch (error) {
     console.error("Error updating mentor rating:", error);

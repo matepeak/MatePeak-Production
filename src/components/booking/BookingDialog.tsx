@@ -17,6 +17,7 @@ import { createBooking } from "@/services/bookingService";
 import { checkBookingLimit } from "@/services/bookingLimitService";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { serviceRequiresScheduling } from "@/config/serviceConfig";
 
 interface BookingDialogProps {
   open: boolean;
@@ -36,7 +37,8 @@ interface BookingDialogProps {
 export type BookingStep = 1 | 2 | 3;
 
 export interface SelectedService {
-  type: "oneOnOneSession" | "priorityDm" | "digitalProducts" | "notes";
+  type: "oneOnOneSession" | "priorityDm" | "digitalProducts";
+  serviceKey?: string;
   name: string;
   duration: number; // in minutes
   price: number;
@@ -57,6 +59,13 @@ export interface BookingDetails {
   addRecording?: boolean;
   shareContactInfo?: boolean;
 }
+
+const getLocalDateString = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 export default function BookingDialog({
   open,
@@ -127,16 +136,11 @@ export default function BookingDialog({
   const handleServiceSelect = (service: SelectedService) => {
     setSelectedService(service);
 
-    // For digital products and notes, skip date/time selection
-    if (service.type === "digitalProducts" || service.type === "notes") {
+    const requiresScheduling = serviceRequiresScheduling(service.type);
+
+    if (!requiresScheduling) {
       setStep(3);
-    }
-    // For Priority DM, also skip date/time because it does not require scheduling
-    else if (service.type === "priorityDm") {
-      setStep(3);
-    }
-    // Only video sessions need date/time selection
-    else {
+    } else {
       // If we already have a pre-selected date/time, skip to confirmation
       if (preSelectedDateTime || selectedDateTime) {
         setStep(3);
@@ -162,6 +166,8 @@ export default function BookingDialog({
         new Date(bookingData.scheduled_date),
         "EEEE, MMMM d, yyyy"
       );
+      const isDigitalProduct = serviceDetails.type === "digitalProducts";
+      const digitalProductLink = bookingData.digital_product_link || "";
 
       // Check if meeting link exists
       const hasMeetingLink =
@@ -206,6 +212,10 @@ export default function BookingDialog({
           <span class="detail-label">Service</span>
           <span class="detail-value">${serviceDetails.name}</span>
         </div>
+        ${
+          isDigitalProduct
+            ? ""
+            : `
         <div class="detail-row">
           <span class="detail-label">Date</span>
           <span class="detail-value">${formattedDate}</span>
@@ -220,6 +230,8 @@ export default function BookingDialog({
           <span class="detail-label">Duration</span>
           <span class="detail-value">${serviceDetails.duration} minutes</span>
         </div>
+        `
+        }
         <div class="detail-row">
           <span class="detail-label">Status</span>
           <span class="detail-value" style="color: #10b981;">FREE - Beta Special</span>
@@ -241,13 +253,32 @@ export default function BookingDialog({
       `
           : ""
       }
+
+      ${
+        isDigitalProduct && digitalProductLink
+          ? `
+      <div class="meeting-box">
+        <h3 style="color: #111827; margin-top: 0;">📦 Access Your Digital Product</h3>
+        <p style="color: #6b7280; font-size: 14px; margin: 8px 0;">Use this secure link to access your purchase.</p>
+        <a href="${digitalProductLink}" class="meeting-button">Access Product</a>
+      </div>
+      `
+          : ""
+      }
       
       <p style="color: #6b7280; font-size: 14px;">
         <strong>What to expect:</strong><br>
-        • You'll receive a reminder 24 hours before the session<br>
-        • Another reminder will be sent 1 hour before<br>
         ${
-          hasMeetingLink
+          isDigitalProduct
+            ? digitalProductLink
+              ? "• Your product access link is ready above<br>"
+              : "• Your mentor will share access details shortly<br>"
+            : "• You'll receive a reminder 24 hours before the session<br>• Another reminder will be sent 1 hour before<br>"
+        }
+        ${
+          isDigitalProduct
+            ? ""
+            : hasMeetingLink
             ? "• Use the meeting link above to join at the scheduled time<br>"
             : "• Meeting link will be available in your dashboard<br>"
         }
@@ -324,6 +355,10 @@ export default function BookingDialog({
           <span class="detail-label">Service</span>
           <span class="detail-value">${serviceDetails.name}</span>
         </div>
+        ${
+          isDigitalProduct
+            ? ""
+            : `
         <div class="detail-row">
           <span class="detail-label">Date</span>
           <span class="detail-value">${formattedDate}</span>
@@ -338,6 +373,8 @@ export default function BookingDialog({
           <span class="detail-label">Duration</span>
           <span class="detail-value">${serviceDetails.duration} minutes</span>
         </div>
+        `
+        }
       </div>
       
       ${
@@ -366,17 +403,35 @@ export default function BookingDialog({
       `
           : ""
       }
+
+      ${
+        isDigitalProduct && digitalProductLink
+          ? `
+      <div class="meeting-box">
+        <h3 style="color: #111827; margin-top: 0;">📦 Product Link Shared</h3>
+        <p style="color: #6b7280; font-size: 14px; margin: 8px 0;">The student can access the product using this link:</p>
+        <a href="${digitalProductLink}" class="meeting-button">View Product Link</a>
+      </div>
+      `
+          : ""
+      }
       
       <p style="color: #6b7280; font-size: 14px;">
         <strong>Next Steps:</strong><br>
         • Review the session purpose above<br>
-        • Check your dashboard for full session details<br>
+        • Check your dashboard for full details<br>
         ${
-          hasMeetingLink
+          isDigitalProduct
+            ? "• Ensure the product link stays active for student access<br>"
+            : hasMeetingLink
             ? "• Use the meeting link above at the scheduled time<br>"
             : "• Meeting link is available in your dashboard<br>"
         }
-        • Prepare any materials needed for the session
+        ${
+          isDigitalProduct
+            ? "• Follow up with the student if they need support"
+            : "• Prepare any materials needed for the session"
+        }
       </p>
     </div>
     
@@ -421,17 +476,18 @@ export default function BookingDialog({
       let scheduledTime = null;
 
       if (selectedDateTime) {
-        scheduledDate = selectedDateTime.date.toISOString().split("T")[0];
+        scheduledDate = getLocalDateString(selectedDateTime.date);
         scheduledTime = selectedDateTime.time;
       } else {
-        // For digital products, chat, notes - use today's date
-        scheduledDate = new Date().toISOString().split("T")[0];
+        // For non-scheduled services, use local today as placeholder booking date.
+        scheduledDate = getLocalDateString(new Date());
         scheduledTime = "00:00"; // Placeholder time
       }
 
       const bookingData = {
         expert_id: mentorId,
         session_type: selectedService.type,
+        service_key: selectedService.serviceKey,
         scheduled_date: scheduledDate,
         scheduled_time: scheduledTime,
         duration:
@@ -480,8 +536,7 @@ export default function BookingDialog({
 
   const handleBack = () => {
     if (step === 3 && selectedService) {
-      // If on step 3, check if service needs date/time
-      const needsDateTime = selectedService.type === "oneOnOneSession";
+      const needsDateTime = serviceRequiresScheduling(selectedService.type);
 
       if (needsDateTime) {
         // Go back to step 2 (date/time selection)
@@ -507,8 +562,6 @@ export default function BookingDialog({
           return "Complete Purchase";
         } else if (selectedService?.type === "priorityDm") {
           return "Priority DM";
-        } else if (selectedService?.type === "notes") {
-          return "Purchase Session Notes";
         }
         return "Confirm Booking";
       default:
@@ -652,11 +705,13 @@ export default function BookingDialog({
             bookingDetails={{
               mentorName,
               serviceName: selectedService.name,
+              serviceType: selectedService.type,
               date: createdBooking.scheduled_date,
               time: createdBooking.scheduled_time,
               timezone: selectedDateTime?.timezone || timezone,
               duration: selectedService.duration,
               userEmail: bookingDetails.email,
+              digitalProductLink: createdBooking.digital_product_link,
             }}
             onViewBookings={() => {
               setShowSuccessModal(false);

@@ -35,18 +35,49 @@ export function TimePicker({
     return true;
   };
 
+  const getAmPm = (time: string) => {
+    const [hourRaw, minuteRaw] = time.split(":");
+    const hour = Number(hourRaw);
+    const minute = Number(minuteRaw);
+
+    if (Number.isNaN(hour) || Number.isNaN(minute)) {
+      return "";
+    }
+
+    const period = hour >= 12 ? "PM" : "AM";
+    const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+    const minuteStr = String(minute).padStart(2, "0");
+    return `${hour12}:${minuteStr} ${period}`;
+  };
+
+  const formattedAmPm = getAmPm(value);
+
   return (
     <Select value={value} onValueChange={onChange} disabled={disabled}>
       <SelectTrigger className="w-full">
         <div className="flex items-center">
           <Clock className="mr-2 h-4 w-4" />
-          <SelectValue placeholder="Select time" />
+          {value ? (
+            <span className="inline-flex items-baseline gap-2">
+              <span className="text-sm font-medium text-foreground">{value}</span>
+              <span className="text-xs font-normal text-muted-foreground">
+                ({formattedAmPm})
+              </span>
+            </span>
+          ) : (
+            <SelectValue placeholder="Select time" />
+          )}
         </div>
       </SelectTrigger>
       <SelectContent className="max-h-60">
         {timeSlots.filter(isValidTime).map((time) => (
           <SelectItem key={time} value={time}>
-            {time}
+            <span className="inline-flex items-baseline gap-2">
+              <span className="text-sm font-medium">{time}</span>
+              <span className="text-xs font-normal text-muted-foreground">
+                ({getAmPm(time)})
+              </span>
+            </span>
           </SelectItem>
         ))}
       </SelectContent>

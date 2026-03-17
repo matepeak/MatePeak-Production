@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
+  Trash2,
   X,
   Clock,
   Loader2,
@@ -32,6 +34,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { TimePicker } from "@/components/ui/time-picker";
 import { autoMigrateAvailabilitySlots } from "@/utils/availabilityMigration";
+import { ToastAction } from "@/components/ui/toast";
 
 interface AvailabilitySlot {
   id?: string;
@@ -42,8 +45,20 @@ interface AvailabilitySlot {
   specific_date?: string; // YYYY-MM-DD format
 }
 
+interface BulkBlockConflict {
+  dateLabel: string;
+  slots: string[];
+}
+
 interface AvailabilityCalendarProps {
   mentorProfile: any;
+}
+
+interface BookedSession {
+  id: string;
+  scheduled_time: string;
+  duration: number;
+  user_name?: string;
 }
 
 const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
@@ -54,6 +69,8 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
   >([]);
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [bookedSessions, setBookedSessions] = useState<BookedSession[]>([]);
+  const [loadingBookedSessions, setLoadingBookedSessions] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [newSlots, setNewSlots] = useState<Partial<AvailabilitySlot>[]>([
@@ -77,6 +94,20 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
   const [weekOffset, setWeekOffset] = useState(0);
   const [unblockDialogOpen, setUnblockDialogOpen] = useState(false);
   const [dateToUnblock, setDateToUnblock] = useState<Date | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [slotToDelete, setSlotToDelete] = useState<AvailabilitySlot | null>(
+    null
+  );
+  const [bulkBlockConflicts, setBulkBlockConflicts] = useState<
+    BulkBlockConflict[]
+  >([]);
+  const [bulkConflictDialogOpen, setBulkConflictDialogOpen] = useState(false);
+  const pendingSlotDeleteTimeouts = useRef(
+    new Map<string, ReturnType<typeof setTimeout>>()
+  );
+  const pendingBlockedDateTimeouts = useRef(
+    new Map<string, ReturnType<typeof setTimeout>>()
+  );
 
   const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const timeSlots = Array.from({ length: 48 }, (_, i) => {
@@ -84,33 +115,6 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
     const minute = i % 2 === 0 ? "00" : "30";
     return `${hour.toString().padStart(2, "0")}:${minute}`;
   });
-
-  // Quick templates for common availability patterns
-  const templates = [
-    {
-      name: "9-5 Workday",
-      slots: [{ start_time: "09:00", end_time: "17:00", is_recurring: false }],
-    },
-    {
-      name: "Morning (9-12)",
-      slots: [{ start_time: "09:00", end_time: "12:00", is_recurring: false }],
-    },
-    {
-      name: "Afternoon (1-5)",
-      slots: [{ start_time: "13:00", end_time: "17:00", is_recurring: false }],
-    },
-    {
-      name: "Evening (6-9)",
-      slots: [{ start_time: "18:00", end_time: "21:00", is_recurring: false }],
-    },
-    {
-      name: "Split Day",
-      slots: [
-        { start_time: "09:00", end_time: "12:00", is_recurring: false },
-        { start_time: "14:00", end_time: "18:00", is_recurring: false },
-      ],
-    },
-  ];
 
   // Helper to get date string in local timezone (avoids UTC conversion)
   const getLocalDateString = (date: Date): string => {
@@ -120,9 +124,202 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
     return `${year}-${month}-${day}`;
   };
 
+  const formatTimeWithAmPm = (time: string): string => {
+    const normalizedTime = time.length >= 5 ? time.slice(0, 5) : time;
+    const [hourRaw, minuteRaw] = normalizedTime.split(":");
+
+    const hour = Number(hourRaw);
+    const minute = Number(minuteRaw);
+
+    if (Number.isNaN(hour) || Number.isNaN(minute)) {
+      return time;
+    }
+
+    const period = hour >= 12 ? "PM" : "AM";
+    const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+    const minuteStr = String(minute).padStart(2, "0");
+
+    return `${normalizedTime} (${hour12}:${minuteStr} ${period})`;
+  };
+
+  const timeToMinutes = (time: string): number => {
+    const normalizedTime = time.length >= 5 ? time.slice(0, 5) : time;
+    const [hourRaw, minuteRaw] = normalizedTime.split(":");
+    const hour = Number(hourRaw);
+    const minute = Number(minuteRaw);
+
+    if (Number.isNaN(hour) || Number.isNaN(minute)) {
+      return -1;
+    }
+
+    return hour * 60 + minute;
+  };
+
+  const toRange = (start: string, end: string) => {
+    const startMin = timeToMinutes(start);
+    let endMin = timeToMinutes(end);
+
+    if (startMin < 0 || endMin < 0) {
+      return null;
+    }
+
+    if (endMin <= startMin) {
+      endMin += 24 * 60;
+    }
+
+    return { start: startMin, end: endMin };
+  };
+
+  const rangesOverlap = (
+    a: { start: number; end: number },
+    b: { start: number; end: number }
+  ) => Math.max(a.start, b.start) < Math.min(a.end, b.end);
+
+  const getAmPmTime = (time: string): string => {
+    const normalizedTime = time.length >= 5 ? time.slice(0, 5) : time;
+    const [hourRaw, minuteRaw] = normalizedTime.split(":");
+
+    const hour = Number(hourRaw);
+    const minute = Number(minuteRaw);
+
+    if (Number.isNaN(hour) || Number.isNaN(minute)) {
+      return "";
+    }
+
+    const period = hour >= 12 ? "PM" : "AM";
+    const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+    const minuteStr = String(minute).padStart(2, "0");
+
+    return `${hour12}:${minuteStr} ${period}`;
+  };
+
+  const formatTimeRange = (start: string, end: string): string => {
+    const startAmPm = getAmPmTime(start);
+    const endAmPm = getAmPmTime(end);
+
+    if (startAmPm && endAmPm) {
+      return `${startAmPm} - ${endAmPm}`;
+    }
+
+    const normalizedStart = start.length >= 5 ? start.slice(0, 5) : start;
+    const normalizedEnd = end.length >= 5 ? end.slice(0, 5) : end;
+    return `${normalizedStart} - ${normalizedEnd}`;
+  };
+
+  const renderTimeToken = (time: string): ReactNode => {
+    const normalizedTime = time.length >= 5 ? time.slice(0, 5) : time;
+    const amPm = getAmPmTime(time);
+
+    return (
+      <span className="inline-flex items-baseline gap-1">
+        <span className="font-medium">{normalizedTime}</span>
+        {amPm ? (
+          <span className="text-xs font-normal text-gray-500">({amPm})</span>
+        ) : null}
+      </span>
+    );
+  };
+
+  const inlineOverlapWarnings = useMemo(() => {
+    if (!selectedDate || newSlots.length === 0) return [] as string[];
+
+    const warnings: string[] = [];
+    const dayOfWeek = selectedDate.getDay();
+    const specificDate = newSlots[0]?.is_recurring
+      ? null
+      : getLocalDateString(selectedDate);
+
+    const relevantSlots = availabilitySlots.filter((slot) => {
+      if (newSlots[0]?.is_recurring) {
+        return slot.is_recurring && slot.day_of_week === dayOfWeek;
+      }
+
+      return (
+        slot.specific_date === specificDate ||
+        (slot.is_recurring && slot.day_of_week === dayOfWeek)
+      );
+    });
+
+    for (let i = 0; i < newSlots.length; i++) {
+      const slot = newSlots[i];
+      if (!slot.start_time || !slot.end_time) continue;
+
+      const slotRange = toRange(slot.start_time, slot.end_time);
+      if (!slotRange) continue;
+
+      for (let j = i + 1; j < newSlots.length; j++) {
+        const compareSlot = newSlots[j];
+        if (!compareSlot.start_time || !compareSlot.end_time) continue;
+
+        const compareRange = toRange(compareSlot.start_time, compareSlot.end_time);
+        if (!compareRange) continue;
+
+        if (rangesOverlap(slotRange, compareRange)) {
+          warnings.push(`New slot ${i + 1} overlaps with new slot ${j + 1}`);
+        }
+      }
+
+      const conflict = relevantSlots.find((existing) => {
+        const existingRange = toRange(existing.start_time, existing.end_time);
+        if (!existingRange) return false;
+        return rangesOverlap(slotRange, existingRange);
+      });
+
+      if (conflict) {
+        warnings.push(
+          `New slot ${i + 1} overlaps with existing slot ${formatTimeRange(
+            conflict.start_time,
+            conflict.end_time
+          )}`
+        );
+      }
+    }
+
+    return Array.from(new Set(warnings));
+  }, [availabilitySlots, newSlots, selectedDate]);
+
+  useEffect(() => {
+    return () => {
+      pendingSlotDeleteTimeouts.current.forEach((timeout) => clearTimeout(timeout));
+      pendingBlockedDateTimeouts.current.forEach((timeout) => clearTimeout(timeout));
+    };
+  }, []);
+
   useEffect(() => {
     fetchAvailability();
   }, [mentorProfile]);
+
+  useEffect(() => {
+    const fetchBookedSessionsForDate = async () => {
+      if (!selectedDate || !dialogOpen || !mentorProfile?.id) {
+        setBookedSessions([]);
+        return;
+      }
+
+      try {
+        setLoadingBookedSessions(true);
+        const selectedDateStr = getLocalDateString(selectedDate);
+
+        const { data, error } = await supabase
+          .from("bookings")
+          .select("id, scheduled_time, duration, user_name")
+          .eq("expert_id", mentorProfile.id)
+          .eq("scheduled_date", selectedDateStr)
+          .eq("status", "confirmed")
+          .order("scheduled_time", { ascending: true });
+
+        if (error) throw error;
+        setBookedSessions((data as BookedSession[]) || []);
+      } catch (error) {
+        console.error("Error fetching booked sessions for date:", error);
+        setBookedSessions([]);
+      } finally {
+        setLoadingBookedSessions(false);
+      }
+    };
+
+    fetchBookedSessionsForDate();
+  }, [selectedDate, dialogOpen, mentorProfile?.id]);
 
   const fetchAvailability = async () => {
     try {
@@ -277,13 +474,10 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
           slot2.start_time &&
           slot2.end_time
         ) {
+          const range1 = toRange(slot1.start_time, slot1.end_time);
+          const range2 = toRange(slot2.start_time, slot2.end_time);
           const overlap =
-            (slot1.start_time >= slot2.start_time &&
-              slot1.start_time < slot2.end_time) ||
-            (slot1.end_time > slot2.start_time &&
-              slot1.end_time <= slot2.end_time) ||
-            (slot1.start_time <= slot2.start_time &&
-              slot1.end_time >= slot2.end_time);
+            range1 && range2 ? rangesOverlap(range1, range2) : false;
 
           if (overlap) {
             toast({
@@ -319,16 +513,10 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
     for (let i = 0; i < newSlots.length; i++) {
       const newSlot = newSlots[i];
       const overlappingSlot = relevantSlots.find((slot) => {
-        const newStart = newSlot.start_time!;
-        const newEnd = newSlot.end_time!;
-        const existingStart = slot.start_time;
-        const existingEnd = slot.end_time;
-
-        return (
-          (newStart >= existingStart && newStart < existingEnd) ||
-          (newEnd > existingStart && newEnd <= existingEnd) ||
-          (newStart <= existingStart && newEnd >= existingEnd)
-        );
+        const newRange = toRange(newSlot.start_time!, newSlot.end_time!);
+        const existingRange = toRange(slot.start_time, slot.end_time);
+        if (!newRange || !existingRange) return false;
+        return rangesOverlap(newRange, existingRange);
       });
 
       if (overlappingSlot) {
@@ -348,23 +536,38 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
     try {
       setSaving(true);
 
-      // Phase 1 (unverified) mentor validation: max 5 slots per week
-      const isUnverified = mentorProfile.verification_status !== 'verified' || 
-                          mentorProfile.mentor_tier === 'basic' || 
-                          !mentorProfile.phase_1_complete;
+      // Restriction rule:
+      // - Restrict only when mentor is explicitly incomplete/unverified
+      // - Legacy mentors with null/missing flags are treated as completed
+      // - New mentors (explicit false/pending values) remain restricted
+      const hasCompletedPhase1 = mentorProfile?.phase_1_complete !== false;
+      const hasCompletedPhase2 = mentorProfile?.phase_2_complete !== false;
+      const isVerified = mentorProfile?.verification_status
+        ? mentorProfile.verification_status === "verified"
+        : true;
+      const isRestricted =
+        mentorProfile?.phase_1_complete === false ||
+        mentorProfile?.phase_2_complete === false ||
+        !isVerified;
       
-      if (isUnverified) {
-        // Calculate the start and end of the current week (next 7 days from today)
-        const today = new Date();
-        const weekEnd = new Date(today);
-        weekEnd.setDate(today.getDate() + 6);
-        const todayStr = getLocalDateString(today);
-        const weekEndStr = getLocalDateString(weekEnd);
+      if (isRestricted) {
+        // Calculate week range based on selected date (Sun-Sat)
+        const selectedWeekStart = new Date(selectedDate);
+        selectedWeekStart.setHours(0, 0, 0, 0);
+        selectedWeekStart.setDate(
+          selectedWeekStart.getDate() - selectedWeekStart.getDay()
+        );
 
-        // Count existing slots within the next 7 days (excluding recurring slots)
+        const selectedWeekEnd = new Date(selectedWeekStart);
+        selectedWeekEnd.setDate(selectedWeekStart.getDate() + 6);
+
+        const weekStartStr = getLocalDateString(selectedWeekStart);
+        const weekEndStr = getLocalDateString(selectedWeekEnd);
+
+        // Count existing specific-date slots in that selected week
         const existingWeeklySlots = availabilitySlots.filter(slot => {
           if (slot.specific_date) {
-            return slot.specific_date >= todayStr && slot.specific_date <= weekEndStr;
+            return slot.specific_date >= weekStartStr && slot.specific_date <= weekEndStr;
           }
           return false;
         });
@@ -386,6 +589,60 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
         }
       }
 
+      // Booking conflict precheck (confirmed bookings for selected date)
+      const selectedDateStr = getLocalDateString(selectedDate);
+      const { data: confirmedBookings, error: bookingError } = await supabase
+        .from("bookings")
+        .select("scheduled_time, duration")
+        .eq("expert_id", mentorProfile.id)
+        .eq("scheduled_date", selectedDateStr)
+        .eq("status", "confirmed");
+
+      if (bookingError) throw bookingError;
+
+      const bookingConflicts: string[] = [];
+      for (let i = 0; i < newSlots.length; i++) {
+        const slot = newSlots[i];
+        if (!slot.start_time || !slot.end_time) continue;
+
+        const newRange = toRange(slot.start_time, slot.end_time);
+        if (!newRange) continue;
+
+        const conflict = (confirmedBookings || []).find((booking: any) => {
+          const bookingStart = (booking.scheduled_time || "00:00").slice(0, 5);
+          const bookingDuration = Number(booking.duration || 60);
+          const bookingStartMinutes = timeToMinutes(bookingStart);
+          if (bookingStartMinutes < 0) return false;
+
+          const bookingRange = {
+            start: bookingStartMinutes,
+            end: bookingStartMinutes + bookingDuration,
+          };
+
+          return rangesOverlap(newRange, bookingRange);
+        });
+
+        if (conflict) {
+          bookingConflicts.push(
+            `Slot ${i + 1} conflicts with confirmed booking at ${(conflict.scheduled_time || "").slice(0, 5)}`
+          );
+        }
+      }
+
+      if (bookingConflicts.length > 0) {
+        toast({
+          title: "Booking Conflict",
+          description: `${bookingConflicts[0]}${
+            bookingConflicts.length > 1
+              ? ` (+${bookingConflicts.length - 1} more)`
+              : ""
+          }`,
+          variant: "destructive",
+        });
+        setSaving(false);
+        return;
+      }
+
       const slotsToInsert = newSlots.map((slot) => ({
         expert_id: mentorProfile.id,
         day_of_week: dayOfWeek,
@@ -402,10 +659,10 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
       if (error) throw error;
 
       toast({
-        title: "Success",
+        title: "Availability Updated",
         description: `${newSlots.length} slot${
           newSlots.length > 1 ? "s" : ""
-        } added successfully`,
+        } added for ${format(selectedDate, "EEE, MMM d")}.`,
       });
 
       // Close dialog and reset new slots after successful addition
@@ -424,7 +681,7 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
       console.error("Error adding slot:", error);
       toast({
         title: "Error",
-        description: "Failed to add availability slot",
+        description: error?.message || "Failed to add availability slot",
         variant: "destructive",
       });
     } finally {
@@ -553,6 +810,21 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
     });
   };
 
+  const getAllSlotsForDate = (date: Date): AvailabilitySlot[] => {
+    const dayOfWeek = date.getDay();
+    const dateStr = getLocalDateString(date);
+
+    const recurringSlots = availabilitySlots.filter(
+      (slot) => slot.is_recurring && slot.day_of_week === dayOfWeek
+    );
+
+    const specificSlots = availabilitySlots.filter(
+      (slot) => !slot.is_recurring && slot.specific_date === dateStr
+    );
+
+    return [...recurringSlots, ...specificSlots];
+  };
+
   const handleBlockDate = async (date: Date) => {
     const dateStr = getLocalDateString(date); // Use local timezone helper
 
@@ -571,6 +843,7 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
           title: "Success",
           description: "Date unblocked",
         });
+        fetchAvailability();
       } else {
         // Check if the date has availability slots
         if (hasAvailabilityForDate(date)) {
@@ -582,24 +855,52 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
           return;
         }
 
-        // Block date
-        const { error } = await supabase.from("blocked_dates").insert([
-          {
-            expert_id: mentorProfile.id,
-            date: dateStr,
-            reason: "Blocked by mentor",
-          },
-        ]);
+        setBlockedDates((prev) => (prev.includes(dateStr) ? prev : [...prev, dateStr]));
 
-        if (error) throw error;
+        const timeout = setTimeout(async () => {
+          try {
+            const { error } = await supabase.from("blocked_dates").insert([
+              {
+                expert_id: mentorProfile.id,
+                date: dateStr,
+                reason: "Blocked by mentor",
+              },
+            ]);
+
+            if (error) throw error;
+            pendingBlockedDateTimeouts.current.delete(dateStr);
+          } catch (error: any) {
+            setBlockedDates((prev) => prev.filter((d) => d !== dateStr));
+            toast({
+              title: "Error",
+              description: error?.message || "Failed to block date",
+              variant: "destructive",
+            });
+          }
+        }, 5000);
+
+        pendingBlockedDateTimeouts.current.set(dateStr, timeout);
 
         toast({
-          title: "Success",
-          description: "Date blocked",
+          title: "Date blocked",
+          description: "Undo within 5 seconds to restore availability.",
+          action: (
+            <ToastAction
+              altText="Undo date block"
+              onClick={() => {
+                const pending = pendingBlockedDateTimeouts.current.get(dateStr);
+                if (pending) {
+                  clearTimeout(pending);
+                  pendingBlockedDateTimeouts.current.delete(dateStr);
+                  setBlockedDates((prev) => prev.filter((d) => d !== dateStr));
+                }
+              }}
+            >
+              Undo
+            </ToastAction>
+          ),
         });
       }
-
-      fetchAvailability();
     } catch (error: any) {
       console.error("Error toggling block:", error);
       toast({
@@ -612,19 +913,51 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
 
   const handleDeleteSlot = async (slotId: string) => {
     try {
-      const { error } = await supabase
-        .from("availability_slots")
-        .delete()
-        .eq("id", slotId);
+      const slotSnapshot = availabilitySlots.find((slot) => slot.id === slotId);
+      if (!slotSnapshot) return;
 
-      if (error) throw error;
+      setAvailabilitySlots((prev) => prev.filter((slot) => slot.id !== slotId));
+
+      const timeout = setTimeout(async () => {
+        try {
+          const { error } = await supabase
+            .from("availability_slots")
+            .delete()
+            .eq("id", slotId);
+
+          if (error) throw error;
+          pendingSlotDeleteTimeouts.current.delete(slotId);
+        } catch (error: any) {
+          setAvailabilitySlots((prev) => [...prev, slotSnapshot]);
+          toast({
+            title: "Error",
+            description: error?.message || "Failed to delete slot",
+            variant: "destructive",
+          });
+        }
+      }, 5000);
+
+      pendingSlotDeleteTimeouts.current.set(slotId, timeout);
 
       toast({
-        title: "Success",
-        description: "Availability slot removed",
+        title: "Slot removed",
+        description: "Undo within 5 seconds to restore it.",
+        action: (
+          <ToastAction
+            altText="Undo slot deletion"
+            onClick={() => {
+              const pending = pendingSlotDeleteTimeouts.current.get(slotId);
+              if (pending) {
+                clearTimeout(pending);
+                pendingSlotDeleteTimeouts.current.delete(slotId);
+                setAvailabilitySlots((prev) => [...prev, slotSnapshot]);
+              }
+            }}
+          >
+            Undo
+          </ToastAction>
+        ),
       });
-
-      fetchAvailability();
     } catch (error: any) {
       console.error("Error deleting slot:", error);
       toast({
@@ -633,6 +966,14 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleConfirmDeleteSlot = async () => {
+    if (!slotToDelete?.id) return;
+
+    await handleDeleteSlot(slotToDelete.id);
+    setDeleteDialogOpen(false);
+    setSlotToDelete(null);
   };
 
   // Bulk block dates handler
@@ -671,13 +1012,24 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
 
     try {
       const datesToBlock = [];
-      const datesWithAvailability: string[] = [];
+      const conflicts: BulkBlockConflict[] = [];
       const currentDate = new Date(bulkBlockStart);
 
       while (currentDate <= bulkBlockEnd) {
         // Check if date has availability slots
         if (hasAvailabilityForDate(currentDate)) {
-          datesWithAvailability.push(format(currentDate, 'MMM dd, yyyy'));
+          const dateSlots = getAllSlotsForDate(currentDate);
+          conflicts.push({
+            dateLabel: format(currentDate, "EEE, MMM dd, yyyy"),
+            slots: dateSlots.map(
+              (slot) =>
+                `${formatTimeWithAmPm(slot.start_time)} - ${formatTimeWithAmPm(
+                  slot.end_time
+                )}${
+                  slot.is_recurring ? " (recurring)" : ""
+                }`
+            ),
+          });
         } else {
           datesToBlock.push({
             expert_id: mentorProfile.id,
@@ -688,19 +1040,11 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
         currentDate.setDate(currentDate.getDate() + 1);
       }
 
-      // If some dates have availability, show warning
-      if (datesWithAvailability.length > 0) {
-        toast({
-          title: "Cannot Block Some Dates",
-          description: `${datesWithAvailability.length} date(s) have availability slots and cannot be blocked. Please remove slots for these dates first: ${datesWithAvailability.slice(0, 3).join(', ')}${datesWithAvailability.length > 3 ? '...' : ''}`,
-          variant: "destructive",
-          duration: 7000,
-        });
-        
-        // If no dates can be blocked, return early
-        if (datesToBlock.length === 0) {
-          return;
-        }
+      // If any date has availability, require slot removal first
+      if (conflicts.length > 0) {
+        setBulkBlockConflicts(conflicts);
+        setBulkConflictDialogOpen(true);
+        return;
       }
 
       const { error } = await supabase
@@ -716,7 +1060,7 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
         title: "✓ Dates Blocked Successfully",
         description: `Successfully blocked ${datesToBlock.length} date${
           datesToBlock.length > 1 ? "s" : ""
-        } from your availability${datesWithAvailability.length > 0 ? `. Skipped ${datesWithAvailability.length} date(s) with existing slots.` : ''}`,
+        } from your availability`,
         duration: 5000,
       });
 
@@ -832,15 +1176,6 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
         variant: "destructive",
       });
     }
-  };
-
-  // Apply template
-  const applyTemplate = (template: (typeof templates)[0]) => {
-    setNewSlots(template.slots.map((slot) => ({ ...slot })));
-    toast({
-      title: "Template Applied",
-      description: `${template.name} template loaded`,
-    });
   };
 
   const getDaysInMonth = (date: Date) => {
@@ -1023,7 +1358,7 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
                           isPast
                             ? "bg-gray-50 border-gray-200 cursor-not-allowed opacity-50"
                             : isBlocked
-                            ? "bg-red-50 border-red-200 cursor-pointer hover:bg-red-100 hover:border-red-300 opacity-75 hover:opacity-100"
+                            ? "bg-red-100 border-red-300 cursor-pointer hover:bg-red-200 hover:border-red-400 opacity-80 hover:opacity-100"
                             : isToday
                             ? "bg-blue-50 border-blue-200 hover:bg-blue-100 hover:border-blue-300 hover:shadow-md"
                             : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-md"
@@ -1035,7 +1370,7 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
                               isPast
                                 ? "text-gray-400"
                                 : isBlocked
-                                ? "text-red-500"
+                                ? "text-red-600"
                                 : isToday
                                 ? "text-blue-600"
                                 : "text-gray-500"
@@ -1061,7 +1396,7 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
                               isPast
                                 ? "text-gray-400"
                                 : isBlocked
-                                ? "text-red-500"
+                                ? "text-red-600"
                                 : isToday
                                 ? "text-blue-500"
                                 : "text-gray-500"
@@ -1232,9 +1567,9 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
                           : today
                           ? "bg-blue-50 text-blue-600 font-semibold cursor-pointer hover:bg-blue-100 border border-blue-200"
                           : availability.blocked
-                          ? "bg-red-50 text-red-700 border border-red-100 cursor-pointer hover:bg-red-100"
+                          ? "bg-red-100 text-red-800 border border-red-200 cursor-pointer hover:bg-red-200"
                           : availability.slots.length > 0
-                          ? "bg-green-50 text-green-700 border border-green-100 cursor-pointer hover:bg-green-100"
+                          ? "bg-green-100 text-green-800 border border-green-200 cursor-pointer hover:bg-green-200"
                           : "bg-white text-gray-700 border border-gray-100 cursor-pointer hover:bg-gray-50 hover:border-gray-200"
                       }`}
                       onClick={() => {
@@ -1275,13 +1610,13 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded bg-green-50 border border-green-100" />
+                  <div className="w-3 h-3 rounded bg-green-100 border border-green-200" />
                   <span className="text-xs font-medium text-gray-600">
                     Available
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded bg-red-50 border border-red-100" />
+                  <div className="w-3 h-3 rounded bg-red-100 border border-red-200" />
                   <span className="text-xs font-medium text-gray-600">
                     Blocked
                   </span>
@@ -1351,13 +1686,17 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
                         {availability.slots.map((slot) => (
                           <div
                             key={slot.id}
-                            className="flex items-center justify-between p-3 bg-green-50 border border-green-100 rounded-lg"
+                            className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-2xl transition-colors hover:bg-gray-50"
                           >
-                            <div className="flex items-center gap-2">
-                              <Clock className="h-4 w-4 text-green-600" />
+                            <div className="flex items-center gap-3">
+                              <div className="h-9 w-9 rounded-full bg-green-50 border border-green-200 flex items-center justify-center">
+                                <Clock className="h-4 w-4 text-green-600" />
+                              </div>
                               <div className="text-sm text-gray-900">
-                                <span>
-                                  {slot.start_time} - {slot.end_time}
+                                <span className="inline-flex items-baseline gap-1.5">
+                                  {renderTimeToken(slot.start_time)}
+                                  <span className="text-gray-600">-</span>
+                                  {renderTimeToken(slot.end_time)}
                                 </span>
                                 {slot.start_time > slot.end_time && (
                                   <span className="block text-xs text-orange-600 mt-0.5">
@@ -1377,77 +1716,78 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => handleDeleteSlot(slot.id!)}
-                              className="hover:bg-red-50 hover:text-red-600"
+                              onClick={() => {
+                                setSlotToDelete(slot);
+                                setDeleteDialogOpen(true);
+                              }}
+                              className="h-9 w-9 p-0 rounded-full border border-transparent text-gray-500 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                              aria-label="Delete slot"
                             >
-                              <X className="h-4 w-4" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         ))}
                       </div>
                     )}
 
-                    {/* Visual Timeline */}
-                    {availability.slots.length > 0 && (
-                      <div className="mt-4">
-                        <h4 className="text-xs font-medium text-gray-600 mb-2">
-                          Daily Timeline
-                        </h4>
-                        <div className="relative h-12 bg-gray-100 rounded-lg overflow-hidden">
-                          {/* Hour markers */}
-                          <div className="absolute inset-0 flex">
-                            {Array.from({ length: 24 }).map((_, hour) => (
-                              <div
-                                key={hour}
-                                className="flex-1 border-r border-gray-200 relative"
-                                style={{ minWidth: "0" }}
-                              >
-                                {hour % 3 === 0 && (
-                                  <span className="absolute -bottom-5 left-0 text-[10px] text-gray-500">
-                                    {hour}:00
-                                  </span>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Slot blocks */}
-                          {availability.slots.map((slot, idx) => {
-                            const [startH, startM] = slot.start_time
-                              .split(":")
-                              .map(Number);
-                            const [endH, endM] = slot.end_time
-                              .split(":")
-                              .map(Number);
-
-                            const startPercent =
-                              ((startH * 60 + startM) / (24 * 60)) * 100;
-                            let endPercent =
-                              ((endH * 60 + endM) / (24 * 60)) * 100;
-
-                            // Handle overnight slots
-                            if (endPercent <= startPercent) {
-                              endPercent = 100;
-                            }
-
-                            const width = endPercent - startPercent;
-
-                            return (
-                              <div
-                                key={idx}
-                                className="absolute top-1 bottom-1 bg-green-500 rounded opacity-80 hover:opacity-100 transition-opacity"
-                                style={{
-                                  left: `${startPercent}%`,
-                                  width: `${width}%`,
-                                }}
-                                title={`${slot.start_time} - ${slot.end_time}`}
-                              />
-                            );
-                          })}
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium text-gray-900">
+                        Confirmed Bookings
+                      </h4>
+                      {loadingBookedSessions ? (
+                        <div className="p-4 text-sm text-gray-500 bg-gray-50 rounded-xl border border-gray-200 flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Loading booked sessions...
                         </div>
-                        <div className="h-4" />
-                      </div>
-                    )}
+                      ) : bookedSessions.length === 0 ? (
+                        <div className="p-4 text-sm text-gray-500 bg-gray-50 rounded-xl border border-gray-200">
+                          No confirmed bookings on this date.
+                        </div>
+                      ) : (
+                        bookedSessions.map((booking) => {
+                          const bookingStart = booking.scheduled_time.slice(0, 5);
+                          const startMinutes = timeToMinutes(bookingStart);
+                          const endMinutes = startMinutes + Number(booking.duration || 60);
+                          const endHours = Math.floor(endMinutes / 60)
+                            .toString()
+                            .padStart(2, "0");
+                          const endMins = (endMinutes % 60)
+                            .toString()
+                            .padStart(2, "0");
+
+                          return (
+                            <div
+                              key={booking.id}
+                              className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-2xl"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="h-9 w-9 rounded-full bg-white border border-amber-300 flex items-center justify-center">
+                                  <Clock className="h-4 w-4 text-amber-700" />
+                                </div>
+                                <div className="text-sm text-gray-900">
+                                  <span className="inline-flex items-baseline gap-1.5">
+                                    {renderTimeToken(bookingStart)}
+                                    <span className="text-gray-600">-</span>
+                                    {renderTimeToken(`${endHours}:${endMins}`)}
+                                  </span>
+                                  {booking.user_name ? (
+                                    <span className="block text-xs text-gray-600 mt-0.5">
+                                      Booked by {booking.user_name}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+                              <Badge
+                                variant="outline"
+                                className="text-xs border-amber-300 text-amber-800"
+                              >
+                                Booked
+                              </Badge>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
 
                     {/* Block/Unblock Date */}
                     <div className="flex justify-center">
@@ -1455,6 +1795,7 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleBlockDate(selectedDate)}
+                        disabled={!availability.blocked && availability.slots.length > 0}
                         className={`h-9 text-sm px-6 ${
                           availability.blocked
                             ? "border-green-300 text-green-700 hover:bg-green-50"
@@ -1466,6 +1807,12 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
                           : "Block This Date"}
                       </Button>
                     </div>
+                    {!availability.blocked && availability.slots.length > 0 && (
+                      <p className="text-xs text-center text-red-600 mt-2">
+                        This date has availability slots. Remove all slots first
+                        to block this date.
+                      </p>
+                    )}
                   </>
                 );
               })()}
@@ -1483,30 +1830,15 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
                 )}
               </div>
 
-              {/* Quick Templates & Copy */}
+              {/* Copy */}
               <div className="space-y-3">
-                <div className="flex flex-wrap gap-2">
-                  <Label className="text-xs text-gray-600 w-full mb-1">
-                    Quick Templates:
-                  </Label>
-                  {templates.map((template, idx) => (
-                    <Button
-                      key={idx}
-                      size="sm"
-                      variant="outline"
-                      onClick={() => applyTemplate(template)}
-                      className="h-7 text-xs border-blue-200 text-blue-700 hover:bg-blue-50"
-                    >
-                      {template.name}
-                    </Button>
-                  ))}
-                </div>
-
                 {selectedDate &&
                   getAvailabilityForDate(selectedDate).slots.length > 0 && (
-                    <div className="flex items-center gap-2 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
-                      <CalendarIcon className="h-4 w-4 text-indigo-600" />
-                      <span className="text-xs text-indigo-900 flex-1">
+                    <div className="flex items-center gap-3 p-3.5 bg-indigo-50/70 border border-indigo-100 rounded-2xl">
+                      <div className="h-8 w-8 rounded-full bg-white border border-indigo-100 flex items-center justify-center">
+                        <CalendarIcon className="h-4 w-4 text-indigo-600" />
+                      </div>
+                      <span className="text-sm text-indigo-900 flex-1 font-medium">
                         This date has existing availability
                       </span>
                       <Button
@@ -1517,7 +1849,7 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
                           setShowCopyDialog(true);
                           setDialogOpen(false);
                         }}
-                        className="h-7 text-xs border-indigo-300 text-indigo-700 hover:bg-indigo-100"
+                        className="h-8 px-4 text-xs border-indigo-300 text-indigo-700 hover:bg-indigo-100 rounded-xl"
                       >
                         Copy to Other Dates
                       </Button>
@@ -1623,20 +1955,38 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
                     </div>
                   </div>
                 ))}
+
+                {/* Card-style Add Slot Action */}
+                <button
+                  type="button"
+                  onClick={handleAddNewSlotField}
+                  className="min-h-[180px] rounded-xl border-2 border-dashed border-gray-300 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all flex flex-col items-center justify-center text-gray-700"
+                >
+                  <div className="h-10 w-10 rounded-full border border-gray-300 bg-gray-50 flex items-center justify-center mb-2">
+                    <Plus className="h-5 w-5" />
+                  </div>
+                  <span className="text-sm font-medium">Add Another Slot</span>
+                  <span className="text-xs text-gray-500 mt-1">
+                    Create one more time range
+                  </span>
+                </button>
               </div>
 
-              {/* Add Another Button */}
-              <div className="flex justify-center">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleAddNewSlotField}
-                  className="h-7 text-xs bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:border-blue-300"
-                >
-                  <Plus className="h-3 w-3 mr-1" />
-                  Add Another Slot
-                </Button>
-              </div>
+              {inlineOverlapWarnings.length > 0 && (
+                <div className="rounded-2xl border border-red-100 bg-red-50/80 p-4 space-y-2">
+                  <p className="text-sm font-semibold text-red-800">
+                    Resolve overlapping slots before saving
+                  </p>
+                  {inlineOverlapWarnings.map((warning, index) => (
+                    <p
+                      key={`overlap-warning-${index}`}
+                      className="text-sm text-red-700 leading-relaxed"
+                    >
+                      • {warning}
+                    </p>
+                  ))}
+                </div>
+              )}
 
               {/* Add Button */}
               <div className="flex justify-center">
@@ -1645,7 +1995,7 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
                     console.log("Main Add Slots button clicked");
                     handleAddSlot();
                   }}
-                  disabled={saving}
+                  disabled={saving || inlineOverlapWarnings.length > 0}
                   className="bg-gray-900 hover:bg-gray-800 px-6"
                 >
                   {saving ? (
@@ -1698,119 +2048,182 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
         </DialogContent>
       </Dialog>
 
+      {/* Delete Slot Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open);
+          if (!open) {
+            setSlotToDelete(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Availability Slot?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              This will remove the selected availability slot.
+            </p>
+            {slotToDelete && (
+              <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 text-sm font-medium text-gray-900">
+                <span className="inline-flex items-baseline gap-1.5">
+                  {renderTimeToken(slotToDelete.start_time)}
+                  <span className="text-gray-600">-</span>
+                  {renderTimeToken(slotToDelete.end_time)}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDeleteDialogOpen(false);
+                  setSlotToDelete(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmDeleteSlot}
+              >
+                Delete Slot
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Copy Availability Dialog */}
       <Dialog open={showCopyDialog} onOpenChange={setShowCopyDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-xl max-h-[85vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>Copy Availability to Other Dates</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-900">
-                <strong>Source:</strong>{" "}
-                {copySourceDate?.toLocaleDateString("en-US", {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </p>
-              {copySourceDate && (
-                <div className="mt-2 space-y-1">
-                  {availabilitySlots
-                    .filter(
-                      (s) =>
-                        s.specific_date === getLocalDateString(copySourceDate)
-                    )
-                    .map((slot, idx) => (
-                      <div
-                        key={idx}
-                        className="text-xs text-blue-700 flex items-center gap-2"
-                      >
-                        <Clock className="h-3 w-3" />
-                        <span>
-                          {slot.start_time} - {slot.end_time}
-                        </span>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <Label className="text-sm mb-2">
-                Select Target Dates (click multiple dates)
-              </Label>
-              <div className="mt-2 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-3">
-                <div className="grid grid-cols-7 gap-1">
-                  {days.map((date, index) => {
-                    if (!date) return <div key={`empty-${index}`} />;
-
-                    const isSelected = copyTargetDates.some(
-                      (d) => getLocalDateString(d) === getLocalDateString(date)
-                    );
-                    const isSource =
-                      copySourceDate &&
-                      getLocalDateString(date) ===
-                        getLocalDateString(copySourceDate);
-
-                    return (
-                      <button
-                        key={date.toISOString()}
-                        onClick={() => {
-                          if (isSource) return;
-
-                          if (isSelected) {
-                            setCopyTargetDates((prev) =>
-                              prev.filter(
-                                (d) =>
-                                  getLocalDateString(d) !==
-                                  getLocalDateString(date)
-                              )
-                            );
-                          } else {
-                            setCopyTargetDates((prev) => [...prev, date]);
-                          }
-                        }}
-                        disabled={isSource}
-                        className={`aspect-square p-1 rounded text-xs font-medium transition-all ${
-                          isSource
-                            ? "bg-blue-100 text-blue-600 cursor-not-allowed"
-                            : isSelected
-                            ? "bg-green-500 text-white hover:bg-green-600"
-                            : "bg-gray-50 hover:bg-gray-100 border border-gray-200"
-                        }`}
-                      >
-                        {date.getDate()}
-                      </button>
-                    );
+          <div className="flex-1 overflow-y-auto pr-1">
+            <div className="space-y-5">
+              <div className="p-3.5 bg-blue-50/70 border border-blue-100 rounded-2xl space-y-2.5">
+                <p className="text-sm text-blue-900">
+                  <span className="font-semibold">Source</span>: {" "}
+                  {copySourceDate?.toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
                   })}
-                </div>
+                </p>
+                {copySourceDate && (
+                  <div className="space-y-1.5">
+                    {availabilitySlots
+                      .filter(
+                        (s) =>
+                          s.specific_date === getLocalDateString(copySourceDate)
+                      )
+                      .map((slot, idx) => (
+                        <div
+                          key={idx}
+                          className="text-sm text-blue-800 flex items-center gap-2"
+                        >
+                          <div className="h-6 w-6 rounded-full bg-white border border-blue-100 flex items-center justify-center">
+                            <Clock className="h-3.5 w-3.5" />
+                          </div>
+                          <span className="inline-flex items-baseline gap-1.5">
+                            {renderTimeToken(slot.start_time)}
+                            <span className="text-blue-700">—</span>
+                            {renderTimeToken(slot.end_time)}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                )}
               </div>
-              <p className="text-xs text-gray-500 mt-2">
-                {copyTargetDates.length} date(s) selected
-              </p>
-            </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <Label className="text-sm font-semibold text-gray-900">
+                    Select Target Dates
+                  </Label>
+                  <p className="text-xs text-gray-500">Multi-select enabled</p>
+                </div>
+
+                <div className="max-h-56 overflow-y-auto border border-gray-200 rounded-2xl p-2.5 bg-white">
+                  <div className="grid grid-cols-7 gap-1.5">
+                    {days.map((date, index) => {
+                      if (!date) return <div key={`empty-${index}`} />;
+
+                      const isSelected = copyTargetDates.some(
+                        (d) => getLocalDateString(d) === getLocalDateString(date)
+                      );
+                      const isSource =
+                        copySourceDate &&
+                        getLocalDateString(date) ===
+                          getLocalDateString(copySourceDate);
+
+                      return (
+                        <button
+                          key={date.toISOString()}
+                          onClick={() => {
+                            if (isSource) return;
+
+                            if (isSelected) {
+                              setCopyTargetDates((prev) =>
+                                prev.filter(
+                                  (d) =>
+                                    getLocalDateString(d) !==
+                                    getLocalDateString(date)
+                                )
+                              );
+                            } else {
+                              setCopyTargetDates((prev) => [...prev, date]);
+                            }
+                          }}
+                          disabled={isSource}
+                          className={`aspect-square rounded-xl text-sm font-medium transition-colors border ${
+                            isSource
+                              ? "bg-blue-100 text-blue-600 border-blue-200 cursor-not-allowed"
+                              : isSelected
+                              ? "bg-green-100 text-green-800 border-green-300 hover:bg-green-200"
+                              : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                          }`}
+                        >
+                          {date.getDate()}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <p className="text-sm text-gray-600">
+                  <span className="font-semibold text-gray-900">
+                    {copyTargetDates.length}
+                  </span>{" "}
+                  date{copyTargetDates.length !== 1 ? "s" : ""} selected
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-gray-100">
               <Button
                 variant="outline"
                 onClick={() => {
                   setShowCopyDialog(false);
                   setCopyTargetDates([]);
                 }}
+                className="rounded-xl"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleCopyAvailability}
                 disabled={copyTargetDates.length === 0}
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-green-600 hover:bg-green-700 rounded-xl"
               >
                 Copy to {copyTargetDates.length} Date
                 {copyTargetDates.length !== 1 ? "s" : ""}
               </Button>
-            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -1852,6 +2265,59 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
                 className="flex-1 bg-red-600 hover:bg-red-700 text-white"
               >
                 Unblock Date
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Block Conflict Dialog */}
+      <Dialog
+        open={bulkConflictDialogOpen}
+        onOpenChange={setBulkConflictDialogOpen}
+      >
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Cannot Block Selected Date Range</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Blocking is not possible because some selected days already have
+              availability slots. Remove these slots first, then try bulk block
+              again.
+            </p>
+
+            <div className="space-y-3">
+              {bulkBlockConflicts.map((conflict, index) => (
+                <div
+                  key={`${conflict.dateLabel}-${index}`}
+                  className="p-3 rounded-lg border border-red-200 bg-red-50"
+                >
+                  <p className="text-sm font-semibold text-red-800 mb-2">
+                    {conflict.dateLabel}
+                  </p>
+                  <div className="space-y-1">
+                    {conflict.slots.map((slot, slotIndex) => (
+                      <p
+                        key={`${conflict.dateLabel}-slot-${slotIndex}`}
+                        className="text-xs text-red-700"
+                      >
+                        • {slot}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                onClick={() => {
+                  setBulkConflictDialogOpen(false);
+                  setBulkBlockConflicts([]);
+                }}
+              >
+                Got it
               </Button>
             </div>
           </div>

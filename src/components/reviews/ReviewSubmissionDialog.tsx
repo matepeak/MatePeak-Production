@@ -47,10 +47,10 @@ export default function ReviewSubmissionDialog({
       return;
     }
 
-    if (comment.trim().length < 10) {
+    if (comment.trim().length < 20) {
       toast({
         title: "Review Too Short",
-        description: "Please write at least 10 characters to help others.",
+        description: "Please write at least 20 characters to make your feedback useful.",
         variant: "destructive",
       });
       return;
@@ -143,7 +143,7 @@ export default function ReviewSubmissionDialog({
         <DialogHeader>
           <DialogTitle className="text-2xl">Rate Your Session ⭐</DialogTitle>
           <p className="text-sm text-muted-foreground mt-2">
-            How was your session with {booking.mentor_name || "your mentor"}?
+            Share a quick, honest review of your session with {booking.mentor_name || "your mentor"}.
           </p>
         </DialogHeader>
 
@@ -199,14 +199,14 @@ export default function ReviewSubmissionDialog({
               Your Review
             </label>
             <Textarea
-              placeholder="Share your experience... What did you like? How did the mentor help you? (minimum 10 characters)"
+              placeholder="What stood out most in this session? What did you learn or improve?"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               rows={5}
               className="resize-none"
             />
             <p className="text-xs text-muted-foreground mt-2">
-              {comment.length} / 500 characters
+              {comment.length} / 500 characters (minimum 20)
             </p>
           </div>
 
@@ -223,7 +223,7 @@ export default function ReviewSubmissionDialog({
             <Button
               onClick={handleSubmit}
               disabled={
-                submitting || rating === 0 || comment.trim().length < 10
+                submitting || rating === 0 || comment.trim().length < 20
               }
               className="flex-1"
             >
@@ -242,7 +242,7 @@ export default function ReviewSubmissionDialog({
           </div>
 
           <p className="text-xs text-center text-muted-foreground">
-            Your review will help other students and support the mentor's growth
+            Your rating and comments help other students choose the right mentor.
           </p>
         </div>
       </DialogContent>

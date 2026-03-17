@@ -19,11 +19,13 @@ interface BookingSuccessModalProps {
   bookingDetails: {
     mentorName: string;
     serviceName: string;
+    serviceType?: string;
     date: string;
     time: string;
     timezone?: string;
     duration: number;
     userEmail: string;
+    digitalProductLink?: string;
   };
   onViewBookings: () => void;
 }
@@ -34,6 +36,8 @@ export default function BookingSuccessModal({
   bookingDetails,
   onViewBookings,
 }: BookingSuccessModalProps) {
+  const isDigitalProduct = bookingDetails.serviceType === "digitalProducts";
+
   const formattedDate = bookingDetails.date
     ? format(new Date(bookingDetails.date), "EEEE, MMMM d, yyyy")
     : "";
@@ -113,41 +117,64 @@ export default function BookingSuccessModal({
               </div>
 
               {/* Date & Time - Highlighted Section */}
-              <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 border-t border-gray-100 p-5 space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-11 h-11 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm border border-gray-200">
-                    <Calendar className="h-5 w-5 text-gray-700" />
+              {!isDigitalProduct && (
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 border-t border-gray-100 p-5 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-11 h-11 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm border border-gray-200">
+                      <Calendar className="h-5 w-5 text-gray-700" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                        Date
+                      </p>
+                      <p className="text-base font-bold text-gray-900">
+                        {formattedDate}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
-                      Date
-                    </p>
-                    <p className="text-base font-bold text-gray-900">
-                      {formattedDate}
-                    </p>
+
+                  <div className="flex items-start gap-3">
+                    <div className="w-11 h-11 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm border border-gray-200">
+                      <Clock className="h-5 w-5 text-gray-700" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                        Time
+                      </p>
+                      <p className="text-base font-bold text-gray-900">
+                        {bookingDetails.time}
+                      </p>
+                      <p className="text-sm text-gray-600 mt-0.5">
+                        {bookingDetails.timezone &&
+                          `${bookingDetails.timezone} • `}
+                        {bookingDetails.duration} minutes
+                      </p>
+                    </div>
                   </div>
                 </div>
+              )}
+            </div>
 
-                <div className="flex items-start gap-3">
-                  <div className="w-11 h-11 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm border border-gray-200">
-                    <Clock className="h-5 w-5 text-gray-700" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
-                      Time
-                    </p>
-                    <p className="text-base font-bold text-gray-900">
-                      {bookingDetails.time}
-                    </p>
-                    <p className="text-sm text-gray-600 mt-0.5">
-                      {bookingDetails.timezone &&
-                        `${bookingDetails.timezone} • `}
-                      {bookingDetails.duration} minutes
-                    </p>
-                  </div>
+            {isDigitalProduct && bookingDetails.digitalProductLink && (
+              <div className="bg-white border border-emerald-100 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
+                <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-900 mb-1">
+                    Your Product Is Ready
+                  </p>
+                  <a
+                    href={bookingDetails.digitalProductLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-semibold text-emerald-700 hover:text-emerald-800 break-all"
+                  >
+                    Access digital product
+                  </a>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Email Confirmation */}
             <div className="bg-white border border-blue-100 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
