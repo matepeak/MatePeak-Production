@@ -79,9 +79,9 @@ export default function BookingConfirmation({
     fetchUserData();
   }, []);
 
-  const platformFee = 10;
   const basePrice = selectedService.price;
   const total = basePrice;
+  const isFreeBooking = total <= 0;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,6 +137,8 @@ export default function BookingConfirmation({
 
   const getSubmitButtonText = () => {
     if (isSubmitting) return "Processing...";
+    if (isFreeBooking) return "Confirm Booking (FREE)";
+    return `Proceed to Payment (Rs. ${total.toLocaleString("en-IN")})`;
     switch (selectedService.type) {
       case "digitalProducts":
         return "Confirm Booking (FREE)";
@@ -177,12 +179,17 @@ export default function BookingConfirmation({
               {selectedService.type === "digitalProducts" && "Digital Download"}
             </p>
           </div>
-          <div className="bg-green-500 text-white rounded-xl px-4 py-2 shadow-sm">
-            <p className="text-xl font-bold">FREE</p>
-            <p className="text-xs opacity-90 line-through">
-              ₹{total.toLocaleString("en-IN")}
-            </p>
-          </div>
+          {isFreeBooking ? (
+            <div className="bg-green-500 text-white rounded-xl px-4 py-2 shadow-sm">
+              <p className="text-xl font-bold">FREE</p>
+              <p className="text-xs opacity-90">No payment required</p>
+            </div>
+          ) : (
+            <div className="bg-gray-900 text-white rounded-xl px-4 py-2 shadow-sm">
+              <p className="text-xl font-bold">Rs. {total.toLocaleString("en-IN")}</p>
+              <p className="text-xs opacity-90">Payable now</p>
+            </div>
+          )}
         </div>
 
         {needsDateTime && selectedDateTime && (
@@ -336,24 +343,23 @@ export default function BookingConfirmation({
         {showOrderSummary && (
           <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600 font-medium">
-                1 × {selectedService.name}
+              <span className="text-gray-600 font-medium">1 × {selectedService.name}</span>
+              <span className="font-semibold text-gray-900">
+                Rs. {basePrice.toLocaleString("en-IN")}
               </span>
-              <span className="font-semibold text-gray-400 line-through">
-                ₹{basePrice.toLocaleString("en-IN")}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600 font-medium">Beta Discount</span>
-              <span className="font-semibold text-green-600">-100%</span>
             </div>
             <div className="pt-3 border-t border-gray-300 flex justify-between items-center">
               <span className="font-bold text-gray-900 text-base">Total</span>
               <div className="text-right">
-                <span className="font-bold text-green-600 text-2xl">FREE</span>
-                <p className="text-xs text-gray-400 line-through">
-                  ₹{total.toLocaleString("en-IN")}
-                </p>
+                <span
+                  className={`font-bold text-2xl ${
+                    isFreeBooking ? "text-green-600" : "text-gray-900"
+                  }`}
+                >
+                  {isFreeBooking
+                    ? "FREE"
+                    : `Rs. ${total.toLocaleString("en-IN")}`}
+                </span>
               </div>
             </div>
           </div>

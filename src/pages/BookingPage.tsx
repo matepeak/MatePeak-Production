@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { createBooking } from "@/services/bookingService";
+import { paymentService } from "@/services/paymentService";
 import { createPriorityDm } from "@/services/priorityDmService";
 import { format } from "date-fns";
 import {
@@ -161,7 +162,6 @@ const BookingPage = () => {
           full_name: mentor.full_name,
           avatar_url: mentor.profile_picture_url || "",
           timezone: "Asia/Kolkata", // Default timezone since column doesn't exist
-          services: mentor.services || {},
           service_pricing: mentor.service_pricing || {},
           average_rating: averageRating,
           total_reviews: totalReviews,
@@ -533,6 +533,53 @@ const BookingPage = () => {
       const result = await createBooking(bookingData);
 
       if (result.success) {
+        const shouldRedirectToPayment = totalAmount > 0;
+
+        if (shouldRedirectToPayment) {
+          const bookingId = result.data.id as string;
+
+          const orderResult = await paymentService.createOrder(totalAmount, bookingId);
+          if (!orderResult.success || !orderResult.order || !orderResult.razorpayKey) {
+            toast.error(orderResult.error || "Failed to initialize payment");
+            return;
+          }
+
+          try {
+            const paymentResponse = await paymentService.openCheckout({
+              key: orderResult.razorpayKey,
+              order: orderResult.order,
+              bookingId,
+              customerName: details.name,
+              customerEmail: details.email,
+              customerPhone: details.phone,
+              description: `${selectedService.name} with ${mentorData.full_name}`,
+            });
+
+            const verifyResult = await paymentService.verifyPayment(
+              bookingId,
+              paymentResponse
+            );
+
+            if (!verifyResult.success) {
+              toast.error(verifyResult.error || "Payment verification failed");
+              return;
+            }
+
+            if (verifyResult.data?.booking_status !== "confirmed") {
+              toast.error("Payment verified but booking is not confirmed yet. Please retry.");
+              return;
+            }
+
+            toast.success("Payment successful! Booking confirmed.");
+            navigate(`/booking/confirmed/${bookingId}`);
+            return;
+          } catch (paymentError: any) {
+            await paymentService.markPaymentFailed(bookingId);
+            toast.error(paymentError?.message || "Payment cancelled or failed");
+            return;
+          }
+        }
+
         // Send confirmation emails (async, don't wait)
         sendConfirmationEmails(
           result.data,

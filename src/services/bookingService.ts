@@ -308,7 +308,11 @@ export async function createBooking(data: CreateBookingData) {
     }
 
     // 9. Create booking record with server-validated price
-    // During BETA: All bookings are FREE and auto-confirmed
+    // Paid bookings must stay pending until payment verification confirms them.
+    const isPaidBooking = Number(serverCalculatedPrice) > 0;
+    const initialStatus = isPaidBooking ? "pending" : "confirmed";
+    const initialPaymentStatus = isPaidBooking ? "pending" : "free";
+
     const { data: booking, error } = await supabase
       .from("bookings")
       .insert({
@@ -320,16 +324,16 @@ export async function createBooking(data: CreateBookingData) {
         duration: data.duration,
         message: sanitizedMessage,
         total_amount: serverCalculatedPrice, // Keep original price for records
-        status: "confirmed", // AUTO-CONFIRM during beta (was 'pending')
+        status: initialStatus,
         user_name: sanitizedName,
         user_email: data.user_email,
         user_phone: sanitizedPhone,
         price_verified: true,
-        payment_status: "free", // Use 'free' for beta bookings without payment
         meeting_link: null,
         meeting_provider: null,
         meeting_id: null,
         digital_product_link: digitalProductLink,
+        payment_status: initialPaymentStatus,
       })
       .select()
       .single();

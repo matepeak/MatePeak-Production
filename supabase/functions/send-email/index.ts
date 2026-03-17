@@ -1,7 +1,10 @@
+// @ts-nocheck
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const RESEND_FROM =
+  Deno.env.get("RESEND_FROM") || "MatePeak <support@matepeak.com>";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,7 +37,7 @@ const getErrorStack = (error: unknown) => {
 
 console.info("send-email function started");
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -52,7 +55,7 @@ Deno.serve(async (req) => {
       to,
       subject,
       html,
-      from = "MatePeak <support@matepeak.com>",
+      from = RESEND_FROM,
     }: EmailRequest = requestBody;
 
     // Validate required fields
@@ -66,6 +69,7 @@ Deno.serve(async (req) => {
     }
 
     console.log("Sending email to:", to);
+    console.log("Using sender:", from);
 
     // Send email via Resend
     const res = await fetch("https://api.resend.com/emails", {
@@ -92,6 +96,7 @@ Deno.serve(async (req) => {
         JSON.stringify({
           success: false,
           error: data.message || "Failed to send email",
+          sender: from,
           details: data,
           statusCode: res.status,
         }),
