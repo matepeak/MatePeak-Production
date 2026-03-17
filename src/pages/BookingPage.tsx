@@ -16,7 +16,7 @@ import BookingConfirmation from "@/components/booking/BookingConfirmation";
 export type BookingStep = 1 | 2 | 3;
 
 export interface SelectedService {
-  type: "oneOnOneSession" | "priorityDm" | "digitalProducts" | "notes";
+  type: "oneOnOneSession" | "priorityDm" | "digitalProducts";
   name: string;
   duration: number;
   price: number;
@@ -60,6 +60,9 @@ const BookingPage = () => {
   const preSelectedDate = searchParams.get("date");
   const preSelectedTime = searchParams.get("time");
   const preSelectedTimezone = searchParams.get("timezone");
+  const isAvailabilityFlow = Boolean(
+    preSelectedDate && preSelectedTime && preSelectedTimezone
+  );
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -157,7 +160,12 @@ const BookingPage = () => {
         });
 
         // If serviceId is provided, auto-select the service
-        if (preSelectedServiceId && mentor.service_pricing) {
+        // For availability flow, only oneOnOneSession is allowed.
+        if (
+          preSelectedServiceId &&
+          mentor.service_pricing &&
+          (!isAvailabilityFlow || preSelectedServiceId === "oneOnOneSession")
+        ) {
           const serviceData = mentor.service_pricing[preSelectedServiceId];
           if (serviceData?.enabled) {
             // Use the exact price set by the mentor (even if it's 0)
@@ -219,10 +227,9 @@ const BookingPage = () => {
   const handleServiceSelect = (service: SelectedService) => {
     setSelectedService(service);
 
-    // For digital products and notes, skip date/time selection
+    // For digital products, skip date/time selection
     if (
       service.type === "digitalProducts" ||
-      service.type === "notes" ||
       service.type === "priorityDm"
     ) {
       setStep(3);
@@ -554,7 +561,6 @@ const BookingPage = () => {
         if (selectedService?.type === "digitalProducts")
           return "Complete Purchase";
         if (selectedService?.type === "priorityDm") return "Priority DM";
-        if (selectedService?.type === "notes") return "Purchase Session Notes";
         return "Confirm Booking";
       default:
         return "Book a Session";
@@ -726,6 +732,7 @@ const BookingPage = () => {
                   onServiceSelect={handleServiceSelect}
                   averageRating={mentorData.average_rating}
                   totalReviews={mentorData.total_reviews}
+                  oneOnOneOnly={isAvailabilityFlow}
                 />
               )}
 

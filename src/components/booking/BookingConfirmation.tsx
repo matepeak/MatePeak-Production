@@ -130,8 +130,6 @@ export default function BookingConfirmation({
         return "What would you like to discuss?";
       case "digitalProducts":
         return "What are you looking to achieve with this product?";
-      case "notes":
-        return "What topics are you interested in?";
       default:
         return "What is the call about?";
     }
@@ -143,8 +141,6 @@ export default function BookingConfirmation({
       case "digitalProducts":
         return "Confirm Booking (FREE)";
       case "priorityDm":
-        return "Confirm Booking (FREE)";
-      case "notes":
         return "Confirm Booking (FREE)";
       default:
         return "Confirm Booking (FREE)";
@@ -179,7 +175,6 @@ export default function BookingConfirmation({
               {selectedService.type === "priorityDm" &&
                 "Text-based Mentoring Session"}
               {selectedService.type === "digitalProducts" && "Digital Download"}
-              {selectedService.type === "notes" && "Session Notes & Materials"}
             </p>
           </div>
           <div className="bg-green-500 text-white rounded-xl px-4 py-2 shadow-sm">

@@ -3,7 +3,6 @@ import {
   Video,
   MessageSquare,
   ShoppingBag,
-  FileText,
   Sparkles,
   IndianRupee,
   Gift,
@@ -61,14 +60,6 @@ const predefinedServices: ServiceConfig[] = [
     description: SERVICE_CONFIG.digitalProducts.description,
     type: "predefined",
     suggestedPrice: SERVICE_CONFIG.digitalProducts.suggestedPrice,
-  },
-  {
-    key: "notes",
-    icon: SERVICE_CONFIG.notes.icon,
-    name: SERVICE_CONFIG.notes.name,
-    description: SERVICE_CONFIG.notes.description,
-    type: "predefined",
-    suggestedPrice: SERVICE_CONFIG.notes.suggestedPrice,
   },
 ];
 

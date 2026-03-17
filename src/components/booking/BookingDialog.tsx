@@ -36,7 +36,7 @@ interface BookingDialogProps {
 export type BookingStep = 1 | 2 | 3;
 
 export interface SelectedService {
-  type: "oneOnOneSession" | "priorityDm" | "digitalProducts" | "notes";
+  type: "oneOnOneSession" | "priorityDm" | "digitalProducts";
   name: string;
   duration: number; // in minutes
   price: number;
@@ -127,8 +127,8 @@ export default function BookingDialog({
   const handleServiceSelect = (service: SelectedService) => {
     setSelectedService(service);
 
-    // For digital products and notes, skip date/time selection
-    if (service.type === "digitalProducts" || service.type === "notes") {
+    // For digital products, skip date/time selection
+    if (service.type === "digitalProducts") {
       setStep(3);
     }
     // For Priority DM, also skip date/time because it does not require scheduling
@@ -424,7 +424,7 @@ export default function BookingDialog({
         scheduledDate = selectedDateTime.date.toISOString().split("T")[0];
         scheduledTime = selectedDateTime.time;
       } else {
-        // For digital products, chat, notes - use today's date
+        // For digital products and chat, use today's date
         scheduledDate = new Date().toISOString().split("T")[0];
         scheduledTime = "00:00"; // Placeholder time
       }
@@ -507,8 +507,6 @@ export default function BookingDialog({
           return "Complete Purchase";
         } else if (selectedService?.type === "priorityDm") {
           return "Priority DM";
-        } else if (selectedService?.type === "notes") {
-          return "Purchase Session Notes";
         }
         return "Confirm Booking";
       default:

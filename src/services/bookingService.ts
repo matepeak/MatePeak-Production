@@ -219,20 +219,22 @@ export async function createBooking(data: CreateBookingData) {
     const sanitizedName = sanitizeInput(data.user_name || "");
     const sanitizedPhone = sanitizeInput(data.user_phone || "");
 
-    // 8. Check for existing booking conflicts
-    const conflictCheck = await checkBookingConflict(
-      data.expert_id,
-      data.scheduled_date,
-      data.scheduled_time,
-      data.duration
-    );
+    // 8. Check booking conflicts only for scheduled one-on-one sessions.
+    if (data.session_type === "oneOnOneSession") {
+      const conflictCheck = await checkBookingConflict(
+        data.expert_id,
+        data.scheduled_date,
+        data.scheduled_time,
+        data.duration
+      );
 
-    if (!conflictCheck.success) {
-      return {
-        success: false,
-        error: conflictCheck.error || "Booking conflict detected",
-        data: null,
-      };
+      if (!conflictCheck.success) {
+        return {
+          success: false,
+          error: conflictCheck.error || "Booking conflict detected",
+          data: null,
+        };
+      }
     }
 
     // 9. Create booking record with server-validated price
@@ -254,6 +256,9 @@ export async function createBooking(data: CreateBookingData) {
         user_phone: sanitizedPhone,
         price_verified: true,
         payment_status: "free", // Use 'free' for beta bookings without payment
+        meeting_link: null,
+        meeting_provider: null,
+        meeting_id: null,
       })
       .select()
       .single();
@@ -267,48 +272,50 @@ export async function createBooking(data: CreateBookingData) {
       };
     }
 
-    // 10. Generate meeting link for confirmed booking
-    try {
-      // Fetch mentor name for meeting room
-      const { data: mentorProfile } = await supabase
-        .from("expert_profiles")
-        .select("full_name, username")
-        .eq("id", data.expert_id)
-        .single();
+    // 10. Generate meeting link only for oneOnOneSession bookings
+    if (data.session_type === "oneOnOneSession") {
+      try {
+        // Fetch mentor name for meeting room
+        const { data: mentorProfile } = await supabase
+          .from("expert_profiles")
+          .select("full_name, username")
+          .eq("id", data.expert_id)
+          .single();
 
-      const mentorName =
-        mentorProfile?.full_name || mentorProfile?.username || "mentor";
+        const mentorName =
+          mentorProfile?.full_name || mentorProfile?.username || "mentor";
 
-      // Generate Jitsi meeting link (free, no API key needed)
-      const meetingConfig = generateMeetingLink(
-        booking.id,
-        mentorName,
-        data.session_type,
-        "jitsi"
-      );
+        // Generate Jitsi meeting link (free, no API key needed)
+        const meetingConfig = generateMeetingLink(
+          booking.id,
+          mentorName,
+          data.session_type,
+          "jitsi"
+        );
 
-      // Update booking with meeting link
-      const { error: updateError } = await supabase
-        .from("bookings")
-        .update({
-          meeting_link: meetingConfig.meetingLink,
-          meeting_provider: meetingConfig.provider,
-          meeting_id: meetingConfig.meetingId,
-        })
-        .eq("id", booking.id);
+        // Update booking with meeting link
+        const { error: updateError } = await supabase
+          .from("bookings")
+          .update({
+            meeting_link: meetingConfig.meetingLink,
+            meeting_provider: meetingConfig.provider,
+            meeting_id: meetingConfig.meetingId,
+          })
+          .eq("id", booking.id);
 
-      if (updateError) {
-        console.error("Failed to add meeting link:", updateError);
-        // Don't fail the booking, just log the error
-      } else {
-        // Add meeting link to returned booking data
-        booking.meeting_link = meetingConfig.meetingLink;
-        booking.meeting_provider = meetingConfig.provider;
-        booking.meeting_id = meetingConfig.meetingId;
+        if (updateError) {
+          console.error("Failed to add meeting link:", updateError);
+          // Don't fail the booking, just log the error
+        } else {
+          // Add meeting link to returned booking data
+          booking.meeting_link = meetingConfig.meetingLink;
+          booking.meeting_provider = meetingConfig.provider;
+          booking.meeting_id = meetingConfig.meetingId;
+        }
+      } catch (meetingError) {
+        console.error("Meeting link generation error:", meetingError);
+        // Don't fail the booking if meeting link generation fails
       }
-    } catch (meetingError) {
-      console.error("Meeting link generation error:", meetingError);
-      // Don't fail the booking if meeting link generation fails
     }
 
     return {

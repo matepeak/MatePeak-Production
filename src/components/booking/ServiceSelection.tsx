@@ -1,10 +1,4 @@
 import {
-  Video,
-  MessageSquare,
-  ShoppingBag,
-  FileText,
-  Clock,
-  Gift,
   Star,
   Calendar,
   ArrowRight,
@@ -18,7 +12,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -31,6 +24,7 @@ interface ServiceSelectionProps {
   onServiceSelect: (service: SelectedService) => void;
   averageRating?: number;
   totalReviews?: number;
+  oneOnOneOnly?: boolean;
 }
 
 // Use shared SERVICE_CONFIG for consistency across the app
@@ -40,6 +34,7 @@ export default function ServiceSelection({
   onServiceSelect,
   averageRating = 0,
   totalReviews = 0,
+  oneOnOneOnly = false,
 }: ServiceSelectionProps) {
   const [selectedDurations, setSelectedDurations] = useState<
     Record<string, number>
@@ -60,6 +55,7 @@ export default function ServiceSelection({
   // Get all enabled services
   const enabledServices = Object.entries(servicePricing)
     .filter(([_, value]: [string, any]) => value?.enabled)
+    .filter(([key]) => (oneOnOneOnly ? key === "oneOnOneSession" : true))
     .map(([key, value]) => ({ key, ...value }));
 
   const handleSelect = (serviceKey: string, serviceName: string, servicePrice: number, hasFreeDemo: boolean) => {
@@ -95,7 +91,9 @@ export default function ServiceSelection({
     return (
       <div className="text-center py-8 bg-gray-100 rounded-2xl border-0">
         <p className="text-gray-500 text-sm font-medium">
-          No services available at the moment
+          {oneOnOneOnly
+            ? "No 1-on-1 session service is available right now"
+            : "No services available at the moment"}
         </p>
       </div>
     );
@@ -108,7 +106,9 @@ export default function ServiceSelection({
           What do you want help with?
         </h3>
         <p className="text-sm text-gray-600 mt-1">
-          Pick an outcome. Delivery is handled by the expert.
+          {oneOnOneOnly
+            ? "Pick your 1-on-1 session service for this selected timeslot."
+            : "Pick an outcome. Delivery is handled by the expert."}
         </p>
       </div>
 
@@ -135,8 +135,6 @@ export default function ServiceSelection({
             suggestedPrice: 500,
           };
           const Icon = config.icon;
-          const selectedDuration =
-            selectedDurations[serviceKey] || config.durations[0] || 0;
           const isFreeDemo =
             freeDemoEnabled[serviceKey] && service.hasFreeDemo;
           
@@ -146,19 +144,19 @@ export default function ServiceSelection({
           return (
             <Card
               key={serviceKey}
-              className="bg-gray-100 border-0 rounded-2xl shadow-none"
+              className="bg-white border border-gray-200 rounded-2xl shadow-sm h-full overflow-hidden"
             >
-              <div className="p-7 space-y-4">
+              <div className="p-7 h-full flex flex-col gap-4">
                 {/* Header with Icon & Title */}
                 <div className="flex items-start gap-3.5">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-sm bg-gradient-to-br from-gray-800 to-gray-900 flex-shrink-0">
                     <Icon className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-bold text-gray-900 text-lg leading-tight mb-1.5">
+                    <h4 className="font-bold text-gray-900 text-lg leading-tight mb-1.5 line-clamp-2 break-words">
                       {config.name}
                     </h4>
-                    <p className="text-sm text-gray-600 leading-relaxed">
+                    <p className="text-sm text-gray-600 leading-relaxed line-clamp-2 break-words">
                       {config.description}
                     </p>
                     {totalReviews > 0 && isPredefined && (
@@ -259,7 +257,7 @@ export default function ServiceSelection({
                 </div>
 
                 {/* Pricing & CTA */}
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                <div className="flex items-center justify-between pt-4 mt-auto border-t border-gray-100">
                   {/* Price display */}
                   <div className="flex items-baseline gap-2">
                     {service.discount_price !== undefined ? (
@@ -289,7 +287,7 @@ export default function ServiceSelection({
                       handleSelect(serviceKey, service.name, service.price, service.hasFreeDemo);
                     }}
                     className={cn(
-                      "font-semibold transition-all rounded-lg px-4 py-2 h-auto text-sm group/button",
+                      "font-semibold transition-all rounded-lg px-4 py-2 h-auto text-sm group/button shrink-0",
                       "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
                     )}
                   >

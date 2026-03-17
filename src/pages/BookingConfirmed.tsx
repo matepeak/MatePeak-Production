@@ -7,8 +7,9 @@ import {
   Calendar,
   Clock,
   User,
-  Mail,
   Video,
+  MessageSquare,
+  Package,
   ArrowLeft,
   Loader2,
   AlertCircle,
@@ -414,11 +415,10 @@ const BookingConfirmed = () => {
   // Format service type for display
   const formatServiceType = (type: string) => {
     const typeMap: Record<string, string> = {
-      oneOnOneSession: "1:1 Session",
-      groupSession: "Group Session",
-      workshop: "Workshop",
-      consultation: "Consultation",
-      mentorship: "Mentorship",
+      oneOnOneSession: "1-on-1 Session",
+      priorityDm: "Priority DM",
+      chatAdvice: "Priority DM",
+      digitalProducts: "Digital Product",
     };
     return typeMap[type] || type.replace(/([A-Z])/g, " $1").trim();
   };
@@ -427,6 +427,71 @@ const BookingConfirmed = () => {
   const bookingDate = new Date(booking.date);
   const formattedDate = format(bookingDate, "EEEE, MMMM d, yyyy");
   const isStudent = userRole === "student";
+  const normalizedServiceType =
+    booking.service_type === "chatAdvice" ? "priorityDm" : booking.service_type;
+
+  const isOneOnOne = normalizedServiceType === "oneOnOneSession";
+  const isPriorityDm = normalizedServiceType === "priorityDm";
+  const isDigitalProduct = normalizedServiceType === "digitalProducts";
+
+  const serviceDisplayName = formatServiceType(normalizedServiceType);
+  const serviceIcon = isPriorityDm
+    ? MessageSquare
+    : isDigitalProduct
+    ? Package
+    : Video;
+
+  const headline = isStudent
+    ? isOneOnOne
+      ? "Your 1-on-1 session is confirmed"
+      : isPriorityDm
+      ? "Your Priority DM is sent"
+      : isDigitalProduct
+      ? "Your digital product request is confirmed"
+      : "Your request is confirmed"
+    : isOneOnOne
+    ? "You received a 1-on-1 booking"
+    : isPriorityDm
+    ? "You received a Priority DM request"
+    : isDigitalProduct
+    ? "You received a digital product request"
+    : "You received a new request";
+
+  const subHeadline = isStudent
+    ? isOneOnOne
+      ? "Get ready for your scheduled mentoring session."
+      : isPriorityDm
+      ? "Your mentor will review your message and reply in Priority DM."
+      : isDigitalProduct
+      ? "Your mentor will share the requested resources from dashboard flow."
+      : "Your request was submitted successfully."
+    : isOneOnOne
+    ? "Review details and prepare for the upcoming session."
+    : isPriorityDm
+    ? "Reply from your Priority DM inbox when you're ready."
+    : isDigitalProduct
+    ? "Process this request from your dashboard workflow."
+    : "Open your dashboard to continue.";
+
+  const nextSteps = isOneOnOne
+    ? [
+        "You will receive a confirmation email with session details.",
+        "A reminder will be sent 24 hours before the session.",
+        "A final reminder will arrive 1 hour before the session.",
+        "Use your meeting link from dashboard when the session starts.",
+      ]
+    : isPriorityDm
+    ? [
+        "Your Priority DM message has been delivered to the mentor.",
+        "The mentor can reply directly in the Priority DM inbox.",
+        "You can continue the conversation from your dashboard.",
+        "You will be notified when a new reply arrives.",
+      ]
+    : [
+        "Your request is now visible to the mentor.",
+        "The mentor will provide the digital resource through platform flow.",
+        "Track status and updates from your dashboard.",
+      ];
 
   return (
     <>
@@ -550,7 +615,7 @@ const BookingConfirmed = () => {
                     : "opacity-0 translate-y-4"
                 }`}
               >
-                Woohoo! Your booking is confirmed 🎉
+                {headline}
               </h1>
               <p
                 className={`text-gray-600 transition-all duration-500 delay-100 ${
@@ -559,9 +624,7 @@ const BookingConfirmed = () => {
                     : "opacity-0 translate-y-4"
                 }`}
               >
-                {isStudent
-                  ? "Get ready for an awesome session!"
-                  : "You have a new booking request"}
+                {subHeadline}
               </p>
             </div>
           </div>
@@ -697,31 +760,43 @@ const BookingConfirmed = () => {
               {/* Session Details Grid */}
               <div className="grid md:grid-cols-2 gap-0">
                 {/* Service Info */}
-                <div className="p-8 border-r border-b border-gray-100">
+                <div className={`p-8 border-b border-gray-100 ${isOneOnOne ? "border-r" : ""}`}>
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <Video className="w-5 h-5 text-gray-700" />
+                      {serviceIcon && <serviceIcon className="w-5 h-5 text-gray-700" />}
                     </div>
                     <h3 className="text-lg font-bold text-gray-900">
-                      Service Details
+                      {isOneOnOne
+                        ? "Session Details"
+                        : isPriorityDm
+                        ? "Priority DM Details"
+                        : "Order Details"}
                     </h3>
                   </div>
                   <div className="space-y-4">
                     <div>
                       <p className="text-sm text-gray-500 mb-1">Service Type</p>
                       <p className="font-semibold text-gray-900">
-                        {formatServiceType(booking.service_name)}
+                        {serviceDisplayName}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-500 mb-1">Duration</p>
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-gray-600" />
-                        <p className="font-semibold text-gray-900">
-                          {booking.duration} minutes
-                        </p>
+                    {isOneOnOne && (
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">Duration</p>
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-gray-600" />
+                          <p className="font-semibold text-gray-900">
+                            {booking.duration} minutes
+                          </p>
+                        </div>
                       </div>
-                    </div>
+                    )}
+                    {isPriorityDm && (
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">Reply SLA</p>
+                        <p className="font-semibold text-gray-900">Within 24 hours</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -732,22 +807,38 @@ const BookingConfirmed = () => {
                       <Calendar className="w-5 h-5 text-gray-700" />
                     </div>
                     <h3 className="text-lg font-bold text-gray-900">
-                      Schedule
+                      {isOneOnOne
+                        ? "Schedule"
+                        : isPriorityDm
+                        ? "Conversation Timeline"
+                        : "Delivery Timeline"}
                     </h3>
                   </div>
                   <div className="space-y-4">
                     <div>
-                      <p className="text-sm text-gray-500 mb-1">Date</p>
+                      <p className="text-sm text-gray-500 mb-1">
+                        {isOneOnOne ? "Date" : "Created On"}
+                      </p>
                       <p className="font-semibold text-gray-900">
-                        {formattedDate}
+                        {isOneOnOne
+                          ? formattedDate
+                          : format(new Date(booking.created_at), "EEEE, MMMM d, yyyy")}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500 mb-1">Time</p>
+                      <p className="text-sm text-gray-500 mb-1">
+                        {isOneOnOne ? "Time" : "Status"}
+                      </p>
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-gray-600" />
                         <p className="font-semibold text-gray-900">
-                          {booking.time_slot}
+                          {isOneOnOne
+                            ? booking.time_slot
+                            : isPriorityDm
+                            ? isStudent
+                              ? "Waiting for mentor reply"
+                              : "Awaiting your reply"
+                            : "Processing delivery"}
                         </p>
                       </div>
                     </div>
@@ -755,39 +846,30 @@ const BookingConfirmed = () => {
                 </div>
               </div>
 
-              {/* Contact Info */}
+              {/* Participant Info */}
               <div className="p-8 border-b border-gray-100">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
                     <User className="w-5 h-5 text-gray-700" />
                   </div>
                   <h3 className="text-lg font-bold text-gray-900">
-                    Contact Information
+                    Participants
                   </h3>
                 </div>
                 <div className="grid sm:grid-cols-2 gap-6">
                   <div>
-                    <p className="text-sm text-gray-500 mb-1">
-                      {isStudent ? "Mentor" : "Student"}
-                    </p>
-                    <p className="font-semibold text-gray-900">
-                      {isStudent ? booking.mentor_name : booking.student_name}
-                    </p>
+                    <p className="text-sm text-gray-500 mb-1">Mentor</p>
+                    <p className="font-semibold text-gray-900">{booking.mentor_name}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500 mb-1 flex items-center gap-1.5">
-                      <Mail className="w-4 h-4" />
-                      Email
-                    </p>
-                    <p className="font-medium text-gray-900 break-all">
-                      {isStudent ? booking.mentor_email : booking.student_email}
-                    </p>
+                    <p className="text-sm text-gray-500 mb-1">Student</p>
+                    <p className="font-semibold text-gray-900">{booking.student_name}</p>
                   </div>
                 </div>
               </div>
 
               {/* Meeting Link */}
-              {booking.meeting_link && (
+              {isOneOnOne && booking.meeting_link && (
                 <div className="p-8 bg-gray-50 border-b border-gray-100">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
@@ -860,26 +942,12 @@ const BookingConfirmed = () => {
                   </h3>
                 </div>
                 <ul className="space-y-3 text-gray-700">
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-gray-600 mt-0.5 flex-shrink-0" />
-                    <span>
-                      You'll receive a confirmation email with all the details
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-gray-600 mt-0.5 flex-shrink-0" />
-                    <span>
-                      A reminder will be sent 24 hours before the session
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-gray-600 mt-0.5 flex-shrink-0" />
-                    <span>Final reminder will arrive 1 hour before</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-gray-600 mt-0.5 flex-shrink-0" />
-                    <span>Access your meeting link from dashboard anytime</span>
-                  </li>
+                  {nextSteps.map((step, idx) => (
+                    <li key={idx} className="flex items-start gap-3">
+                      <CheckCircle className="w-5 h-5 text-gray-600 mt-0.5 flex-shrink-0" />
+                      <span>{step}</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>

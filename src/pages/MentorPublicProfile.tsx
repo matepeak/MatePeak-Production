@@ -12,11 +12,13 @@ import ProfileAvailability from "@/components/profile/ProfileAvailability";
 import ProfileExperiences from "@/components/profile/ProfileExperiences";
 import ProfileReviews from "@/components/profile/ProfileReviews";
 import ProfileAbout from "@/components/profile/ProfileAbout";
+import ProfileServices from "@/components/profile/ProfileServices";
 import AvailabilityPreview from "@/components/profile/AvailabilityPreview";
 import SEO from "@/components/SEO";
 
 export type ProfileTab =
   | "overview"
+  | "services"
   | "availability"
   | "experiences"
   | "reviews"
@@ -177,24 +179,6 @@ export default function MentorPublicProfile() {
     }
   };
 
-  const handleBookFromAvailability = (
-    date: Date,
-    time: string,
-    timezone: string
-  ) => {
-    if (mentor) {
-      // Navigate to booking page with pre-selected date/time as query params
-      const dateStr = date.toISOString().split("T")[0];
-      navigate(
-        `/booking?mentorId=${
-          mentor.id
-        }&date=${dateStr}&time=${encodeURIComponent(
-          time
-        )}&timezone=${encodeURIComponent(timezone)}`
-      );
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-gray-50">
@@ -317,12 +301,17 @@ export default function MentorPublicProfile() {
                       {activeTab === "overview" && (
                         <ProfileOverview mentor={mentor} stats={stats} />
                       )}
+                      {activeTab === "services" && (
+                        <ProfileServices
+                          mentorUsername={mentor.username}
+                          servicePricing={mentor.service_pricing}
+                        />
+                      )}
                       {activeTab === "availability" && (
                         <ProfileAvailability
                           mentorId={mentor.id}
                           mentorName={mentor.full_name}
                           mentorTimezone={mentor.timezone || "UTC"}
-                          onBookSlot={handleBookFromAvailability}
                         />
                       )}
                       {activeTab === "experiences" && (

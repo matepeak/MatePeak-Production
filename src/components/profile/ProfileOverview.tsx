@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SERVICE_CONFIG } from "@/config/serviceConfig";
 
@@ -55,6 +57,9 @@ export default function ProfileOverview({
   mentor,
   stats,
 }: ProfileOverviewProps) {
+  const isServiceEnabled = (enabled: unknown) =>
+    enabled === true || enabled === "true" || enabled === 1;
+
   const [featuredReviews, setFeaturedReviews] = useState<any[]>([]);
   const [selectedService, setSelectedService] = useState<ServiceListItem | null>(
     null
@@ -112,7 +117,6 @@ export default function ProfileOverview({
   const getPriceUnit = (serviceKey: string) => {
     if (serviceKey === "oneOnOneSession") return "/ session";
     if (serviceKey === "priorityDm") return "/ consultation";
-    if (serviceKey === "notes") return "/ resource";
     if (serviceKey === "digitalProducts") return "/ product";
     return "";
   };
@@ -246,8 +250,7 @@ export default function ProfileOverview({
 
     // Iterate through all services in service_pricing
     Object.entries(mentor.service_pricing).forEach(([key, value]: [string, any]) => {
-      // Only skip if service is explicitly disabled
-      if (!value?.enabled) {
+      if (!isServiceEnabled(value?.enabled)) {
         console.log(`   ⏭️ Skipping ${key} (not enabled)`);
         return;
       }
@@ -410,22 +413,20 @@ export default function ProfileOverview({
                 Services & Pricing
               </h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
               {services.map((service, index) => {
                 const ServiceIcon = service.icon;
                 return (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedService(service)}
-                    key={index}
-                      className="group relative w-full text-left bg-white rounded-2xl border border-gray-200 hover:border-gray-300 p-5 transition-all duration-200 hover:shadow-sm"
+                    <div
+                      key={index}
+                      className="group relative w-full text-left bg-white rounded-2xl border border-gray-200 hover:border-gray-300 p-5 transition-all duration-200 hover:shadow-sm h-full flex flex-col"
                     >
                     {/* Service Icon */}
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center transition-colors">
                         <ServiceIcon className="h-6 w-6 text-matepeak-primary" />
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col items-end gap-1.5">
                         {serviceStatsByType[service.key]?.reviewCount > 0 ? (
                           <div className="inline-flex items-center gap-1 rounded-full bg-gray-50 border border-gray-200 px-2 py-0.5 text-xs text-gray-700 font-medium">
                             <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
@@ -446,25 +447,23 @@ export default function ProfileOverview({
                     </div>
 
                     {/* Service Info */}
-                    <div className="space-y-2">
-                      <h3 className="font-bold text-gray-900 text-base leading-tight">
+                    <div className="space-y-2 min-h-[86px]">
+                      <h3 className="font-bold text-gray-900 text-base leading-tight line-clamp-2 min-h-[48px]">
                         {service.name}
                       </h3>
-                      <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
+                      <p className="text-sm text-gray-600 leading-relaxed line-clamp-2 min-h-[40px]">
                         {service.description ||
                           (service.name === SERVICE_CONFIG.oneOnOneSession.name &&
                             SERVICE_CONFIG.oneOnOneSession.description) ||
                           (service.name === SERVICE_CONFIG.priorityDm.name &&
                             SERVICE_CONFIG.priorityDm.description) ||
                           (service.name === SERVICE_CONFIG.digitalProducts.name &&
-                            SERVICE_CONFIG.digitalProducts.description) ||
-                          (service.name === SERVICE_CONFIG.notes.name &&
-                            "Download study materials and practice exercises")}
+                            SERVICE_CONFIG.digitalProducts.description)}
                       </p>
                     </div>
 
                     {/* Pricing */}
-                    <div className="mt-4 pt-4 border-t border-gray-100">
+                    <div className="mt-4 pt-4 border-t border-gray-100 min-h-[84px]">
                       {service.discount_price ? (
                         <div className="space-y-1">
                           <div className="flex items-baseline gap-2">
@@ -498,8 +497,14 @@ export default function ProfileOverview({
                       )}
                     </div>
 
-                    <p className="mt-3 text-xs text-gray-500">View details</p>
-                    </button>
+                    <div className="mt-auto pt-3">
+                      <Button asChild variant="outline" size="sm" className="w-full">
+                        <Link to={`/mentor/${mentor.username}/services/${encodeURIComponent(service.key)}`}>
+                          View Details
+                        </Link>
+                      </Button>
+                    </div>
+                    </div>
                 );
               })}
             </div>

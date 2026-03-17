@@ -111,11 +111,6 @@ interface ServicePricing {
     price: number;
     discount_price?: number;
   };
-  notes?: {
-    enabled: boolean;
-    price: number;
-    discount_price?: number;
-  };
 }
 
 // Use shared SERVICE_CONFIG for consistent naming
@@ -123,7 +118,6 @@ const serviceTypeIcons: Record<string, any> = {
   oneOnOneSession: SERVICE_CONFIG.oneOnOneSession?.icon || Briefcase,
   priorityDm: SERVICE_CONFIG.priorityDm?.icon || MessageSquare,
   digitalProducts: SERVICE_CONFIG.digitalProducts?.icon || Package,
-  notes: SERVICE_CONFIG.notes?.icon || FileText,
   custom: Plus,
 };
 
@@ -131,7 +125,6 @@ const serviceTypeLabels: Record<string, string> = {
   oneOnOneSession: SERVICE_CONFIG.oneOnOneSession?.name || "1-on-1 Session",
   priorityDm: SERVICE_CONFIG.priorityDm?.name || "Priority DM",
   digitalProducts: SERVICE_CONFIG.digitalProducts?.name || "Digital Products",
-  notes: SERVICE_CONFIG.notes?.name || "Notes & Resources",
   custom: "Custom Service",
 };
 
@@ -142,7 +135,7 @@ const serviceTemplates = [
     description:
       "Comprehensive resume review with detailed feedback and suggestions for improvement",
     price: 999,
-    serviceType: "custom",
+    serviceType: "oneOnOneSession",
     hasFreeDemo: false,
   },
   {
@@ -150,7 +143,7 @@ const serviceTemplates = [
     description:
       "One hour mock interview with detailed feedback on your performance and areas to improve",
     price: 1499,
-    serviceType: "custom",
+    serviceType: "oneOnOneSession",
     hasFreeDemo: true,
   },
   {
@@ -158,7 +151,7 @@ const serviceTemplates = [
     description:
       "Personalized career roadmap with actionable steps and milestones for the next 6-12 months",
     price: 2499,
-    serviceType: "custom",
+    serviceType: "oneOnOneSession",
     hasFreeDemo: false,
   },
   {
@@ -166,7 +159,7 @@ const serviceTemplates = [
     description:
       "Complete LinkedIn profile makeover to increase visibility and attract recruiters",
     price: 799,
-    serviceType: "custom",
+    serviceType: "oneOnOneSession",
     hasFreeDemo: false,
   },
   {
@@ -174,7 +167,7 @@ const serviceTemplates = [
     description:
       "Learn proven strategies to negotiate better offers and maximize your compensation",
     price: 1999,
-    serviceType: "custom",
+    serviceType: "oneOnOneSession",
     hasFreeDemo: false,
   },
 ];
@@ -206,7 +199,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
     price: 0,
     discount_price: undefined,
     enabled: true,
-    serviceType: "custom",
+    serviceType: "oneOnOneSession",
     hasFreeDemo: false,
   });
 
@@ -239,7 +232,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       // Iterate through all services in service_pricing
       Object.entries(pricing).forEach(([key, value]: [string, any], index) => {
         if (value && typeof value === 'object') {
-          const isCustom = !["oneOnOneSession", "priorityDm", "digitalProducts", "notes"].includes(key);
+          const isCustom = !["oneOnOneSession", "priorityDm", "digitalProducts"].includes(key);
           
           allServices.push({
             id: key,
@@ -248,7 +241,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
             price: value.price || 0,
             discount_price: value.discount_price,
             enabled: value.enabled || false,
-            serviceType: isCustom ? "custom" : key,
+            serviceType: isCustom ? (value.type || "custom") : key,
             hasFreeDemo: value.hasFreeDemo || false,
             order: value.order ?? index,
           });
@@ -405,7 +398,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
 
       // Can't delete predefined services, only disable them
       if (
-        ["oneOnOneSession", "priorityDm", "digitalProducts", "notes"].includes(
+        ["oneOnOneSession", "priorityDm", "digitalProducts"].includes(
           service.serviceType
         )
       ) {
@@ -469,7 +462,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
         price: newService.price,
         discount_price: newService.discount_price,
         enabled: newService.enabled ?? true,
-        serviceType: "custom",
+        serviceType: newService.serviceType || "oneOnOneSession",
         hasFreeDemo: newService.hasFreeDemo ?? false,
       };
 
@@ -483,7 +476,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
           price: service.price,
           discount_price: service.discount_price,
           hasFreeDemo: service.hasFreeDemo,
-          type: "custom",
+          type: service.serviceType,
         },
       };
 
@@ -497,15 +490,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       setServices((prev) => [...prev, service]);
       setServicePricing(updatedPricing);
       setAddingNew(false);
-      setNewService({
-        name: "",
-        description: "",
-        price: 0,
-        discount_price: undefined,
-        enabled: true,
-        serviceType: "custom",
-        hasFreeDemo: false,
-      });
+      resetNewServiceForm();
       toast.success("Service added successfully!");
     } catch (error: any) {
       console.error("Error adding service:", error);
@@ -525,7 +510,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       price: service.price,
       discount_price: service.discount_price,
       enabled: false,
-      serviceType: "custom",
+      serviceType: service.serviceType || "oneOnOneSession",
       hasFreeDemo: service.hasFreeDemo || false,
     });
     setAddingNew(true);
@@ -663,6 +648,18 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
   const cancelEdit = () => {
     setEditingService(null);
     setEditForm({});
+  };
+
+  const resetNewServiceForm = () => {
+    setNewService({
+      name: "",
+      description: "",
+      price: 0,
+      discount_price: undefined,
+      enabled: true,
+      serviceType: "oneOnOneSession",
+      hasFreeDemo: false,
+    });
   };
 
   const editingServiceData = services.find((service) => service.id === editingService) || null;
@@ -852,31 +849,19 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                   <SelectItem value="oneOnOneSession" className="rounded-lg">
                     <div className="flex items-center gap-2">
                       <Video className="h-4 w-4 text-rose-500" />
-                      <span>{serviceTypeLabels.oneOnOneSession}</span>
+                      <span>1-on-1 Session</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="priorityDm" className="rounded-lg">
                     <div className="flex items-center gap-2">
                       <MessageSquare className="h-4 w-4 text-blue-500" />
-                      <span>{serviceTypeLabels.priorityDm}</span>
+                      <span>Priority DM</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="digitalProducts" className="rounded-lg">
                     <div className="flex items-center gap-2">
                       <Package className="h-4 w-4 text-purple-500" />
-                      <span>{serviceTypeLabels.digitalProducts}</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="notes" className="rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <FileStack className="h-4 w-4 text-amber-500" />
-                      <span>{serviceTypeLabels.notes}</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="custom" className="rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Wrench className="h-4 w-4 text-indigo-500" />
-                      <span>Custom Services</span>
+                      <span>Digital Products</span>
                     </div>
                   </SelectItem>
                 </SelectContent>
@@ -913,21 +898,17 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
 
       {/* Action Buttons */}
       <div className="flex gap-2">
-        {!addingNew && (
-          <>
-            <Button onClick={() => setAddingNew(true)} variant="default">
-              <Plus className="h-4 w-4 mr-2" />
-              Add New Service
-            </Button>
-            <Button
-              onClick={() => setShowTemplates(!showTemplates)}
-              variant="outline"
-            >
-              <Sparkles className="h-4 w-4 mr-2" />
-              Use Template
-            </Button>
-          </>
-        )}
+        <Button onClick={() => setAddingNew(true)} variant="default">
+          <Plus className="h-4 w-4 mr-2" />
+          Add New Service
+        </Button>
+        <Button
+          onClick={() => setShowTemplates(!showTemplates)}
+          variant="outline"
+        >
+          <Sparkles className="h-4 w-4 mr-2" />
+          Use Template
+        </Button>
       </div>
 
       {/* Service Templates */}
@@ -987,7 +968,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       )}
 
       {/* Add New Service Button - Remove old one */}
-      {!addingNew && services.length === 0 && (
+      {services.length === 0 && (
         <div className="text-center py-8">
           <Button
             onClick={() => setAddingNew(true)}
@@ -1001,37 +982,22 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       )}
 
       {/* Add New Service Form */}
-      {addingNew && (
-        <Card className="border-2 border-blue-200 bg-blue-50/50">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Add New Service</CardTitle>
-                <CardDescription>
-                  Create a custom service offering
-                </CardDescription>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setAddingNew(false);
-                  setNewService({
-                    name: "",
-                    description: "",
-                    price: 0,
-                    discount_price: undefined,
-                    enabled: true,
-                    serviceType: "custom",
-                    hasFreeDemo: false,
-                  });
-                }}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      <Dialog
+        open={addingNew}
+        onOpenChange={(open) => {
+          setAddingNew(open);
+          if (!open) {
+            resetNewServiceForm();
+          }
+        }}
+      >
+        <DialogContent className="flex w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] flex-col overflow-hidden p-0 sm:rounded-xl">
+          <DialogHeader className="border-b px-6 py-5 pr-12">
+            <DialogTitle>Add New Service</DialogTitle>
+            <DialogDescription>Create a service offering</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="new-name">Service Name *</Label>
@@ -1044,6 +1010,24 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                   placeholder="e.g., Resume Review Package"
                   maxLength={100}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-service-type">Service Type *</Label>
+                <Select
+                  value={newService.serviceType || "oneOnOneSession"}
+                  onValueChange={(serviceType) =>
+                    setNewService({ ...newService, serviceType })
+                  }
+                >
+                  <SelectTrigger id="new-service-type">
+                    <SelectValue placeholder="Select a service type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="oneOnOneSession">1-on-1 Session</SelectItem>
+                    <SelectItem value="priorityDm">Priority DM</SelectItem>
+                    <SelectItem value="digitalProducts">Digital Products</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="new-price">Price (₹) *</Label>
@@ -1106,86 +1090,81 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
               </p>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Enable Service</p>
+                    <p className="text-xs text-gray-500">
+                      Make this service available to students
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium text-sm">Enable Service</p>
-                  <p className="text-xs text-gray-500">
-                    Make this service available to students
-                  </p>
-                </div>
+                <Switch
+                  checked={newService.enabled}
+                  onCheckedChange={(enabled) =>
+                    setNewService({ ...newService, enabled })
+                  }
+                />
               </div>
-              <Switch
-                checked={newService.enabled}
-                onCheckedChange={(enabled) =>
-                  setNewService({ ...newService, enabled })
-                }
-              />
-            </div>
 
-            <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <AlertCircle className="h-5 w-5 text-blue-600" />
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                    <AlertCircle className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">Free Demo Available</p>
+                    <p className="text-xs text-gray-500">
+                      Offer a free trial or demo session
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium text-sm">Free Demo Available</p>
-                  <p className="text-xs text-gray-500">
-                    Offer a free trial or demo session
-                  </p>
-                </div>
+                <Switch
+                  checked={newService.hasFreeDemo}
+                  onCheckedChange={(hasFreeDemo) =>
+                    setNewService({ ...newService, hasFreeDemo })
+                  }
+                />
               </div>
-              <Switch
-                checked={newService.hasFreeDemo}
-                onCheckedChange={(hasFreeDemo) =>
-                  setNewService({ ...newService, hasFreeDemo })
-                }
-              />
             </div>
+            </div>
+          </div>
 
-            <div className="flex gap-2 pt-2">
-              <Button
-                onClick={handleAddService}
-                disabled={saving || !newService.name || !newService.description}
-                size="sm"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                    Adding...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-3.5 w-3.5 mr-1.5" />
-                    Add Service
-                  </>
-                )}
-              </Button>
+          <div className="border-t bg-background px-6 py-4">
+            <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
-                size="sm"
                 onClick={() => {
                   setAddingNew(false);
-                  setNewService({
-                    name: "",
-                    description: "",
-                    price: 0,
-                    discount_price: undefined,
-                    enabled: true,
-                    serviceType: "custom",
-                    hasFreeDemo: false,
-                  });
+                  resetNewServiceForm();
                 }}
               >
                 Cancel
               </Button>
+              <Button
+                onClick={handleAddService}
+                disabled={saving || !newService.name || !newService.description}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Add Service
+                  </>
+                )}
+              </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Services List */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
@@ -1212,7 +1191,6 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
               "oneOnOneSession",
               "priorityDm",
               "digitalProducts",
-              "notes",
             ].includes(service.serviceType);
 
             return (
@@ -1422,8 +1400,8 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
           }
         }}
       >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="flex w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] flex-col overflow-hidden p-0 sm:rounded-xl">
+          <DialogHeader className="border-b px-6 py-5 pr-12">
             <DialogTitle>Edit Service</DialogTitle>
             <DialogDescription>
               Update the service details and save your changes.
@@ -1431,7 +1409,9 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
           </DialogHeader>
 
           {editingServiceData && (
-            <div className="space-y-4">
+            <>
+              <div className="flex-1 overflow-y-auto px-6 py-5">
+                <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="modal-edit-name">Service Name *</Label>
@@ -1499,8 +1479,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                 />
               </div>
 
-              {editingServiceData.serviceType !== "digitalProducts" &&
-                editingServiceData.serviceType !== "notes" && (
+              {editingServiceData.serviceType !== "digitalProducts" && (
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div>
                       <p className="font-medium text-sm">Free Demo Available</p>
@@ -1514,29 +1493,33 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                     />
                   </div>
                 )}
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={cancelEdit} disabled={saving}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={() => handleSaveService(editingServiceData.id)}
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Save Changes
-                    </>
-                  )}
-                </Button>
+                </div>
               </div>
-            </div>
+
+              <div className="border-t bg-background px-6 py-4">
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={cancelEdit} disabled={saving}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => handleSaveService(editingServiceData.id)}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Changes
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
         </DialogContent>
       </Dialog>

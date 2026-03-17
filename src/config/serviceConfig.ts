@@ -1,8 +1,7 @@
 import { 
   Video, 
   MessageSquare, 
-  ShoppingBag, 
-  FileText 
+  ShoppingBag 
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 
@@ -23,7 +22,7 @@ export interface ServiceConfigItem {
  * This ensures consistency between mentor public page and booking flow
  * 
  * Services that requiresScheduling=true: Need availability slots (oneOnOneSession)
- * Services that requiresScheduling=false: Direct access without booking (priorityDm, digitalProducts, notes)
+ * Services that requiresScheduling=false: Direct access without booking (priorityDm, digitalProducts)
  */
 export const SERVICE_CONFIG: Record<string, ServiceConfigItem> = {
   oneOnOneSession: {
@@ -61,17 +60,6 @@ export const SERVICE_CONFIG: Record<string, ServiceConfigItem> = {
     durations: [],
     typeLabel: "Digital Download",
     suggestedPrice: 2000,
-    requiresScheduling: false,
-  },
-  notes: {
-    icon: FileText,
-    name: "Session Notes & Resources",
-    shortName: "Notes & Resources",
-    description: "Study materials and guides",
-    benefits: [],
-    durations: [],
-    typeLabel: "Study Materials",
-    suggestedPrice: 300,
     requiresScheduling: false,
   },
 };

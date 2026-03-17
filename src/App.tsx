@@ -11,6 +11,7 @@ import Explore from "./pages/Explore";
 import MentorProfile from "./pages/MentorProfile";
 import MentorProfileByUsername from "./pages/MentorProfileByUsername";
 import MentorPublicProfile from "./pages/MentorPublicProfile";
+import MentorServiceDetail from "./pages/MentorServiceDetail";
 import BookingPage from "./pages/BookingPage";
 import BookingConfirmed from "./pages/BookingConfirmed";
 import BookingSuccess from "./pages/BookingSuccess";
@@ -72,6 +73,7 @@ const App = () => {
               <Route path="/explore" element={<Explore />} />
               <Route path="/mentors/:id" element={<MentorProfile />} />
               <Route path="/mentor/:username" element={<MentorPublicProfile />} />
+              <Route path="/mentor/:username/services/:serviceId" element={<MentorServiceDetail />} />
               <Route
                 path="/profile/:username"
                 element={<MentorPublicProfile />}
