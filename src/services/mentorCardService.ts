@@ -158,7 +158,6 @@ export function transformToMentorCard(
       if (profile.services.oneOnOneSession) options.push(SERVICE_CONFIG.oneOnOneSession.name);
       if (profile.services.priorityDm) options.push(SERVICE_CONFIG.priorityDm.name);
       if (profile.services.digitalProducts) options.push(SERVICE_CONFIG.digitalProducts.name);
-      if (profile.services.notes) options.push(SERVICE_CONFIG.notes.name);
     }
 
     return options.length > 0 ? options : [SERVICE_CONFIG.oneOnOneSession.name];

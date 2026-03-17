@@ -106,7 +106,6 @@ export default function MentorProfileByUsername() {
     if (mentor?.services?.oneOnOneSession) services.push("1-on-1 Sessions");
     if (mentor?.services?.priorityDm) services.push("Priority DM");
     if (mentor?.services?.digitalProducts) services.push("Digital Products");
-    if (mentor?.services?.notes) services.push("Notes & Resources");
     return services;
   };
 
