@@ -13,14 +13,15 @@ const isProduction = import.meta.env.PROD;
 export function initSentry() {
   // Only initialize in production or when explicitly enabled
   if (!isProduction && !import.meta.env.VITE_ENABLE_SENTRY) {
-    console.log("[Sentry] Skipped initialization in development mode");
     return;
   }
 
   const dsn = import.meta.env.VITE_SENTRY_DSN;
 
   if (!dsn) {
-    console.warn("[Sentry] DSN not configured. Error tracking disabled.");
+    if (isProduction) {
+      console.warn("[Sentry] DSN not configured. Error tracking disabled.");
+    }
     return;
   }
 
@@ -89,7 +90,9 @@ export function initSentry() {
     sendDefaultPii: false, // Don't send personally identifiable information
   });
 
-  console.log("[Sentry] Error tracking initialized");
+  if (!isProduction) {
+    console.info("[Sentry] Error tracking initialized");
+  }
 }
 
 /**

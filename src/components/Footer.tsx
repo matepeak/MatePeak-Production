@@ -2,9 +2,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
   Twitter,
-  Facebook,
   Instagram,
   Linkedin,
+  Youtube,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -101,42 +101,42 @@ const Footer = () => {
                 )}
               </nav>
 
-              <div className="flex items-center gap-5 text-gray-900 lg:justify-end">
+              <div className="flex items-center gap-1 lg:justify-end">
                 <a
                   href="https://x.com/MatePeak"
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="X"
-                  className="hover:text-matepeak-primary transition-colors"
+                  className="group flex items-center justify-center w-9 h-9 rounded-xl text-gray-400 transition-all duration-200 ease-in-out hover:text-gray-900 hover:bg-gray-100 active:scale-95"
                 >
-                  <Twitter className="w-5 h-5" />
-                </a>
-                <a
-                  href="https://www.facebook.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Facebook"
-                  className="hover:text-matepeak-primary transition-colors"
-                >
-                  <Facebook className="w-5 h-5" />
+                  <Twitter className="w-[18px] h-[18px] transition-transform duration-200 group-hover:scale-110" />
                 </a>
                 <a
                   href="https://www.instagram.com/matepeakofficial"
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Instagram"
-                  className="hover:text-matepeak-primary transition-colors"
+                  className="group flex items-center justify-center w-9 h-9 rounded-xl text-gray-400 transition-all duration-200 ease-in-out hover:text-gray-900 hover:bg-gray-100 active:scale-95"
                 >
-                  <Instagram className="w-5 h-5" />
+                  <Instagram className="w-[18px] h-[18px] transition-transform duration-200 group-hover:scale-110" />
                 </a>
                 <a
                   href="https://www.linkedin.com/company/matepeak"
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="LinkedIn"
-                  className="hover:text-matepeak-primary transition-colors"
+                  className="group flex items-center justify-center w-9 h-9 rounded-xl text-gray-400 transition-all duration-200 ease-in-out hover:text-gray-900 hover:bg-gray-100 active:scale-95"
                 >
-                  <Linkedin className="w-5 h-5" />
+                  <Linkedin className="w-[18px] h-[18px] transition-transform duration-200 group-hover:scale-110" />
+                </a>
+                <a
+                  href="https://www.youtube.com/@MatePeak"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="YouTube"
+                  className="group flex items-center justify-center w-9 h-9 rounded-xl text-gray-400 transition-all duration-200 ease-in-out hover:text-gray-900 hover:bg-gray-100 active:scale-95"
+                >
+                  <Youtube className="w-[18px] h-[18px] transition-transform duration-200 group-hover:scale-110" />
                 </a>
               </div>
             </div>

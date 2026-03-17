@@ -68,6 +68,7 @@ const Explore = () => {
   const [error, setError] = useState<Error | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const activeFetchIdRef = useRef(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const MIN_SEARCH_LENGTH = 2;
   const MAX_RETRY_ATTEMPTS = 3;
@@ -205,14 +206,6 @@ const Explore = () => {
       setSearchInput(urlSearch);
     }
   }, [location.search]);
-
-  // Fetch mentors when URL params change (e.g., coming from home page buttons)
-  useEffect(() => {
-    if (initialSearchQuery) {
-      console.log("🔗 URL has search param:", initialSearchQuery);
-      fetchDatabaseMentors();
-    }
-  }, [initialSearchQuery]);
 
   // Fetch autocomplete suggestions
   useEffect(() => {
@@ -378,7 +371,15 @@ const Explore = () => {
     });
   };
 
-  const fetchDatabaseMentors = async (page = 1, append = false, retry = 0) => {
+  const fetchDatabaseMentors = async (
+    page = 1,
+    append = false,
+    retry = 0,
+    searchQueryOverride?: string
+  ) => {
+    const fetchId = ++activeFetchIdRef.current;
+    const effectiveSearchQuery = searchQueryOverride ?? searchInput;
+
     // Cancel previous request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -400,14 +401,14 @@ const Explore = () => {
       console.log("🔎 Explore page fetching with:", {
         category: selectedCategory,
         expertise: selectedExpertise,
-        searchQuery: searchInput,
+        searchQuery: effectiveSearchQuery,
         page,
         limit: MENTORS_PER_PAGE,
       });
 
       // Special handling for "Recent Graduates" - it's a computed category
       const isRecentGraduatesSearch =
-        searchInput?.toLowerCase().trim() === "recent graduates";
+        effectiveSearchQuery?.toLowerCase().trim() === "recent graduates";
 
       const result = await fetchMentorCards(
         {
@@ -420,7 +421,7 @@ const Explore = () => {
           // Don't pass searchQuery if it's "Recent Graduates" - we'll filter client-side
           searchQuery: isRecentGraduatesSearch
             ? undefined
-            : searchInput || undefined,
+            : effectiveSearchQuery || undefined,
           priceRange: priceRange,
           page,
           limit: MENTORS_PER_PAGE,
@@ -452,6 +453,10 @@ const Explore = () => {
         );
       }
 
+      if (fetchId !== activeFetchIdRef.current) {
+        return;
+      }
+
       if (append) {
         setMentorCards((prev) => [...prev, ...filteredData]);
       } else {
@@ -472,6 +477,10 @@ const Explore = () => {
         return;
       }
 
+      if (fetchId !== activeFetchIdRef.current) {
+        return;
+      }
+
       console.error("❌ Error fetching mentors in Explore page:", error);
 
       // Retry logic
@@ -479,7 +488,7 @@ const Explore = () => {
         console.log(`🔄 Retrying... (${retry + 1}/${MAX_RETRY_ATTEMPTS})`);
         setRetryCount(retry + 1);
         setTimeout(() => {
-          fetchDatabaseMentors(page, append, retry + 1);
+          fetchDatabaseMentors(page, append, retry + 1, searchQueryOverride);
         }, 1000 * (retry + 1)); // Exponential backoff
       } else {
         setError(
@@ -487,8 +496,10 @@ const Explore = () => {
         );
       }
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (fetchId === activeFetchIdRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   };
 
@@ -508,7 +519,7 @@ const Explore = () => {
       return;
     }
 
-    fetchDatabaseMentors();
+    fetchDatabaseMentors(1, false, 0, searchInput);
     saveToHistory(searchInput);
     setShowSuggestions(false);
 
@@ -521,12 +532,25 @@ const Explore = () => {
     navigate(`/explore?${params.toString()}`, { replace: true });
   };
 
+  const searchWithQuery = (query: string) => {
+    const normalizedQuery = query.trim();
+    if (!normalizedQuery) return;
+
+    setSearchInput(normalizedQuery);
+    setSelectedCategory("all-categories");
+    setShowSuggestions(false);
+    saveToHistory(normalizedQuery);
+    fetchDatabaseMentors(1, false, 0, normalizedQuery);
+
+    const params = new URLSearchParams();
+    params.set("q", normalizedQuery);
+    if (selectedExpertise !== "all") params.set("expertise", selectedExpertise);
+    navigate(`/explore?${params.toString()}`, { replace: true });
+  };
+
   // Handle suggestion click
   const handleSuggestionClick = (suggestion: string) => {
-    setSearchInput(suggestion);
-    setShowSuggestions(false);
-    saveToHistory(suggestion);
-    setTimeout(() => handleSearch(), 100);
+    searchWithQuery(suggestion);
   };
 
   // Clear search history
@@ -673,7 +697,7 @@ const Explore = () => {
             {/* Clean Search Bar with Autocomplete and History */}
             <div className="mb-4 max-w-4xl">
               <div className="relative">
-                <div className="flex items-center gap-3 px-5 py-3.5 rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-sm focus-within:border-matepeak-primary focus-within:shadow-md transition-all bg-white">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 sm:px-5 py-3.5 rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-sm focus-within:border-matepeak-primary focus-within:shadow-md transition-all bg-white">
                   <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
                   <Input
                     ref={searchInputRef}
@@ -714,7 +738,7 @@ const Explore = () => {
                       searchInput.length > 0 &&
                       searchInput.length < MIN_SEARCH_LENGTH
                     }
-                    className="bg-matepeak-primary hover:bg-matepeak-secondary text-white font-poppins px-6 h-9 flex-shrink-0 disabled:opacity-50"
+                    className="w-full sm:w-auto bg-matepeak-primary hover:bg-matepeak-secondary text-white font-poppins px-6 h-9 flex-shrink-0 disabled:opacity-50"
                   >
                     Search
                   </Button>
@@ -810,11 +834,7 @@ const Explore = () => {
               ].map((cat) => (
                 <button
                   key={cat}
-                  onClick={() => {
-                    setSearchInput(cat);
-                    setSelectedCategory("all-categories"); // Reset category filter to search across all
-                    navigate(`/explore?q=${encodeURIComponent(cat)}`);
-                  }}
+                  onClick={() => searchWithQuery(cat)}
                   className={`px-4 py-1.5 rounded-full border text-sm font-poppins transition-all ${
                     searchInput === cat
                       ? "border-matepeak-primary bg-matepeak-primary/5 text-matepeak-primary"
@@ -1116,7 +1136,14 @@ const Explore = () => {
           {loading ? (
             <div className="flex justify-center items-center py-20">
               <div className="text-center">
-                <Loader2 className="h-12 w-12 animate-spin text-matepeak-primary mx-auto mb-4" />
+                <div className="mx-auto mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-matepeak-primary/10">
+                  <Search className="h-4 w-4 text-matepeak-primary" />
+                </div>
+                <div className="mx-auto mb-4 flex items-center justify-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-matepeak-primary/50 animate-pulse [animation-delay:-300ms]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-matepeak-primary/70 animate-pulse [animation-delay:-150ms]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-matepeak-primary animate-pulse" />
+                </div>
                 <p className="text-gray-600 font-poppins">Finding mentors...</p>
               </div>
             </div>
@@ -1156,7 +1183,7 @@ const Explore = () => {
                       >
                         {loadingMore ? (
                           <>
-                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             Loading...
                           </>
                         ) : (
