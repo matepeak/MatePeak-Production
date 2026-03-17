@@ -1,5 +1,7 @@
 # Booking System Testing Guide
 
+> **📝 NOTE (March 2026):** "Chat Advice" is now called "Priority DM" in the codebase and database. References to "Chat Advice" in this guide reflect the legacy naming used during earlier implementation phases.
+
 ## Quick Start
 
 1. **Navigate to any mentor's public profile**

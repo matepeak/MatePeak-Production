@@ -1,5 +1,7 @@
 # Booking Flow Improvements - Service-Type Specific Flows
 
+> **📝 NOTE (March 2026):** "Chat Advice" has been renamed to "Priority DM" throughout the application. This document references the legacy name for backward compatibility with older implementation notes.
+
 ## Overview
 
 Updated the booking system to handle different service types with appropriate flows:

@@ -108,7 +108,7 @@ const DashboardLayout = ({
       items: [
         {
           id: "messages" as DashboardView,
-          label: "Messages",
+          label: "Priority DM",
           icon: MessageSquare,
           badge: null, // Can add unread count here
         },

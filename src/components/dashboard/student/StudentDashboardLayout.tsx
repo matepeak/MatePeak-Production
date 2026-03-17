@@ -91,7 +91,7 @@ const StudentDashboardLayout = ({
       items: [
         {
           id: "messages" as StudentView,
-          label: "Messages",
+          label: "Priority DM",
           icon: MessageSquare,
           badge: null,
         },

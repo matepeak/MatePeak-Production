@@ -7,6 +7,7 @@ import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { createBooking } from "@/services/bookingService";
 import { paymentService } from "@/services/paymentService";
+import { createPriorityDm } from "@/services/priorityDmService";
 import { format } from "date-fns";
 import Navbar from "@/components/Navbar";
 import ServiceSelection from "@/components/booking/ServiceSelection";
@@ -16,7 +17,7 @@ import BookingConfirmation from "@/components/booking/BookingConfirmation";
 export type BookingStep = 1 | 2 | 3;
 
 export interface SelectedService {
-  type: "oneOnOneSession" | "chatAdvice" | "digitalProducts" | "notes";
+  type: "oneOnOneSession" | "priorityDm" | "digitalProducts" | "notes";
   name: string;
   duration: number;
   price: number;
@@ -35,6 +36,7 @@ export interface BookingDetails {
   phone?: string;
   purpose: string;
   addRecording?: boolean;
+  shareContactInfo?: boolean;
 }
 
 interface MentorData {
@@ -221,7 +223,7 @@ const BookingPage = () => {
     if (
       service.type === "digitalProducts" ||
       service.type === "notes" ||
-      service.type === "chatAdvice"
+      service.type === "priorityDm"
     ) {
       setStep(3);
     } else {
@@ -489,7 +491,12 @@ const BookingPage = () => {
         session_type: selectedService.type,
         scheduled_date: scheduledDate,
         scheduled_time: scheduledTime,
-        duration: selectedService.duration,
+        duration:
+          selectedService.type === "oneOnOneSession"
+            ? selectedService.duration
+            : selectedService.duration > 0
+            ? selectedService.duration
+            : 30,
         message: details.purpose,
         total_amount: totalAmount,
         user_name: details.name,
@@ -556,6 +563,19 @@ const BookingPage = () => {
           mentorData.full_name
         );
 
+        // Create Priority DM thread for Priority DM service type
+        if (selectedService.type === "priorityDm") {
+          const dmResult = await createPriorityDm({
+            mentorId: mentorId!,
+            messageText: details.purpose,
+            shareContactInfo: details.shareContactInfo ?? false,
+            bookingId: result.data.id,
+          });
+          if (!dmResult.success) {
+            toast.error("Booking created but Priority DM failed: " + dmResult.error);
+          }
+        }
+
         // Redirect to confirmation page
         navigate(`/booking/confirmed/${result.data.id}`);
       } else {
@@ -580,7 +600,7 @@ const BookingPage = () => {
       case 3:
         if (selectedService?.type === "digitalProducts")
           return "Complete Purchase";
-        if (selectedService?.type === "chatAdvice") return "Send Message";
+        if (selectedService?.type === "priorityDm") return "Priority DM";
         if (selectedService?.type === "notes") return "Purchase Session Notes";
         return "Confirm Booking";
       default:
@@ -673,12 +693,15 @@ const BookingPage = () => {
                     {getStepTitle()}
                   </h1>
                   <p className="text-gray-500 mt-1 text-sm font-medium">
-                    Step {step} of 3
+                    {selectedService?.type === "priorityDm"
+                      ? `Step ${step === 3 ? 2 : step} of 2`
+                      : `Step ${step} of 3`}
                   </p>
                 </div>
               </div>
 
-              {/* Modern Step Indicator */}
+              {/* Modern Step Indicator — hidden for Priority DM (2-step, no date/time) */}
+              {selectedService?.type !== "priorityDm" && (
               <div className="flex justify-center">
                 <div className="w-full max-w-md">
                   <div className="flex items-start justify-between relative px-8">
@@ -739,6 +762,7 @@ const BookingPage = () => {
                   </div>
                 </div>
               </div>
+              )}
             </div>
 
             {/* Content Section */}

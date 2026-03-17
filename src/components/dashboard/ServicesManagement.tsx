@@ -93,7 +93,7 @@ interface ServicePricing {
     discount_price?: number;
     hasFreeDemo?: boolean;
   };
-  chatAdvice?: {
+  priorityDm?: {
     enabled: boolean;
     price: number;
     discount_price?: number;
@@ -114,7 +114,7 @@ interface ServicePricing {
 // Use shared SERVICE_CONFIG for consistent naming
 const serviceTypeIcons: Record<string, any> = {
   oneOnOneSession: SERVICE_CONFIG.oneOnOneSession?.icon || Briefcase,
-  chatAdvice: SERVICE_CONFIG.chatAdvice?.icon || MessageSquare,
+  priorityDm: SERVICE_CONFIG.priorityDm?.icon || MessageSquare,
   digitalProducts: SERVICE_CONFIG.digitalProducts?.icon || Package,
   notes: SERVICE_CONFIG.notes?.icon || FileText,
   custom: Plus,
@@ -122,7 +122,7 @@ const serviceTypeIcons: Record<string, any> = {
 
 const serviceTypeLabels: Record<string, string> = {
   oneOnOneSession: SERVICE_CONFIG.oneOnOneSession?.name || "1-on-1 Session",
-  chatAdvice: SERVICE_CONFIG.chatAdvice?.name || "Chat Consultation",
+  priorityDm: SERVICE_CONFIG.priorityDm?.name || "Priority DM",
   digitalProducts: SERVICE_CONFIG.digitalProducts?.name || "Digital Products",
   notes: SERVICE_CONFIG.notes?.name || "Notes & Resources",
   custom: "Custom Service",
@@ -245,7 +245,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       // Iterate through all services in service_pricing
       Object.entries(pricing).forEach(([key, value]: [string, any], index) => {
         if (value && typeof value === 'object') {
-          const isCustom = !["oneOnOneSession", "chatAdvice", "digitalProducts", "notes"].includes(key);
+          const isCustom = !["oneOnOneSession", "priorityDm", "digitalProducts", "notes"].includes(key);
           
           allServices.push({
             id: key,
@@ -411,7 +411,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
 
       // Can't delete predefined services, only disable them
       if (
-        ["oneOnOneSession", "chatAdvice", "digitalProducts", "notes"].includes(
+        ["oneOnOneSession", "priorityDm", "digitalProducts", "notes"].includes(
           service.serviceType
         )
       ) {
@@ -859,10 +859,10 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                       <span>{serviceTypeLabels.oneOnOneSession}</span>
                     </div>
                   </SelectItem>
-                  <SelectItem value="chatAdvice" className="rounded-lg">
+                  <SelectItem value="priorityDm" className="rounded-lg">
                     <div className="flex items-center gap-2">
                       <MessageSquare className="h-4 w-4 text-blue-500" />
-                      <span>{serviceTypeLabels.chatAdvice}</span>
+                      <span>{serviceTypeLabels.priorityDm}</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="digitalProducts" className="rounded-lg">
@@ -1214,7 +1214,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
             const isEditing = editingService === service.id;
             const isPredefined = [
               "oneOnOneSession",
-              "chatAdvice",
+              "priorityDm",
               "digitalProducts",
               "notes",
             ].includes(service.serviceType);
