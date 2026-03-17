@@ -3,7 +3,6 @@ import {
   Calendar, 
   Briefcase, 
   Star, 
-  Info,
   Handshake
 } from "lucide-react";
 import { ProfileTab } from "@/pages/MentorPublicProfile";
@@ -40,16 +39,11 @@ export default function ProfileTabs({ activeTab, onTabChange }: ProfileTabsProps
       label: "Reviews",
       icon: Star,
     },
-    {
-      id: "about" as ProfileTab,
-      label: "More About",
-      icon: Info,
-    },
   ];
 
   return (
     <div className="border-b border-gray-200 mb-6">
-      <div className="w-full grid grid-cols-6 bg-transparent h-auto p-0 gap-0">
+      <div className="w-full grid grid-cols-5 bg-transparent h-auto p-0 gap-0">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;

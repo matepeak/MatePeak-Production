@@ -340,6 +340,16 @@ export async function createBooking(data: CreateBookingData) {
 
     if (error) {
       console.error("Booking creation error:", error);
+
+      if (isSlotConflictError(error)) {
+        return {
+          success: false,
+          error:
+            "This time slot was just booked by another user. Please choose a different time.",
+          data: null,
+        };
+      }
+
       return {
         success: false,
         error: error.message || "Failed to create booking",
@@ -414,6 +424,18 @@ export async function createBooking(data: CreateBookingData) {
 function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
+}
+
+function isSlotConflictError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const maybeError = error as { code?: string; message?: string; details?: string };
+
+  if (maybeError.code === "23P01") {
+    return true;
+  }
+
+  const text = `${maybeError.message || ""} ${maybeError.details || ""}`.toLowerCase();
+  return text.includes("bookings_no_overlap_confirmed_one_on_one") || text.includes("exclusion");
 }
 
 /**

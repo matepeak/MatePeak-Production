@@ -451,25 +451,43 @@ Deno.serve(async (req: Request) => {
     let updatedBooking = booking;
     let usedPaymentStatus = booking.payment_status;
     let emailsTriggered = false;
+    let confirmationConflict = false;
     let paymentSuccessEmailStatus: "sent" | "failed" | "skipped" = "skipped";
     let paymentSuccessEmailResult: Record<string, unknown> | null = null;
 
     if (isSuccess && !alreadySuccessful) {
-      const updateData: Record<string, unknown> = {
-        status: "confirmed",
-      };
+      const { data: confirmData, error: confirmError } = await supabase.rpc(
+        "confirm_booking_after_payment",
+        {
+          p_booking_id: bookingId,
+          p_payment_id: paymentId ?? null,
+          p_order_id: orderId ?? null,
+        },
+      );
 
-      if (paymentId) updateData.payment_id = paymentId;
-      if (orderId && typeof booking.message === "string" && !booking.message.includes("Order ID:")) {
-        updateData.message = `${booking.message}\n\nOrder ID: ${orderId}`.trim();
+      if (confirmError) {
+        throw confirmError;
       }
 
-      const result = await updateBookingStatusWithFallback(supabase, bookingId, updateData, [
-        "completed",
-        "paid",
-      ]);
-      updatedBooking = result.data;
-      usedPaymentStatus = result.usedPaymentStatus;
+      const confirmResult = Array.isArray(confirmData) ? confirmData[0] : confirmData;
+      if (!confirmResult?.success && confirmResult?.code !== "slot_conflict") {
+        throw new Error(confirmResult?.message || "Failed to confirm booking atomically");
+      }
+
+      confirmationConflict = confirmResult?.code === "slot_conflict";
+
+      const { data: refreshedBooking, error: refreshError } = await supabase
+        .from("bookings")
+        .select("*")
+        .eq("id", bookingId)
+        .single();
+
+      if (refreshError) {
+        throw refreshError;
+      }
+
+      updatedBooking = refreshedBooking as BookingRecord;
+      usedPaymentStatus = updatedBooking.payment_status;
       emailsTriggered = true;
     } else if (isFailure) {
       const updateData: Record<string, unknown> = {
@@ -502,7 +520,7 @@ Deno.serve(async (req: Request) => {
       const mentorTimezone = updatedBooking.mentor_timezone || "IST";
       const amount = Number(updatedBooking.total_amount || 0);
 
-      if (isSuccess) {
+      if (isSuccess && !confirmationConflict) {
         try {
           paymentSuccessEmailResult = await triggerPaymentSuccessEmails(bookingId);
           paymentSuccessEmailStatus = "sent";
@@ -560,12 +578,18 @@ Deno.serve(async (req: Request) => {
       booking_id: bookingId,
       payment_status: usedPaymentStatus,
       booking_status: updatedBooking.status,
+      slot_conflict: confirmationConflict,
       event_status: normalized,
       auth_method: auth.method,
       idempotent: isSuccess && alreadySuccessful,
       payment_success_email_status: paymentSuccessEmailStatus,
       payment_success_email_result: paymentSuccessEmailResult,
-      message: isSuccess ? "Payment processed as successful" : "Payment processed as failed",
+      message:
+        isSuccess && !confirmationConflict
+          ? "Payment processed as successful"
+          : isSuccess && confirmationConflict
+          ? "Payment succeeded but slot was already taken; booking cancelled/refund state applied"
+          : "Payment processed as failed",
     });
   } catch (error) {
     console.error("verify-payment error:", error);
