@@ -102,7 +102,17 @@ Deno.serve(async (req: Request) => {
   }
 
   const inboundSecret = req.headers.get("x-internal-secret") || "";
-  if (!internalFunctionSecret || inboundSecret !== internalFunctionSecret) {
+  const authHeader = req.headers.get("authorization") || "";
+  const bearerToken = authHeader.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7).trim()
+    : "";
+
+  const authorizedBySecret =
+    !!internalFunctionSecret && inboundSecret === internalFunctionSecret;
+  const authorizedByServiceRoleBearer =
+    !!supabaseServiceRoleKey && bearerToken === supabaseServiceRoleKey;
+
+  if (!authorizedBySecret && !authorizedByServiceRoleBearer) {
     return jsonResponse(401, { success: false, message: "Unauthorized internal invocation" });
   }
 
