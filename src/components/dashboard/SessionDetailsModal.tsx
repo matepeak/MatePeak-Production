@@ -37,10 +37,32 @@ const SessionDetailsModal = ({
 }: SessionDetailsModalProps) => {
   if (!session) return null;
 
+  const normalizeParticipantField = (value: unknown) => {
+    if (typeof value !== "string") return null;
+    const normalized = value.trim();
+    if (!normalized) return null;
+
+    const placeholderValues = new Set([
+      "mentor",
+      "student",
+      "unknown",
+      "n/a",
+      "na",
+      "not provided",
+    ]);
+
+    return placeholderValues.has(normalized.toLowerCase()) ? null : normalized;
+  };
+
   const now = new Date();
   const sessionStart = new Date(`${session.scheduled_date}T${session.scheduled_time}`);
+  const cancellationReasonLower = String(session.cancellation_reason || "").toLowerCase();
   const cancelledByLabel =
-    session.cancelled_by === session.expert_id
+    cancellationReasonLower.includes("mentor")
+      ? "Mentor"
+      : cancellationReasonLower.includes("student")
+      ? "Student"
+      : session.cancelled_by === session.expert_id
       ? "Mentor"
       : session.cancelled_by === session.user_id
       ? "Student"
@@ -52,24 +74,30 @@ const SessionDetailsModal = ({
     ["pending", "confirmed"].includes((session.status || "").toLowerCase()) &&
     sessionStart > now;
 
-  // Use the enriched data from the session object
+  const isMentorSideSession = session.user_role === "expert";
+  const participantSectionTitle = isMentorSideSession
+    ? "Mentee Information"
+    : "Mentor Information";
+
   const participantName =
-    session.display_name ||
-    (session.user_role === "expert"
-      ? session.student?.full_name || session.student_name
-      : session.mentor_profile?.full_name || "Mentor");
+    normalizeParticipantField(
+      isMentorSideSession
+        ? session.student?.full_name || session.student_name || session.display_name
+        : session.mentor_profile?.full_name || session.display_name
+    ) || "Not Provided";
 
   const participantEmail =
-    session.display_email ||
-    (session.user_role === "expert"
-      ? session.student?.email || session.student_email
-      : session.mentor_profile?.email || "");
+    normalizeParticipantField(
+      isMentorSideSession
+        ? session.student?.email || session.student_email || session.display_email
+        : session.mentor_profile?.email || session.display_email
+    ) || "Not Provided";
 
-  const participantPhone =
-    session.display_phone ||
-    (session.user_role === "expert"
-      ? session.student?.phone
-      : session.mentor_profile?.phone);
+  const participantPhone = normalizeParticipantField(
+    isMentorSideSession
+      ? session.student?.phone || session.display_phone
+      : session.mentor_profile?.phone || session.display_phone
+  );
 
   const formatDate = (date: string, time: string) => {
     try {
@@ -115,6 +143,7 @@ const SessionDetailsModal = ({
           {/* Status Badge */}
           <div className="flex items-center justify-between">
             <Badge
+              variant="outline"
               className={`px-3 py-1 text-sm font-medium border ${getStatusColor(
                 session.status
               )}`}
@@ -208,7 +237,7 @@ const SessionDetailsModal = ({
           {/* Participant Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">
-              Mentee Information
+              {participantSectionTitle}
             </h3>
 
             <div className="space-y-3">
@@ -218,7 +247,7 @@ const SessionDetailsModal = ({
                 <div>
                   <p className="text-xs font-medium text-gray-600">Full Name</p>
                   <p className="text-sm text-gray-900 font-medium">
-                    {participantName || "Not provided"}
+                    {participantName}
                   </p>
                 </div>
               </div>
@@ -229,7 +258,7 @@ const SessionDetailsModal = ({
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-gray-600">Email</p>
                   <p className="text-sm text-gray-900 font-medium break-all">
-                    {participantEmail || "Not provided"}
+                    {participantEmail}
                   </p>
                 </div>
               </div>

@@ -14,6 +14,97 @@ interface UpdateSessionRequest {
   cancellation_reason?: string
 }
 
+const resendApiKey = Deno.env.get('RESEND_API_KEY') ?? ''
+const resendFrom = Deno.env.get('RESEND_FROM') || 'MatePeak <support@matepeak.com>'
+const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+
+const formatSessionDateTime = (scheduledDate: string, scheduledTime: string) => {
+  try {
+    const date = new Date(`${scheduledDate}T${scheduledTime}`)
+    return {
+      date: date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+      time: date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    }
+  } catch {
+    return {
+      date: scheduledDate || 'Scheduled date not available',
+      time: scheduledTime || 'Scheduled time not available',
+    }
+  }
+}
+
+const sendMentorCancellationEmail = async (payload: {
+  to: string
+  studentName: string
+  mentorName: string
+  sessionType: string
+  scheduledDate: string
+  scheduledTime: string
+  cancellationReason: string
+}) => {
+  if (!resendApiKey) {
+    throw new Error('RESEND_API_KEY is not configured')
+  }
+
+  const { date, time } = formatSessionDateTime(payload.scheduledDate, payload.scheduledTime)
+  const serviceName = payload.sessionType || 'Session'
+
+  const subject = `Session Cancelled by ${payload.mentorName}`
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#111827;">
+  <div style="max-width:600px;margin:0 auto;background:#ffffff;">
+    <div style="background:#111827;color:#ffffff;padding:24px 28px;">
+      <h2 style="margin:0;font-size:22px;">Session Cancelled</h2>
+    </div>
+    <div style="padding:24px 28px;line-height:1.6;">
+      <p style="margin-top:0;">Hi ${payload.studentName},</p>
+      <p>${payload.mentorName} has cancelled your upcoming ${serviceName}.</p>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin:16px 0;">
+        <p style="margin:0 0 6px 0;"><strong>Date:</strong> ${date}</p>
+        <p style="margin:0 0 6px 0;"><strong>Time:</strong> ${time}</p>
+        <p style="margin:0;"><strong>Reason:</strong> ${payload.cancellationReason}</p>
+      </div>
+      <p style="margin-bottom:0;color:#4b5563;">If you need help rebooking, please contact support@matepeak.com.</p>
+    </div>
+  </div>
+</body>
+</html>
+`
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${resendApiKey}`,
+    },
+    body: JSON.stringify({
+      from: resendFrom,
+      to: payload.to,
+      subject,
+      html,
+    }),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Resend error (${res.status}): ${text}`)
+  }
+}
+
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -58,7 +149,7 @@ Deno.serve(async (req: Request) => {
     // Get the booking
     const { data: booking, error: fetchError } = await supabaseClient
       .from('bookings')
-      .select('*, expert:expert_profiles(full_name)')
+      .select('*, expert:expert_profiles(full_name), student:profiles(full_name, email)')
       .eq('id', session_id)
       .single()
 
@@ -69,6 +160,10 @@ Deno.serve(async (req: Request) => {
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    const serviceSupabaseClient = supabaseUrl && supabaseServiceRoleKey
+      ? createClient(supabaseUrl, supabaseServiceRoleKey)
+      : null
 
     // Check authorization
     const isMentor = booking.expert_id === user.id
@@ -192,13 +287,66 @@ Deno.serve(async (req: Request) => {
       )
     }
 
+    let cancellationEmailSent = false
+    let cancellationEmailError: string | null = null
+
+    if (action === 'cancel' && isMentor) {
+      try {
+        const studentProfileEmail = booking?.student?.email || ''
+        let studentEmail = studentProfileEmail || booking.user_email || ''
+
+        if (!studentEmail && serviceSupabaseClient && booking.user_id) {
+          const { data: authUserData, error: authUserError } =
+            await serviceSupabaseClient.auth.admin.getUserById(booking.user_id)
+
+          if (authUserError) {
+            console.warn('Could not resolve student email via auth admin', {
+              user_id: booking.user_id,
+              error: authUserError.message,
+            })
+          } else {
+            studentEmail = authUserData?.user?.email || ''
+          }
+        }
+
+        if (studentEmail) {
+          await sendMentorCancellationEmail({
+            to: studentEmail,
+            studentName: booking?.student?.full_name || 'Student',
+            mentorName: booking?.expert?.full_name || 'Your mentor',
+            sessionType: booking.session_type || 'session',
+            scheduledDate: booking.scheduled_date,
+            scheduledTime: booking.scheduled_time,
+            cancellationReason:
+              updateData.cancellation_reason || 'Cancelled by mentor from dashboard',
+          })
+          cancellationEmailSent = true
+        } else {
+          cancellationEmailError = 'Student email not found'
+          console.warn('Skipping mentor cancellation email: student email not found', {
+            booking_id: session_id,
+            user_id: booking.user_id,
+          })
+        }
+      } catch (emailError) {
+        cancellationEmailError =
+          emailError instanceof Error ? emailError.message : 'Unknown email error'
+        console.error('Failed to send mentor cancellation email', {
+          booking_id: session_id,
+          error: cancellationEmailError,
+        })
+      }
+    }
+
     console.log('Session updated successfully:', updatedBooking.id)
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: `Session ${action}ed successfully`,
-        data: updatedBooking
+        data: updatedBooking,
+        cancellation_email_sent: cancellationEmailSent,
+        cancellation_email_error: cancellationEmailError,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
