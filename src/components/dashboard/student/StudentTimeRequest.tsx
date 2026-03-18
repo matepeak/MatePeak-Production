@@ -21,16 +21,72 @@ export default function StudentTimeRequest({ studentProfile }: StudentTimeReques
   const [dateRangeFilter, setDateRangeFilter] = useState<DateRangeFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const toLocalDateString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const getDateRangeBoundaries = (range: DateRangeFilter) => {
+    const now = new Date();
+
+    switch (range) {
+      case "today": {
+        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const end = new Date(start);
+        end.setDate(end.getDate() + 1);
+        return {
+          startDate: toLocalDateString(start),
+          endDate: toLocalDateString(end),
+        };
+      }
+      case "week": {
+        const start = new Date(now);
+        const dayOfWeek = start.getDay();
+        const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        start.setDate(start.getDate() + diffToMonday);
+        start.setHours(0, 0, 0, 0);
+
+        const end = new Date(start);
+        end.setDate(end.getDate() + 7);
+
+        return {
+          startDate: toLocalDateString(start),
+          endDate: toLocalDateString(end),
+        };
+      }
+      case "month": {
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        return {
+          startDate: toLocalDateString(start),
+          endDate: toLocalDateString(end),
+        };
+      }
+      case "all":
+      default:
+        return {
+          startDate: null,
+          endDate: null,
+        };
+    }
+  };
+
   useEffect(() => {
     loadData();
-  }, []);
+  }, [dateRangeFilter]);
 
   const loadData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const requestsData = await fetchBookingRequests(user.id);
+      const { startDate, endDate } = getDateRangeBoundaries(dateRangeFilter);
+      const requestsData = await fetchBookingRequests(user.id, {
+        startDate,
+        endDate,
+      });
       console.log("🎯 TimeRequest Component - Received requests:", requestsData);
       requestsData.forEach((req, idx) => {
         console.log(`🎯 Request ${idx + 1}:`, {
@@ -120,31 +176,6 @@ export default function StudentTimeRequest({ studentProfile }: StudentTimeReques
       });
     }
 
-    // Filter by date range
-    if (dateRangeFilter !== "all") {
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
-      filtered = filtered.filter((req) => {
-        const reqDate = new Date(req.requested_date);
-        
-        switch (dateRangeFilter) {
-          case "today":
-            return reqDate.toDateString() === today.toDateString();
-          case "week":
-            const weekAgo = new Date(today);
-            weekAgo.setDate(weekAgo.getDate() - 7);
-            return reqDate >= weekAgo;
-          case "month":
-            const monthAgo = new Date(today);
-            monthAgo.setMonth(monthAgo.getMonth() - 1);
-            return reqDate >= monthAgo;
-          default:
-            return true;
-        }
-      });
-    }
-
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -155,7 +186,7 @@ export default function StudentTimeRequest({ studentProfile }: StudentTimeReques
     }
 
     return filtered;
-  }, [requests, statusFilter, dateRangeFilter, searchQuery]);
+  }, [requests, statusFilter, searchQuery]);
 
   // Count by status
   const statusCounts = useMemo(() => {

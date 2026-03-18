@@ -72,6 +72,7 @@ Deno.serve(async (req) => {
       `
       )
       .eq("status", "confirmed")
+      .eq("session_type", "oneOnOneSession")
       .gte("scheduled_date", in24Hours.toISOString().split("T")[0])
       .lte(
         "scheduled_date",
@@ -161,6 +162,7 @@ Deno.serve(async (req) => {
       `
       )
       .eq("status", "confirmed")
+      .eq("session_type", "oneOnOneSession")
       .gte("scheduled_date", in1Hour.toISOString().split("T")[0])
       .lte(
         "scheduled_date",

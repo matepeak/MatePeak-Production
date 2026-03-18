@@ -120,20 +120,42 @@ function generateTagline(profile: ExpertProfileData): string {
 export function transformToMentorCard(
   profile: ExpertProfileData
 ): MentorProfile {
-  // Calculate pricing from service_pricing using exact prices only
+  const isServiceEnabled = (enabled: unknown) =>
+    enabled === true || enabled === "true" || enabled === 1 || enabled === "1";
+
+  const toValidPrice = (value: unknown): number | null => {
+    if (value === null || value === undefined || value === "") return null;
+    const parsed = typeof value === "number" ? value : Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) return null;
+    return parsed;
+  };
+
+  // Calculate starting price as minimum effective price across enabled services.
   const getLowestPrice = () => {
-    if (!profile.service_pricing || typeof profile.service_pricing !== 'object') return 0;
+    if (!profile.service_pricing || typeof profile.service_pricing !== "object") {
+      return toValidPrice((profile as any).pricing) ?? 0;
+    }
 
     const prices: number[] = [];
 
-    Object.entries(profile.service_pricing).forEach(([key, service]: [string, any]) => {
-      if (service?.enabled && service.price !== undefined && service.price !== null) {
-        // Use the exact price set by the mentor (even if it's 0)
-        prices.push(service.price);
+    Object.entries(profile.service_pricing).forEach(([, service]: [string, any]) => {
+      if (!isServiceEnabled(service?.enabled)) {
+        return;
+      }
+
+      const effectivePrice =
+        toValidPrice(service?.discount_price) ?? toValidPrice(service?.price);
+
+      if (effectivePrice !== null) {
+        prices.push(effectivePrice);
       }
     });
 
-    return prices.length > 0 ? Math.min(...prices) : 0;
+    if (prices.length > 0) {
+      return Math.min(...prices);
+    }
+
+    return toValidPrice((profile as any).pricing) ?? 0;
   };
 
   // Extract service names + type metadata from service_pricing

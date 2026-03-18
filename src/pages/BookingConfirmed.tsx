@@ -1007,14 +1007,8 @@ const BookingConfirmed = () => {
               </Button>
             </div>
 
-            {/* Booking ID and Help */}
+            {/* Help */}
             <div className="mt-6 pt-6 border-t border-gray-200 text-center">
-              <p className="text-sm text-gray-500 mb-4">
-                Booking ID:{" "}
-                <span className="font-mono text-gray-700 font-semibold">
-                  {booking.id.slice(0, 8)}
-                </span>
-              </p>
               <p className="text-gray-600">
                 Need help?{" "}
                 <a

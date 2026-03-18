@@ -8,9 +8,7 @@ import {
   BookOpen,
   CheckCircle,
   TrendingUp,
-  Languages,
-  Target,
-  Lightbulb
+  Target
 } from "lucide-react";
 
 interface ProfileExperiencesProps {
@@ -22,11 +20,6 @@ export default function ProfileExperiences({ mentor }: ProfileExperiencesProps) 
   const certifications = Array.isArray(mentor.teaching_certifications) 
     ? mentor.teaching_certifications 
     : [];
-  // Prioritize skills field (from current onboarding) over expertise_tags (from old onboarding)
-  const skills = (mentor.skills && Array.isArray(mentor.skills) && mentor.skills.length > 0) 
-    ? mentor.skills 
-    : (Array.isArray(mentor.expertise_tags) ? mentor.expertise_tags : []);
-  const languages = Array.isArray(mentor.languages) ? mentor.languages : [];
   const yearsOfExperience = mentor.experience || 0;
 
   // Calculate experience level
@@ -76,56 +69,6 @@ export default function ProfileExperiences({ mentor }: ProfileExperiencesProps) 
             <p className="text-gray-700 leading-relaxed text-sm whitespace-pre-line">
               {mentor.teaching_experience}
             </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Skills & Expertise */}
-      {skills.length > 0 && (
-        <Card className="shadow-sm border-0 bg-gray-50 rounded-2xl">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Lightbulb className="h-5 w-5 text-gray-600" />
-              <h2 className="text-lg font-semibold text-gray-900">Skills & Expertise</h2>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {skills.map((skill: string, index: number) => (
-                <Badge 
-                  key={index} 
-                  variant="secondary"
-                  className="px-3 py-1 bg-white text-gray-700 border border-gray-200 font-normal"
-                >
-                  {skill}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Languages */}
-      {languages.length > 0 && (
-        <Card className="shadow-sm border-0 bg-gray-50 rounded-2xl">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Languages className="h-5 w-5 text-gray-600" />
-              <h2 className="text-lg font-semibold text-gray-900">Languages</h2>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {languages.map((lang: any, index: number) => (
-                <div 
-                  key={index}
-                  className="p-3 bg-white rounded-lg border border-gray-200"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-gray-900 text-sm">{lang.language}</span>
-                    <Badge variant="outline" className="text-xs">
-                      {lang.level}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
           </CardContent>
         </Card>
       )}

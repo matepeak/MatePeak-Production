@@ -350,6 +350,16 @@ export async function createBooking(data: CreateBookingData) {
 
     if (error) {
       console.error("Booking creation error:", error);
+
+      if (isSlotConflictError(error)) {
+        return {
+          success: false,
+          error:
+            "This time slot was just booked by another user. Please choose a different time.",
+          data: null,
+        };
+      }
+
       return {
         success: false,
         error: error.message || "Failed to create booking",
@@ -424,6 +434,18 @@ export async function createBooking(data: CreateBookingData) {
 function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
+}
+
+function isSlotConflictError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const maybeError = error as { code?: string; message?: string; details?: string };
+
+  if (maybeError.code === "23P01") {
+    return true;
+  }
+
+  const text = `${maybeError.message || ""} ${maybeError.details || ""}`.toLowerCase();
+  return text.includes("bookings_no_overlap_confirmed_one_on_one") || text.includes("exclusion");
 }
 
 /**
@@ -524,11 +546,24 @@ async function checkBookingConflict(
 
     // Check for time conflicts
     const requestedStart = parseTime(time);
-    const requestedEnd = requestedStart + duration;
+    if (!Number.isFinite(requestedStart)) {
+      return { success: false, error: "Invalid requested time" };
+    }
+
+    const normalizedRequestedDuration = normalizeDuration(duration, 60);
+    const requestedEnd = requestedStart + normalizedRequestedDuration;
 
     for (const booking of existingBookings) {
       const bookedStart = parseTime(booking.scheduled_time);
-      const bookedEnd = bookedStart + booking.duration;
+      if (!Number.isFinite(bookedStart)) {
+        continue;
+      }
+
+      const bookedDuration = normalizeDuration(
+        booking.duration,
+        normalizedRequestedDuration
+      );
+      const bookedEnd = bookedStart + bookedDuration;
 
       // Check overlap
       if (requestedStart < bookedEnd && requestedEnd > bookedStart) {
@@ -758,8 +793,24 @@ export async function getAvailableTimeSlots(
  * Helper function to parse time string (HH:MM) to minutes
  */
 function parseTime(timeStr: string): number {
-  const [hours, minutes] = timeStr.split(":").map(Number);
+  const normalized = String(timeStr || "").trim();
+  const [hoursPart, minutesPart] = normalized.split(":");
+  const hours = Number(hoursPart);
+  const minutes = Number(minutesPart);
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return NaN;
+  }
+
   return hours * 60 + minutes;
+}
+
+function normalizeDuration(duration: unknown, fallbackMinutes: number): number {
+  const parsed = Number(duration);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallbackMinutes;
+  }
+  return parsed;
 }
 
 /**
@@ -782,11 +833,20 @@ function isTimeBooked(
   bookedSlots: Array<{ scheduled_time: string; duration: number }>
 ): boolean {
   const slotStart = parseTime(time);
-  const slotEnd = slotStart + duration;
+  if (!Number.isFinite(slotStart)) {
+    return true;
+  }
+  const normalizedSlotDuration = normalizeDuration(duration, 60);
+  const slotEnd = slotStart + normalizedSlotDuration;
 
   return bookedSlots.some((booked) => {
     const bookedStart = parseTime(booked.scheduled_time);
-    const bookedEnd = bookedStart + booked.duration;
+    if (!Number.isFinite(bookedStart)) {
+      return false;
+    }
+
+    const bookedDuration = normalizeDuration(booked.duration, normalizedSlotDuration);
+    const bookedEnd = bookedStart + bookedDuration;
 
     // Check if there's any overlap
     return slotStart < bookedEnd && slotEnd > bookedStart;
@@ -925,18 +985,18 @@ export async function cancelBooking(bookingId: string) {
       };
     }
 
-    const { data, error } = await supabase
-      .from("bookings")
-      .update({ status: "cancelled" })
-      .eq("id", bookingId)
-      .select()
-      .single();
+    const { data, error } = await supabase.functions.invoke("manage-session", {
+      body: {
+        session_id: bookingId,
+        action: "cancel",
+      },
+    });
 
     if (error) throw error;
 
     return {
       success: true,
-      data,
+      data: data?.data ?? null,
       message: "Booking cancelled successfully",
     };
   } catch (error: any) {
