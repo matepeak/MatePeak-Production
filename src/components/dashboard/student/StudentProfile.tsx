@@ -28,6 +28,11 @@ import {
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import ImageEditor from '@/components/onboarding/ImageEditor';
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+import {
+  getNotificationPreferences,
+  upsertNotificationPreferences,
+} from '@/services/notificationService';
 
 interface StudentProfileProps {
   studentProfile: any;
@@ -55,10 +60,21 @@ export default function StudentProfile({ studentProfile, onProfileUpdate }: Stud
     interests: [] as string[],
   });
   const [notifications, setNotifications] = useState({
-    email_sessions: true,
-    email_messages: true,
-    email_reminders: true,
-    email_marketing: false,
+    in_app_enabled: true,
+    booking_lifecycle_enabled: true,
+    time_requests_enabled: true,
+    priority_dm_enabled: true,
+    email_enabled: false,
+    push_enabled: false,
+  });
+  const [savingNotifications, setSavingNotifications] = useState(false);
+  const [isPersonalEditing, setIsPersonalEditing] = useState(false);
+  const [showDiscardPersonalDialog, setShowDiscardPersonalDialog] = useState(false);
+  const [personalInfoBaseline, setPersonalInfoBaseline] = useState({
+    full_name: '',
+    email: '',
+    phone: '',
+    location: '',
   });
   const navigate = useNavigate();
 
@@ -97,9 +113,25 @@ export default function StudentProfile({ studentProfile, onProfileUpdate }: Stud
         learning_goals: profileData.learning_goals || '',
         interests: profileData.interests || [],
       });
+      setPersonalInfoBaseline({
+        full_name: profileData.full_name || '',
+        email: profileData.email || user.email || '',
+        phone: profileData.phone || '',
+        location: profileData.location || '',
+      });
+      setIsPersonalEditing(false);
 
-      // Get notification preferences (you may need to create this table)
-      // For now, using default values
+      const prefResult = await getNotificationPreferences(user.id);
+      if (prefResult.success && prefResult.data) {
+        setNotifications({
+          in_app_enabled: prefResult.data.in_app_enabled,
+          booking_lifecycle_enabled: prefResult.data.booking_lifecycle_enabled,
+          time_requests_enabled: prefResult.data.time_requests_enabled,
+          priority_dm_enabled: prefResult.data.priority_dm_enabled,
+          email_enabled: prefResult.data.email_enabled,
+          push_enabled: prefResult.data.push_enabled,
+        });
+      }
 
     } catch (error: any) {
       console.error('Error fetching profile:', error);
@@ -198,6 +230,10 @@ export default function StudentProfile({ studentProfile, onProfileUpdate }: Stud
   };
 
   const handleSave = async () => {
+    if (!isPersonalEditing) {
+      return;
+    }
+
     try {
       setSaving(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -218,14 +254,34 @@ export default function StudentProfile({ studentProfile, onProfileUpdate }: Stud
 
       if (error) throw error;
 
+      const nextBaseline = {
+        full_name: data?.full_name || formData.full_name,
+        email: data?.email || formData.email,
+        phone: data?.phone || formData.phone,
+        location: data?.location || formData.location,
+      };
+
+      setPersonalInfoBaseline(nextBaseline);
+      setFormData((prev) => ({
+        ...prev,
+        full_name: nextBaseline.full_name,
+        email: nextBaseline.email,
+        phone: nextBaseline.phone,
+        location: nextBaseline.location,
+      }));
+      setIsPersonalEditing(false);
+
       toast.success('Profile updated successfully!');
       
       // Call onProfileUpdate if provided to refresh parent component
       if (onProfileUpdate && data) {
         onProfileUpdate(data);
       }
-      
-      fetchProfile();
+
+      setProfile((prev: any) => ({
+        ...prev,
+        ...data,
+      }));
     } catch (error: any) {
       console.error('Error saving profile:', error);
       toast.error('Failed to update profile');
@@ -270,6 +326,75 @@ export default function StudentProfile({ studentProfile, onProfileUpdate }: Stud
       ...formData,
       interests: formData.interests.filter(i => i !== interest)
     });
+  };
+
+  const hasPersonalInfoChanges = () => {
+    return (
+      formData.full_name !== personalInfoBaseline.full_name ||
+      formData.phone !== personalInfoBaseline.phone ||
+      formData.location !== personalInfoBaseline.location
+    );
+  };
+
+  const handleStartPersonalEdit = () => {
+    setIsPersonalEditing(true);
+  };
+
+  const handleCancelPersonalEdit = () => {
+    if (!hasPersonalInfoChanges()) {
+      setIsPersonalEditing(false);
+      return;
+    }
+
+    setShowDiscardPersonalDialog(true);
+  };
+
+  const confirmDiscardPersonalChanges = () => {
+    setFormData((prev) => ({
+      ...prev,
+      full_name: personalInfoBaseline.full_name,
+      email: personalInfoBaseline.email,
+      phone: personalInfoBaseline.phone,
+      location: personalInfoBaseline.location,
+    }));
+    setIsPersonalEditing(false);
+    setShowDiscardPersonalDialog(false);
+  };
+
+  const handleNotificationToggle = async (
+    field:
+      | 'in_app_enabled'
+      | 'booking_lifecycle_enabled'
+      | 'time_requests_enabled'
+      | 'priority_dm_enabled'
+      | 'email_enabled'
+      | 'push_enabled',
+    checked: boolean
+  ) => {
+    const next = { ...notifications, [field]: checked };
+    setNotifications(next);
+
+    try {
+      setSavingNotifications(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('You must be logged in to update notification settings');
+        return;
+      }
+
+      const result = await upsertNotificationPreferences(user.id, {
+        [field]: checked,
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to save notification preferences');
+      }
+    } catch (error: any) {
+      setNotifications((prev) => ({ ...prev, [field]: !checked }));
+      toast.error(error.message || 'Failed to update notification preferences');
+    } finally {
+      setSavingNotifications(false);
+    }
   };
 
   if (loading) {
@@ -366,10 +491,17 @@ export default function StudentProfile({ studentProfile, onProfileUpdate }: Stud
       {/* Personal Information */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Personal Information
-          </CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Personal Information
+            </CardTitle>
+            {!isPersonalEditing && (
+              <Button type="button" variant="outline" size="sm" onClick={handleStartPersonalEdit}>
+                Edit
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -380,6 +512,8 @@ export default function StudentProfile({ studentProfile, onProfileUpdate }: Stud
                 value={formData.full_name}
                 onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                 placeholder="John Doe"
+                disabled={!isPersonalEditing || saving}
+                className={!isPersonalEditing ? 'bg-gray-100 border-gray-300 cursor-not-allowed' : undefined}
               />
             </div>
 
@@ -403,6 +537,8 @@ export default function StudentProfile({ studentProfile, onProfileUpdate }: Stud
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 placeholder="+1 (555) 123-4567"
+                disabled={!isPersonalEditing || saving}
+                className={!isPersonalEditing ? 'bg-gray-100 border-gray-300 cursor-not-allowed' : undefined}
               />
             </div>
 
@@ -413,18 +549,32 @@ export default function StudentProfile({ studentProfile, onProfileUpdate }: Stud
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 placeholder="New York, USA"
+                disabled={!isPersonalEditing || saving}
+                className={!isPersonalEditing ? 'bg-gray-100 border-gray-300 cursor-not-allowed' : undefined}
               />
             </div>
           </div>
 
-          <Button 
-            onClick={handleSave} 
-            disabled={saving} 
-            className="w-full md:w-auto"
-          >
-            <Save className="h-4 w-4 mr-2" />
-            {saving ? 'Saving...' : 'Save Changes'}
-          </Button>
+          {isPersonalEditing && (
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCancelPersonalEdit}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full md:w-auto"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {saving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -439,64 +589,102 @@ export default function StudentProfile({ studentProfile, onProfileUpdate }: Stud
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="email_sessions">Session Notifications</Label>
+              <Label htmlFor="in_app_enabled">In-App Notifications</Label>
               <p className="text-sm text-gray-500">
-                Get notified about session confirmations and updates
+                Receive notifications in dashboard bell
               </p>
             </div>
             <Switch
-              id="email_sessions"
-              checked={notifications.email_sessions}
-              onCheckedChange={(checked) => 
-                setNotifications({ ...notifications, email_sessions: checked })
+              id="in_app_enabled"
+              checked={notifications.in_app_enabled}
+              disabled={savingNotifications}
+              onCheckedChange={(checked) =>
+                handleNotificationToggle('in_app_enabled', checked)
               }
             />
           </div>
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="email_messages">Message Notifications</Label>
+              <Label htmlFor="booking_lifecycle_enabled">Booking Lifecycle</Label>
               <p className="text-sm text-gray-500">
-                Get notified when mentors send you messages
+                Booking created, confirmed, and cancelled updates
               </p>
             </div>
             <Switch
-              id="email_messages"
-              checked={notifications.email_messages}
-              onCheckedChange={(checked) => 
-                setNotifications({ ...notifications, email_messages: checked })
+              id="booking_lifecycle_enabled"
+              checked={notifications.booking_lifecycle_enabled}
+              disabled={savingNotifications || !notifications.in_app_enabled}
+              onCheckedChange={(checked) =>
+                handleNotificationToggle('booking_lifecycle_enabled', checked)
               }
             />
           </div>
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="email_reminders">Session Reminders</Label>
+              <Label htmlFor="time_requests_enabled">Time Requests</Label>
               <p className="text-sm text-gray-500">
-                Get reminded before your sessions start
+                New time requests and decisions
               </p>
             </div>
             <Switch
-              id="email_reminders"
-              checked={notifications.email_reminders}
-              onCheckedChange={(checked) => 
-                setNotifications({ ...notifications, email_reminders: checked })
+              id="time_requests_enabled"
+              checked={notifications.time_requests_enabled}
+              disabled={savingNotifications || !notifications.in_app_enabled}
+              onCheckedChange={(checked) =>
+                handleNotificationToggle('time_requests_enabled', checked)
               }
             />
           </div>
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="email_marketing">Marketing Emails</Label>
+              <Label htmlFor="priority_dm_enabled">Priority DM</Label>
               <p className="text-sm text-gray-500">
-                Receive tips, updates, and promotional content
+                New priority messages and replies
               </p>
             </div>
             <Switch
-              id="email_marketing"
-              checked={notifications.email_marketing}
-              onCheckedChange={(checked) => 
-                setNotifications({ ...notifications, email_marketing: checked })
+              id="priority_dm_enabled"
+              checked={notifications.priority_dm_enabled}
+              disabled={savingNotifications || !notifications.in_app_enabled}
+              onCheckedChange={(checked) =>
+                handleNotificationToggle('priority_dm_enabled', checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+            <div className="space-y-0.5">
+              <Label htmlFor="email_enabled">Email Notifications</Label>
+              <p className="text-sm text-gray-500">
+                Enable email delivery channel (future delivery integration)
+              </p>
+            </div>
+            <Switch
+              id="email_enabled"
+              checked={notifications.email_enabled}
+              disabled={savingNotifications}
+              onCheckedChange={(checked) =>
+                handleNotificationToggle('email_enabled', checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="push_enabled">Push Notifications</Label>
+              <p className="text-sm text-gray-500">
+                Enable push channel (future delivery integration)
+              </p>
+            </div>
+            <Switch
+              id="push_enabled"
+              checked={notifications.push_enabled}
+              disabled={savingNotifications}
+              onCheckedChange={(checked) =>
+                handleNotificationToggle('push_enabled', checked)
               }
             />
           </div>
@@ -591,6 +779,16 @@ export default function StudentProfile({ studentProfile, onProfileUpdate }: Stud
           </div>
         </CardContent>
       </Card>
+
+      <ConfirmationDialog
+        open={showDiscardPersonalDialog}
+        onOpenChange={setShowDiscardPersonalDialog}
+        onConfirm={confirmDiscardPersonalChanges}
+        title="Discard unsaved changes?"
+        description="You have unsaved changes in Personal Information. Discard them and exit edit mode?"
+        confirmText="Discard"
+        cancelText="Keep Editing"
+      />
     </div>
   );
 }
