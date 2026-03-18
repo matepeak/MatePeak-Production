@@ -9,10 +9,7 @@ const staticRoutes = [
   "/mentors",
   "/how-it-works",
   "/about-us",
-  "/student/signup",
-  "/mentor/signup",
-  "/student/login",
-  "/expert/login",
+  "/privacy",
 ];
 
 function isoDate(value) {

@@ -10,6 +10,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { CheckCircle2 } from "lucide-react";
+import SEO from "@/components/SEO";
 
 
 export default function MentorSignup() {
@@ -124,8 +125,15 @@ export default function MentorSignup() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
+    <>
+      <SEO
+        title="Mentor Signup | MatePeak"
+        description="Create your mentor account on MatePeak."
+        canonicalPath="/mentor/signup"
+        noindex
+      />
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
         <div className="text-center mb-8">
           <Link to="/" className="inline-block mb-4">
             <img 
@@ -274,7 +282,8 @@ export default function MentorSignup() {
           Sign in
         </Link>
       </p>
-    </div>
-  </div>
+        </div>
+      </div>
+    </>
   );
 }
