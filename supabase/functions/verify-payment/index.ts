@@ -343,14 +343,29 @@ const updateBookingStatusWithFallback = async (
   let lastError: unknown = null;
 
   for (const paymentStatus of paymentStatusCandidates) {
-    const payload = { ...updateData, payment_status: paymentStatus, updated_at: new Date().toISOString() };
+    const payloadWithTimestamp = {
+      ...updateData,
+      payment_status: paymentStatus,
+      updated_at: new Date().toISOString(),
+    };
 
-    const { data, error } = await supabase
-      .from("bookings")
-      .update(payload)
-      .eq("id", bookingId)
-      .select("*")
-      .single();
+    const attempt = async (payload: Record<string, unknown>) =>
+      await supabase
+        .from("bookings")
+        .update(payload)
+        .eq("id", bookingId)
+        .select("*")
+        .single();
+
+    let { data, error } = await attempt(payloadWithTimestamp);
+
+    // Backward compatibility: some production schemas may not have bookings.updated_at.
+    if (error && String(error.message || "").toLowerCase().includes("updated_at")) {
+      const fallbackPayload = { ...updateData, payment_status: paymentStatus };
+      const fallbackAttempt = await attempt(fallbackPayload);
+      data = fallbackAttempt.data;
+      error = fallbackAttempt.error;
+    }
 
     if (!error) {
       return { data: data as BookingRecord, usedPaymentStatus: paymentStatus };
