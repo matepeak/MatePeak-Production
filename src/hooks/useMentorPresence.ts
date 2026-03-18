@@ -193,10 +193,12 @@ export const useMentorPresenceMap = (
   useEffect(() => {
     const nextMap: Record<string, boolean> = {};
     mentors.forEach((mentor) => {
+      const isProfileLive = Boolean(mentor.is_profile_live);
       nextMap[mentor.id] =
         mentor.id === currentUserId
-          ? true
-          : isMentorOnlineFromLastSeen(mentor.last_seen, onlineThresholdMs, now);
+          ? isProfileLive
+          : isProfileLive &&
+            isMentorOnlineFromLastSeen(mentor.last_seen, onlineThresholdMs, now);
     });
     setPresenceMap(nextMap);
   }, [mentors, onlineThresholdMs, now, currentUserId]);
@@ -223,10 +225,12 @@ export const useMentorPresenceMap = (
       setPresenceMap((prev) => {
         const next = { ...prev };
         data.forEach((mentor) => {
+          const isProfileLive = Boolean(mentor.is_profile_live);
           next[mentor.id] =
             mentor.id === currentUserId
-              ? true
-              : isMentorOnlineFromLastSeen(mentor.last_seen, onlineThresholdMs);
+              ? isProfileLive
+              : isProfileLive &&
+                isMentorOnlineFromLastSeen(mentor.last_seen, onlineThresholdMs);
         });
         return next;
       });
@@ -256,8 +260,9 @@ export const useMentorPresenceMap = (
             ...prev,
             [nextMentor.id]:
               nextMentor.id === currentUserId
-                ? true
-                : isMentorOnlineFromLastSeen(nextMentor.last_seen, onlineThresholdMs),
+                ? Boolean(nextMentor.is_profile_live)
+                : Boolean(nextMentor.is_profile_live) &&
+                  isMentorOnlineFromLastSeen(nextMentor.last_seen, onlineThresholdMs),
           }));
         }
       )

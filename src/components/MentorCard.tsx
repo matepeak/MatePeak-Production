@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useMentorLiveStatus } from "@/hooks/useMentorPresence";
+import PresenceDot from "@/components/PresenceDot";
 
 // Update the MentorProfile type to include connectionOptions
 export interface MentorProfile {
@@ -43,6 +44,7 @@ const MentorCard = ({
   );
   const isMentorOnline =
     isOnlineOverride === undefined ? isMentorOnlineFromHook : isOnlineOverride;
+  const isMentorLive = Boolean(mentor.is_profile_live) && isMentorOnline;
 
   const nameParts = mentor.name.split(" ");
   const initials =
@@ -86,8 +88,8 @@ const MentorCard = ({
                 {initials}
               </AvatarFallback>
             </Avatar>
-            {isMentorOnline && (
-              <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-white" />
+            {isMentorLive && (
+              <PresenceDot className="absolute -top-0.5 -right-0.5" />
             )}
           </div>
 

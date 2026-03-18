@@ -36,6 +36,7 @@ import {
 import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMentorLiveStatus } from "@/hooks/useMentorPresence";
+import PresenceDot from "@/components/PresenceDot";
 
 interface ProfileHeaderProps {
   mentor: any;
@@ -177,7 +178,7 @@ export default function ProfileHeader({
               </Avatar>
               {/* Live indicator */}
               {mentor.is_profile_live && isMentorOnline && (
-                <div className="absolute bottom-1 right-1 h-3.5 w-3.5 bg-green-500 rounded-full border-2 border-white"></div>
+                <PresenceDot className="absolute bottom-1 right-1" />
               )}
             </div>
           </div>

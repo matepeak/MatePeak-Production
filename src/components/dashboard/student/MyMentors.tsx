@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useMentorPresenceMap } from '@/hooks/useMentorPresence';
+import PresenceDot from '@/components/PresenceDot';
 
 interface MyMentorsProps {
   studentProfile: any;
@@ -26,6 +28,7 @@ export default function MyMentors({ studentProfile }: MyMentorsProps) {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
+  const mentorsPresenceMap = useMentorPresenceMap(mentors);
 
   useEffect(() => {
     fetchMyMentors();
@@ -46,7 +49,9 @@ export default function MyMentors({ studentProfile }: MyMentorsProps) {
             full_name,
             username,
             profile_picture_url,
-            headline
+            headline,
+            is_profile_live,
+            last_seen
           )
         `)
         .eq('student_id', user.id);
@@ -182,7 +187,7 @@ export default function MyMentors({ studentProfile }: MyMentorsProps) {
                 {/* Header with Avatar */}
                 <div className="flex items-start justify-between mb-4">
                   <div 
-                    className="h-16 w-16 rounded-full bg-gray-300 overflow-hidden cursor-pointer"
+                    className="relative h-16 w-16 rounded-full bg-gray-300 overflow-hidden cursor-pointer"
                     onClick={() => navigate(`/mentor/${mentor.username || mentor.id}`)}
                   >
                     {mentor.profile_picture_url ? (
@@ -195,6 +200,9 @@ export default function MyMentors({ studentProfile }: MyMentorsProps) {
                       <div className="h-full w-full flex items-center justify-center bg-blue-600 text-white text-2xl font-bold">
                         {mentor.full_name?.charAt(0) || 'M'}
                       </div>
+                    )}
+                    {mentor.is_profile_live && mentorsPresenceMap[mentor.id] && (
+                      <PresenceDot className="absolute -top-0.5 -right-0.5" />
                     )}
                   </div>
                 </div>
