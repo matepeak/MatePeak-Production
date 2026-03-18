@@ -139,14 +139,6 @@ export default function BookingConfirmation({
     if (isSubmitting) return "Processing...";
     if (isFreeBooking) return "Confirm Booking (FREE)";
     return `Proceed to Payment (Rs. ${total.toLocaleString("en-IN")})`;
-    switch (selectedService.type) {
-      case "digitalProducts":
-        return "Confirm Booking (FREE)";
-      case "priorityDm":
-        return "Confirm Booking (FREE)";
-      default:
-        return "Confirm Booking (FREE)";
-    }
   };
 
   return (

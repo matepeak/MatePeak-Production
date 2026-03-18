@@ -10,6 +10,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  import SEO from "@/components/SEO";
 } from "@/components/ui/card";
 import { KeyRound, Eye, EyeOff, CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
@@ -36,8 +37,15 @@ export default function ResetPassword() {
     };
 
     checkSession();
-  }, [navigate]);
-
+    <>
+      <SEO
+        title="Reset Password | MatePeak"
+        description="Reset your MatePeak account password."
+        canonicalPath="/reset-password"
+        noindex
+      />
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
   const validatePassword = (pwd: string): string | null => {
     if (pwd.length < 8) {
       return "Password must be at least 8 characters long";
@@ -187,6 +195,7 @@ export default function ResetPassword() {
                 />
                 <button
                   type="button"
+    </>
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                   tabIndex={-1}
