@@ -12,6 +12,7 @@ export interface ManageSessionData {
   session_id: string;
   action: 'confirm' | 'complete' | 'cancel';
   payment_status?: 'paid' | 'refunded';
+  cancellation_reason?: string;
 }
 
 /**
@@ -148,5 +149,16 @@ export async function cancelSession(sessionId: string) {
   return await manageSession({
     session_id: sessionId,
     action: 'cancel'
+  });
+}
+
+export async function cancelSessionWithReason(
+  sessionId: string,
+  cancellationReason?: string
+) {
+  return await manageSession({
+    session_id: sessionId,
+    action: 'cancel',
+    cancellation_reason: cancellationReason,
   });
 }

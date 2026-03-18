@@ -55,6 +55,13 @@ interface MentorData {
   total_reviews: number;
 }
 
+const getLocalDateString = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const BookingPage = () => {
   const isServiceEnabled = (value: any) =>
     value === true || value === "true" || value === 1 || value === "1";
@@ -503,10 +510,11 @@ const BookingPage = () => {
       let scheduledTime = null;
 
       if (selectedDateTime) {
-        scheduledDate = selectedDateTime.date.toISOString().split("T")[0];
+        scheduledDate = getLocalDateString(selectedDateTime.date);
         scheduledTime = selectedDateTime.time;
       } else {
-        scheduledDate = new Date().toISOString().split("T")[0];
+        // Non-scheduled services still need a valid date field; use local today.
+        scheduledDate = getLocalDateString(new Date());
         scheduledTime = "00:00";
       }
 

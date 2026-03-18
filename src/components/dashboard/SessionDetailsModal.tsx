@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import {
   Calendar,
   Clock,
@@ -15,6 +16,7 @@ import {
   Phone,
   MessageSquare,
   Video,
+  Loader2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -22,14 +24,33 @@ interface SessionDetailsModalProps {
   open: boolean;
   onClose: () => void;
   session: any;
+  onCancelSession?: (session: any) => void;
+  cancelLoading?: boolean;
 }
 
 const SessionDetailsModal = ({
   open,
   onClose,
   session,
+  onCancelSession,
+  cancelLoading = false,
 }: SessionDetailsModalProps) => {
   if (!session) return null;
+
+  const now = new Date();
+  const sessionStart = new Date(`${session.scheduled_date}T${session.scheduled_time}`);
+  const cancelledByLabel =
+    session.cancelled_by === session.expert_id
+      ? "Mentor"
+      : session.cancelled_by === session.user_id
+      ? "Student"
+      : session.cancelled_by
+      ? "User"
+      : "Not available";
+  const canCancelSession =
+    !!onCancelSession &&
+    ["pending", "confirmed"].includes((session.status || "").toLowerCase()) &&
+    sessionStart > now;
 
   // Use the enriched data from the session object
   const participantName =
@@ -284,6 +305,65 @@ const SessionDetailsModal = ({
               </p>
             </div>
           </div>
+
+          {session.status === "cancelled" && (
+            <>
+              <Separator />
+              <div className="space-y-2 text-sm">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Cancellation Details
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-gray-600">Cancelled At</p>
+                    <p className="text-gray-900 font-medium mt-1">
+                      {session.cancelled_at
+                        ? new Date(session.cancelled_at).toLocaleString()
+                        : "Not available"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Cancelled By</p>
+                    <p className="text-gray-900 font-medium mt-1">
+                      {cancelledByLabel}
+                    </p>
+                  </div>
+                </div>
+                {session.cancellation_reason && (
+                  <div>
+                    <p className="text-gray-600">Reason</p>
+                    <p className="text-gray-900 font-medium mt-1 whitespace-pre-wrap">
+                      {session.cancellation_reason}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {canCancelSession && (
+            <>
+              <Separator />
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={cancelLoading}
+                  onClick={() => onCancelSession?.(session)}
+                  className="min-w-[140px]"
+                >
+                  {cancelLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Cancelling...
+                    </>
+                  ) : (
+                    "Cancel Session"
+                  )}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>

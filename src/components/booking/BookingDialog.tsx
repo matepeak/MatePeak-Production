@@ -60,6 +60,13 @@ export interface BookingDetails {
   shareContactInfo?: boolean;
 }
 
+const getLocalDateString = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 export default function BookingDialog({
   open,
   onOpenChange,
@@ -469,17 +476,18 @@ export default function BookingDialog({
       let scheduledTime = null;
 
       if (selectedDateTime) {
-        scheduledDate = selectedDateTime.date.toISOString().split("T")[0];
+        scheduledDate = getLocalDateString(selectedDateTime.date);
         scheduledTime = selectedDateTime.time;
       } else {
-        // For digital products and chat, use today's date
-        scheduledDate = new Date().toISOString().split("T")[0];
+        // For non-scheduled services, use local today as placeholder booking date.
+        scheduledDate = getLocalDateString(new Date());
         scheduledTime = "00:00"; // Placeholder time
       }
 
       const bookingData = {
         expert_id: mentorId,
         session_type: selectedService.type,
+        service_key: selectedService.serviceKey,
         scheduled_date: scheduledDate,
         scheduled_time: scheduledTime,
         duration:

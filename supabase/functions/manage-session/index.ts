@@ -1,3 +1,5 @@
+// @ts-nocheck
+import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.75.0'
 
 const corsHeaders = {
@@ -9,9 +11,10 @@ interface UpdateSessionRequest {
   session_id: string
   action: 'confirm' | 'complete' | 'cancel'
   payment_status?: 'paid' | 'refunded'
+  cancellation_reason?: string
 }
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -40,7 +43,7 @@ Deno.serve(async (req) => {
     }
 
     const body: UpdateSessionRequest = await req.json()
-    const { session_id, action, payment_status } = body
+    const { session_id, action, payment_status, cancellation_reason } = body
 
     // Validate input
     if (!session_id || !action) {
@@ -82,12 +85,21 @@ Deno.serve(async (req) => {
     let newStatus = booking.status
     let newPaymentStatus = booking.payment_status
 
+    const sessionStartTime = new Date(`${booking.scheduled_date}T${booking.scheduled_time}`)
+    const now = new Date()
+
     switch (action) {
       case 'confirm':
         if (!isMentor) {
           return new Response(
             JSON.stringify({ success: false, message: 'Only mentors can confirm sessions' }),
             { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+        if (booking.status !== 'pending') {
+          return new Response(
+            JSON.stringify({ success: false, message: 'Only pending sessions can be confirmed' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
         newStatus = 'confirmed'
@@ -100,6 +112,12 @@ Deno.serve(async (req) => {
             { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
+        if (booking.status !== 'confirmed') {
+          return new Response(
+            JSON.stringify({ success: false, message: 'Only confirmed sessions can be completed' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
         newStatus = 'completed'
         if (payment_status) {
           newPaymentStatus = payment_status
@@ -107,6 +125,18 @@ Deno.serve(async (req) => {
         break
 
       case 'cancel':
+        if (!['pending', 'confirmed'].includes(booking.status)) {
+          return new Response(
+            JSON.stringify({ success: false, message: 'Only pending or confirmed sessions can be cancelled' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+        if (sessionStartTime <= now) {
+          return new Response(
+            JSON.stringify({ success: false, message: 'Cannot cancel a session that has already started' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
         newStatus = 'cancelled'
         // Auto-refund if student cancels or if specified
         if (isStudent || payment_status === 'refunded') {
@@ -132,6 +162,15 @@ Deno.serve(async (req) => {
       payment_status: newPaymentStatus,
       updated_at: new Date().toISOString()
     };
+
+    if (action === 'cancel') {
+      updateData.cancelled_at = new Date().toISOString()
+      updateData.cancelled_by = user.id
+      updateData.cancellation_reason = (cancellation_reason || `${isMentor ? 'Mentor' : 'Student'} cancelled this session`).trim()
+      if (booking.meeting_link) {
+        updateData.meeting_link = null
+      }
+    }
 
     // Add meet link to message for now (until meet_link column is added)
     if (meetLink && action === 'confirm') {
@@ -164,10 +203,11 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
-  } catch (error) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     console.error('Unexpected error:', error)
     return new Response(
-      JSON.stringify({ success: false, message: 'Internal server error', error: error.message }),
+      JSON.stringify({ success: false, message: 'Internal server error', error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

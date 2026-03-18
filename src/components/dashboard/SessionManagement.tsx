@@ -8,9 +8,6 @@ import { SERVICE_CONFIG } from "@/config/serviceConfig";
 import {
   Calendar,
   Clock,
-  CheckCircle,
-  XCircle,
-  Loader2,
   Eye,
   Search,
   ArrowUpDown,
@@ -34,8 +31,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import SessionDetailsModal from "./SessionDetailsModal";
+import { cancelSessionWithReason } from "@/services/sessionService";
 
 interface SessionManagementProps {
   mentorProfile: any;
@@ -63,16 +60,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
   const [dateRange, setDateRange] = useState<DateRange>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("date-desc");
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [confirmDialog, setConfirmDialog] = useState<{
-    open: boolean;
-    sessionId: string | null;
-    action: "accept" | "decline" | null;
-  }>({
-    open: false,
-    sessionId: null,
-    action: null,
-  });
+  const [cancelLoading, setCancelLoading] = useState(false);
   const [detailsModal, setDetailsModal] = useState<{
     open: boolean;
     session: any;
@@ -99,9 +87,61 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
     return session.status || "pending";
   };
 
+  const toLocalDateString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const getDateRangeBoundaries = (range: DateRange) => {
+    const now = new Date();
+
+    switch (range) {
+      case "today": {
+        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const end = new Date(start);
+        end.setDate(end.getDate() + 1);
+        return {
+          startDate: toLocalDateString(start),
+          endDate: toLocalDateString(end),
+        };
+      }
+      case "week": {
+        const start = new Date(now);
+        const dayOfWeek = start.getDay();
+        const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        start.setDate(start.getDate() + diffToMonday);
+        start.setHours(0, 0, 0, 0);
+
+        const end = new Date(start);
+        end.setDate(end.getDate() + 7);
+
+        return {
+          startDate: toLocalDateString(start),
+          endDate: toLocalDateString(end),
+        };
+      }
+      case "month": {
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        return {
+          startDate: toLocalDateString(start),
+          endDate: toLocalDateString(end),
+        };
+      }
+      case "all":
+      default:
+        return {
+          startDate: null,
+          endDate: null,
+        };
+    }
+  };
+
   useEffect(() => {
     fetchSessions();
-  }, [mentorProfile]);
+  }, [mentorProfile, dateRange]);
 
   // Helper function to format session type display name
   const formatSessionType = (sessionType: string | null | undefined) => {
@@ -338,13 +378,23 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
 
       console.log("Fetching sessions for mentor:", mentorProfile?.id);
 
+      const { startDate, endDate } = getDateRangeBoundaries(dateRange);
+
       // Fetch sessions where user is the expert (mentor)
-      const { data: expertSessions, error: expertError } = await supabase
+      let expertQuery = supabase
         .from("bookings")
         .select("*")
         .eq("expert_id", mentorProfile.id)
         .order("scheduled_date", { ascending: false })
         .limit(100);
+
+      if (startDate && endDate) {
+        expertQuery = expertQuery
+          .gte("scheduled_date", startDate)
+          .lt("scheduled_date", endDate);
+      }
+
+      const { data: expertSessions, error: expertError } = await expertQuery;
 
       console.log("Expert sessions query result:", {
         expertSessions,
@@ -381,12 +431,20 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
       }
 
       // Fetch sessions where user booked as a student (using the auth user id, not expert_profile id)
-      const { data: studentSessions, error: studentError } = await supabase
+      let studentQuery = supabase
         .from("bookings")
         .select("*")
         .eq("user_id", mentorProfile.id)
         .order("scheduled_date", { ascending: false })
         .limit(100);
+
+      if (startDate && endDate) {
+        studentQuery = studentQuery
+          .gte("scheduled_date", startDate)
+          .lt("scheduled_date", endDate);
+      }
+
+      const { data: studentSessions, error: studentError } = await studentQuery;
 
       console.log("Student sessions query result:", {
         studentSessions,
@@ -454,69 +512,6 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSessionAction = async (
-    sessionId: string,
-    action: "accept" | "decline"
-  ) => {
-    if (!sessionId) {
-      toast({
-        title: "Error",
-        description: "Invalid session ID",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      setActionLoading(sessionId);
-
-      const newStatus = action === "accept" ? "confirmed" : "cancelled";
-
-      const { error } = await supabase
-        .from("bookings")
-        .update({
-          status: newStatus,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", sessionId);
-
-      if (error) throw error;
-
-      // Update local state
-      setSessions((prev) =>
-        prev.map((session) =>
-          session.id === sessionId ? { ...session, status: newStatus } : session
-        )
-      );
-
-      toast({
-        title: action === "accept" ? "Session confirmed" : "Session declined",
-        description:
-          action === "accept"
-            ? "The session has been confirmed successfully"
-            : "The session has been declined",
-      });
-    } catch (error: any) {
-      console.error("Error updating session:", error);
-      toast({
-        title: "Error",
-        description:
-          error.message || "Failed to update session. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setActionLoading(null);
-      setConfirmDialog({ open: false, sessionId: null, action: null });
-    }
-  };
-
-  const openConfirmDialog = (
-    sessionId: string,
-    action: "accept" | "decline"
-  ) => {
-    setConfirmDialog({ open: true, sessionId, action });
   };
 
   // Filter, search, and sort sessions
@@ -723,6 +718,82 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
       return sessionDate > new Date();
     } catch {
       return false;
+    }
+  };
+
+  const handleCancelSession = async (session: any) => {
+    if (!session?.id) return;
+
+    const confirmed = window.confirm(
+      "Cancel this session? The participant may be notified and this action cannot be undone."
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setCancelLoading(true);
+
+      const response = await cancelSessionWithReason(
+        session.id,
+        "Cancelled by mentor from dashboard"
+      );
+
+      if (!response?.success) {
+        throw new Error(response?.error || "Failed to cancel session");
+      }
+
+      const cancelledAt = new Date().toISOString();
+      setSessions((prev) =>
+        prev.map((item) =>
+          item.id === session.id
+            ? {
+                ...item,
+                status: "cancelled",
+                payment_status:
+                  response?.data?.payment_status || item.payment_status,
+                cancelled_at: response?.data?.cancelled_at || cancelledAt,
+                cancelled_by: response?.data?.cancelled_by || mentorProfile?.id,
+                cancellation_reason:
+                  response?.data?.cancellation_reason ||
+                  "Cancelled by mentor from dashboard",
+                meeting_link: null,
+              }
+            : item
+        )
+      );
+
+      setDetailsModal((prev) =>
+        prev.session?.id === session.id
+          ? {
+              ...prev,
+              session: {
+                ...prev.session,
+                status: "cancelled",
+                payment_status:
+                  response?.data?.payment_status || prev.session.payment_status,
+                cancelled_at: response?.data?.cancelled_at || cancelledAt,
+                cancelled_by: response?.data?.cancelled_by || mentorProfile?.id,
+                cancellation_reason:
+                  response?.data?.cancellation_reason ||
+                  "Cancelled by mentor from dashboard",
+                meeting_link: null,
+              },
+            }
+          : prev
+      );
+
+      toast({
+        title: "Session cancelled",
+        description: "The session was cancelled successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Unable to cancel session",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setCancelLoading(false);
     }
   };
 
@@ -1200,72 +1271,17 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
 
                   {/* Action Buttons */}
                   <div className="flex items-center justify-between gap-2">
-                    {session.status === "pending" ? (
-                      <>
-                        <div className="flex gap-2 flex-1">
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              openConfirmDialog(session.id, "accept")
-                            }
-                            disabled={actionLoading === session.id}
-                            className="flex-1 h-8 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg"
-                          >
-                            {actionLoading === session.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <>
-                                <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-                                Accept
-                              </>
-                            )}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              openConfirmDialog(session.id, "decline")
-                            }
-                            disabled={actionLoading === session.id}
-                            className="flex-1 h-8 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 text-xs font-medium rounded-lg"
-                          >
-                            {actionLoading === session.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <>
-                                <XCircle className="h-3.5 w-3.5 mr-1.5" />
-                                Decline
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            setDetailsModal({ open: true, session })
-                          }
-                          className="h-8 px-3 text-xs font-medium border-gray-200 rounded-lg flex items-center gap-1.5"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                          <span>View</span>
-                        </Button>
-                      </>
-                    ) : (
-                      <div className="w-full flex justify-end">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            setDetailsModal({ open: true, session })
-                          }
-                          className="h-8 px-3 text-xs font-medium border-gray-200 rounded-lg flex items-center gap-1.5"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                          <span>View</span>
-                        </Button>
-                      </div>
-                    )}
+                    <div className="w-full flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setDetailsModal({ open: true, session })}
+                        className="h-8 px-3 text-xs font-medium border-gray-200 rounded-lg flex items-center gap-1.5"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>View</span>
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -1302,40 +1318,13 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
         )}
       </div>
 
-      {/* Confirmation Dialog */}
-      <ConfirmationDialog
-        open={confirmDialog.open}
-        onOpenChange={(open) =>
-          setConfirmDialog({ open, sessionId: null, action: null })
-        }
-        onConfirm={() => {
-          if (confirmDialog.sessionId && confirmDialog.action) {
-            handleSessionAction(confirmDialog.sessionId, confirmDialog.action);
-          }
-        }}
-        title={
-          confirmDialog.action === "accept"
-            ? "Confirm Session"
-            : "Decline Session"
-        }
-        description={
-          confirmDialog.action === "accept"
-            ? "Are you sure you want to accept this session? The student will be notified and the session will be confirmed."
-            : "Are you sure you want to decline this session? This action cannot be undone and the student will be notified."
-        }
-        confirmText={
-          confirmDialog.action === "accept"
-            ? "Accept Session"
-            : "Decline Session"
-        }
-        variant={confirmDialog.action === "decline" ? "destructive" : "default"}
-      />
-
       {/* Session Details Modal */}
       <SessionDetailsModal
         open={detailsModal.open}
         onClose={() => setDetailsModal({ open: false, session: null })}
         session={detailsModal.session}
+        onCancelSession={handleCancelSession}
+        cancelLoading={cancelLoading}
       />
     </div>
   );

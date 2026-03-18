@@ -39,6 +39,13 @@ export default function DateTimeSelection({
   timezone,
   onDateTimeSelect,
 }: DateTimeSelectionProps) {
+  const getLocalDateString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [selectedTimezone, setSelectedTimezone] = useState(timezone);
@@ -93,7 +100,7 @@ export default function DateTimeSelection({
       );
       return {
         date,
-        dateStr: date.toISOString().split("T")[0],
+        dateStr: getLocalDateString(date),
         hasSlots: result.success && result.data.some((slot) => slot.available),
       };
     });
@@ -144,7 +151,7 @@ export default function DateTimeSelection({
   const fetchTimeSlots = async () => {
     if (!selectedDate) return;
 
-    const dateStr = selectedDate.toISOString().split("T")[0];
+    const dateStr = getLocalDateString(selectedDate);
     const cacheKey = `${mentorId}-${dateStr}-${selectedService.duration}`;
 
     // Check cache first to avoid redundant API calls
@@ -446,7 +453,7 @@ export default function DateTimeSelection({
                     selectedDate && isSameDay(date, selectedDate);
                   const isPast = isDatePast(date);
                   const isToday = isSameDay(date, new Date());
-                  const dateStr = date.toISOString().split("T")[0];
+                  const dateStr = getLocalDateString(date);
                   const hasAvailableSlots = datesWithSlots.has(dateStr);
 
                   return (
