@@ -64,6 +64,7 @@ serve(async (req) => {
       `
       )
       .eq("status", "confirmed")
+      .eq("session_type", "oneOnOneSession")
       .or(`reminder_24h_sent.eq.false,reminder_1h_sent.eq.false`);
 
     if (queryError) {

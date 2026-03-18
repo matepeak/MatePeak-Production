@@ -11,7 +11,6 @@ import ProfileOverview from "@/components/profile/ProfileOverview";
 import ProfileAvailability from "@/components/profile/ProfileAvailability";
 import ProfileExperiences from "@/components/profile/ProfileExperiences";
 import ProfileReviews from "@/components/profile/ProfileReviews";
-import ProfileAbout from "@/components/profile/ProfileAbout";
 import ProfileServices from "@/components/profile/ProfileServices";
 import AvailabilityPreview from "@/components/profile/AvailabilityPreview";
 import SEO from "@/components/SEO";
@@ -21,8 +20,7 @@ export type ProfileTab =
   | "services"
   | "availability"
   | "experiences"
-  | "reviews"
-  | "about";
+  | "reviews";
 
 interface MentorProfileData {
   id: string;
@@ -319,9 +317,6 @@ export default function MentorPublicProfile() {
                       )}
                       {activeTab === "reviews" && (
                         <ProfileReviews mentorId={mentor.id} stats={stats} />
-                      )}
-                      {activeTab === "about" && (
-                        <ProfileAbout mentor={mentor} />
                       )}
                     </div>
 

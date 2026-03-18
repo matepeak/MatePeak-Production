@@ -8,9 +8,6 @@ import { SERVICE_CONFIG } from "@/config/serviceConfig";
 import {
   Calendar,
   Clock,
-  CheckCircle,
-  XCircle,
-  Loader2,
   Eye,
   Search,
   ArrowUpDown,
@@ -34,8 +31,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import SessionDetailsModal from "./SessionDetailsModal";
+import { cancelSessionWithReason } from "@/services/sessionService";
 
 interface SessionManagementProps {
   mentorProfile: any;
@@ -54,6 +60,7 @@ type SortOption =
   | "amount-asc"
   | "status";
 type DateRange = "all" | "today" | "week" | "month";
+const CANCELLATION_NOTE_MAX_LENGTH = 300;
 
 const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
   const { toast } = useToast();
@@ -63,16 +70,17 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
   const [dateRange, setDateRange] = useState<DateRange>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("date-desc");
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [confirmDialog, setConfirmDialog] = useState<{
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelDialog, setCancelDialog] = useState<{
     open: boolean;
-    sessionId: string | null;
-    action: "accept" | "decline" | null;
+    session: any;
+    note: string;
   }>({
     open: false,
-    sessionId: null,
-    action: null,
+    session: null,
+    note: "",
   });
+  const [cancelNoteError, setCancelNoteError] = useState("");
   const [detailsModal, setDetailsModal] = useState<{
     open: boolean;
     session: any;
@@ -99,9 +107,61 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
     return session.status || "pending";
   };
 
+  const toLocalDateString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const getDateRangeBoundaries = (range: DateRange) => {
+    const now = new Date();
+
+    switch (range) {
+      case "today": {
+        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const end = new Date(start);
+        end.setDate(end.getDate() + 1);
+        return {
+          startDate: toLocalDateString(start),
+          endDate: toLocalDateString(end),
+        };
+      }
+      case "week": {
+        const start = new Date(now);
+        const dayOfWeek = start.getDay();
+        const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        start.setDate(start.getDate() + diffToMonday);
+        start.setHours(0, 0, 0, 0);
+
+        const end = new Date(start);
+        end.setDate(end.getDate() + 7);
+
+        return {
+          startDate: toLocalDateString(start),
+          endDate: toLocalDateString(end),
+        };
+      }
+      case "month": {
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        return {
+          startDate: toLocalDateString(start),
+          endDate: toLocalDateString(end),
+        };
+      }
+      case "all":
+      default:
+        return {
+          startDate: null,
+          endDate: null,
+        };
+    }
+  };
+
   useEffect(() => {
     fetchSessions();
-  }, [mentorProfile]);
+  }, [mentorProfile, dateRange]);
 
   // Helper function to format session type display name
   const formatSessionType = (sessionType: string | null | undefined) => {
@@ -338,13 +398,23 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
 
       console.log("Fetching sessions for mentor:", mentorProfile?.id);
 
+      const { startDate, endDate } = getDateRangeBoundaries(dateRange);
+
       // Fetch sessions where user is the expert (mentor)
-      const { data: expertSessions, error: expertError } = await supabase
+      let expertQuery = supabase
         .from("bookings")
         .select("*")
         .eq("expert_id", mentorProfile.id)
         .order("scheduled_date", { ascending: false })
         .limit(100);
+
+      if (startDate && endDate) {
+        expertQuery = expertQuery
+          .gte("scheduled_date", startDate)
+          .lt("scheduled_date", endDate);
+      }
+
+      const { data: expertSessions, error: expertError } = await expertQuery;
 
       console.log("Expert sessions query result:", {
         expertSessions,
@@ -381,12 +451,20 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
       }
 
       // Fetch sessions where user booked as a student (using the auth user id, not expert_profile id)
-      const { data: studentSessions, error: studentError } = await supabase
+      let studentQuery = supabase
         .from("bookings")
         .select("*")
         .eq("user_id", mentorProfile.id)
         .order("scheduled_date", { ascending: false })
         .limit(100);
+
+      if (startDate && endDate) {
+        studentQuery = studentQuery
+          .gte("scheduled_date", startDate)
+          .lt("scheduled_date", endDate);
+      }
+
+      const { data: studentSessions, error: studentError } = await studentQuery;
 
       console.log("Student sessions query result:", {
         studentSessions,
@@ -454,69 +532,6 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSessionAction = async (
-    sessionId: string,
-    action: "accept" | "decline"
-  ) => {
-    if (!sessionId) {
-      toast({
-        title: "Error",
-        description: "Invalid session ID",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      setActionLoading(sessionId);
-
-      const newStatus = action === "accept" ? "confirmed" : "cancelled";
-
-      const { error } = await supabase
-        .from("bookings")
-        .update({
-          status: newStatus,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", sessionId);
-
-      if (error) throw error;
-
-      // Update local state
-      setSessions((prev) =>
-        prev.map((session) =>
-          session.id === sessionId ? { ...session, status: newStatus } : session
-        )
-      );
-
-      toast({
-        title: action === "accept" ? "Session confirmed" : "Session declined",
-        description:
-          action === "accept"
-            ? "The session has been confirmed successfully"
-            : "The session has been declined",
-      });
-    } catch (error: any) {
-      console.error("Error updating session:", error);
-      toast({
-        title: "Error",
-        description:
-          error.message || "Failed to update session. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setActionLoading(null);
-      setConfirmDialog({ open: false, sessionId: null, action: null });
-    }
-  };
-
-  const openConfirmDialog = (
-    sessionId: string,
-    action: "accept" | "decline"
-  ) => {
-    setConfirmDialog({ open: true, sessionId, action });
   };
 
   // Filter, search, and sort sessions
@@ -673,31 +688,34 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
       pending: {
         label: "Pending",
         className:
-          "bg-yellow-50 text-yellow-700 border-0 rounded-md hover:bg-yellow-50",
+          "bg-amber-50 text-amber-800 border border-amber-200 rounded-md",
       },
       confirmed: {
         label: "Confirmed",
         className:
-          "bg-green-50 text-green-700 border-0 rounded-md hover:bg-green-50",
+          "bg-sky-50 text-sky-800 border border-sky-200 rounded-md",
       },
       completed: {
         label: "Completed",
         className:
-          "bg-blue-50 text-blue-700 border-0 rounded-md hover:bg-blue-50",
+          "bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-md",
       },
       cancelled: {
         label: "Cancelled",
-        className: "bg-red-50 text-red-700 border-0 rounded-md hover:bg-red-50",
+        className: "bg-rose-50 text-rose-700 border border-rose-200 rounded-md",
       },
     };
 
     const config = statusConfig[status] || {
       label: status,
-      className:
-        "bg-gray-50 text-gray-700 border-0 rounded-md hover:bg-gray-50",
+      className: "bg-gray-100 text-gray-700 border border-gray-200 rounded-md",
     };
 
-    return <Badge className={config.className}>{config.label}</Badge>;
+    return (
+      <Badge variant="outline" className={config.className}>
+        {config.label}
+      </Badge>
+    );
   };
 
   const formatDate = (scheduledDate: string, scheduledTime: string) => {
@@ -724,6 +742,168 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
     } catch {
       return false;
     }
+  };
+
+  const getParticipantKey = (session: any) => {
+    if (session.user_role === "expert") {
+      return session.user_id || session.display_email || session.display_name;
+    }
+    return session.expert_id || session.display_email || session.display_name;
+  };
+
+  const participantSessionCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    sessions.forEach((session) => {
+      const key = String(getParticipantKey(session) || "unknown");
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+
+    return counts;
+  }, [sessions]);
+
+  const getRiskIndicator = (session: any, effectiveStatus: string) => {
+    if (!isUpcoming(session.scheduled_date, session.scheduled_time)) {
+      return null;
+    }
+
+    const sessionDate = new Date(`${session.scheduled_date}T${session.scheduled_time}`);
+    const now = new Date();
+    const hoursUntil = (sessionDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+    if (effectiveStatus === "pending" && hoursUntil <= 24) {
+      return "Pending <24h";
+    }
+
+    if (effectiveStatus === "confirmed" && !session.meeting_link && hoursUntil <= 24) {
+      return "Link missing";
+    }
+
+    if (
+      effectiveStatus === "confirmed" &&
+      (!session.payment_status || session.payment_status === "pending") &&
+      hoursUntil <= 24
+    ) {
+      return "Payment pending";
+    }
+
+    return null;
+  };
+
+  const executeCancelSession = async (session: any, cancellationReason: string) => {
+    try {
+      setCancelLoading(true);
+
+      const fallbackCancelledBy =
+        session?.user_role === "expert" ? session?.expert_id : session?.user_id;
+
+      const response = await cancelSessionWithReason(
+        session.id,
+        cancellationReason
+      );
+
+      if (!response?.success) {
+        throw new Error(response?.error || "Failed to cancel session");
+      }
+
+      const cancelledAt = new Date().toISOString();
+      setSessions((prev) =>
+        prev.map((item) =>
+          item.id === session.id
+            ? {
+                ...item,
+                status: "cancelled",
+                payment_status:
+                  response?.data?.payment_status || item.payment_status,
+                cancelled_at: response?.data?.cancelled_at || cancelledAt,
+                cancelled_by: response?.data?.cancelled_by || fallbackCancelledBy,
+                cancellation_reason:
+                  response?.data?.cancellation_reason ||
+                  cancellationReason,
+                meeting_link: null,
+              }
+            : item
+        )
+      );
+
+      setDetailsModal((prev) =>
+        prev.session?.id === session.id
+          ? {
+              ...prev,
+              session: {
+                ...prev.session,
+                status: "cancelled",
+                payment_status:
+                  response?.data?.payment_status || prev.session.payment_status,
+                cancelled_at: response?.data?.cancelled_at || cancelledAt,
+                cancelled_by: response?.data?.cancelled_by || fallbackCancelledBy,
+                cancellation_reason:
+                  response?.data?.cancellation_reason ||
+                  cancellationReason,
+                meeting_link: null,
+              },
+            }
+          : prev
+      );
+
+      toast({
+        title: "Session cancelled",
+        description: "The session was cancelled successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Unable to cancel session",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
+  const handleCancelSession = async (session: any) => {
+    if (!session?.id) return;
+
+    const isMentorCancelling = session?.user_role === "expert";
+
+    if (isMentorCancelling) {
+      setCancelNoteError("");
+      setCancelDialog({
+        open: true,
+        session,
+        note: "",
+      });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Cancel this session? The participant may be notified and this action cannot be undone."
+    );
+
+    if (!confirmed) return;
+
+    await executeCancelSession(session, "Cancelled by student from dashboard");
+  };
+
+  const handleConfirmMentorCancellation = async () => {
+    const session = cancelDialog.session;
+    if (!session?.id) return;
+
+    const trimmedNote = cancelDialog.note.trim();
+    if (!trimmedNote) {
+      setCancelNoteError("Please provide a note for the student.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Cancel this session? The student will be notified with your note."
+    );
+
+    if (!confirmed) return;
+
+    setCancelDialog({ open: false, session: null, note: "" });
+    setCancelNoteError("");
+    await executeCancelSession(session, trimmedNote);
   };
 
   return (
@@ -885,7 +1065,10 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <Badge className="bg-rose-50 text-rose-700 border-0 rounded-md text-xs whitespace-nowrap">
+                    <Badge
+                      variant="outline"
+                      className="bg-rose-50 text-rose-700 border-0 rounded-md text-xs whitespace-nowrap"
+                    >
                       {getTimeRemaining(
                         session.scheduled_date,
                         session.scheduled_time
@@ -1095,184 +1278,149 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
         </div>
       )}
 
-      {/* Sessions List - 2 Column Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      {/* Sessions List - Horizontal Rows */}
+      <div>
         {loading ? (
-          Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i} className="border-gray-200 rounded-xl shadow-sm">
-              <CardContent className="p-4 min-h-[180px]">
-                {/* Header skeleton */}
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <Skeleton className="h-5 w-40" />
-                  <Skeleton className="h-6 w-24 rounded-md" />
-                </div>
-
-                {/* Info section skeleton */}
-                <div className="space-y-2 mb-3">
-                  {/* Date and time skeleton */}
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="h-4 w-4 rounded" />
-                    <Skeleton className="h-4 w-56" />
-                  </div>
-
-                  {/* Student name skeleton */}
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="h-4 w-4 rounded" />
-                    <Skeleton className="h-4 w-44" />
-                  </div>
-
-                  {/* Amount skeleton */}
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="h-4 w-4 rounded" />
-                    <Skeleton className="h-4 w-28" />
-                  </div>
-                </div>
-
-                {/* Action buttons skeleton */}
-                <div className="flex items-center justify-between gap-2">
-                  <Skeleton className="h-8 w-full rounded-lg" />
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        ) : filteredAndSortedSessions.length > 0 ? (
-          filteredAndSortedSessions.map((session) => {
-            const effectiveStatus = getEffectiveStatus(session);
-            return (
-              <Card
-                key={session.id}
-                className="bg-white border border-gray-200 rounded-xl shadow-sm"
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden divide-y divide-gray-100/80">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className={`px-6 py-6 lg:px-8 lg:py-7 ${
+                  i % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                }`}
               >
-                <CardContent className="p-4">
-                  {/* Header Section - Type, Status, and Badges */}
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <h3 className="text-base font-semibold text-gray-900 truncate">
-                        {formatSessionType(session.session_type)}
-                      </h3>
-                      {isUpcoming(
-                        session.scheduled_date,
-                        session.scheduled_time
-                      ) &&
-                        effectiveStatus === "confirmed" && (
-                          <Badge className="bg-blue-50 text-blue-700 border-0 rounded-md text-xs px-2 py-0.5 whitespace-nowrap flex-shrink-0">
-                            Upcoming
-                          </Badge>
-                        )}
-                    </div>
-                    {getStatusBadge(effectiveStatus)}
-                  </div>
-
-                  {/* Info Section */}
-                  <div className="space-y-2 mb-3">
-                    {/* Date & Time */}
+                <div className="flex flex-col lg:flex-row lg:items-start gap-4 lg:gap-6">
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <Skeleton className="h-5 w-56" />
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                      <span className="text-sm text-gray-700 truncate">
-                        {formatDate(
-                          session.scheduled_date,
-                          session.scheduled_time
-                        )}
-                      </span>
+                      <Skeleton className="h-4 w-4 rounded" />
+                      <Skeleton className="h-4 w-64" />
                     </div>
+                    <Skeleton className="h-10 w-full max-w-[520px] rounded-lg" />
+                  </div>
+                  <div className="flex items-center gap-2 lg:pl-6 lg:border-l border-gray-100">
+                    <Skeleton className="h-6 w-24 rounded-md" />
+                    <Skeleton className="h-6 w-20 rounded-md" />
+                  </div>
+                  <div className="lg:pl-6 lg:border-l border-gray-100">
+                    <Skeleton className="h-9 w-24 rounded-lg" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredAndSortedSessions.length > 0 ? (
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden divide-y divide-gray-100/80">
+            {filteredAndSortedSessions.map((session, index) => {
+              const effectiveStatus = getEffectiveStatus(session);
+              const participantKey = String(getParticipantKey(session) || "unknown");
+              const participantSessionCount =
+                participantSessionCounts.get(participantKey) || 0;
+              const isNewParticipant = participantSessionCount <= 1;
+              const riskIndicator = getRiskIndicator(session, effectiveStatus);
+              const showCountdown =
+                isUpcoming(session.scheduled_date, session.scheduled_time) &&
+                ["pending", "confirmed"].includes(effectiveStatus);
 
-                    {/* Amount */}
-                    {session.total_amount && session.total_amount > 0 && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-green-600">
-                          ₹{session.total_amount.toFixed(2)}
+              return (
+                <div
+                  key={session.id}
+                  className={`px-6 py-6 lg:px-8 lg:py-7 ${
+                    index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                  }`}
+                >
+                  <div className="flex flex-col lg:flex-row lg:items-start gap-5 lg:gap-8">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <h3 className="text-[17px] font-semibold tracking-tight text-gray-900 truncate">
+                          {formatSessionType(session.session_type)}
+                        </h3>
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-1.5 min-w-0">
+                        <Calendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                        <span className="text-sm text-gray-700 truncate">
+                          {formatDate(session.scheduled_date, session.scheduled_time)}
                         </span>
                       </div>
-                    )}
 
-                    {/* Message Preview */}
-                    {session.message && (
-                      <div className="pt-2 border-t border-gray-100">
-                        <p className="text-xs font-medium text-gray-500 mb-1">
-                          Mentee's Message:
-                        </p>
-                        <p className="text-xs text-gray-600 line-clamp-2">
-                          {session.message}
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                      <div className="flex items-center gap-2 mt-3 flex-wrap">
+                        <Badge
+                          variant="outline"
+                          className="bg-gray-100 text-gray-600 border border-gray-200 rounded-md text-xs px-2 py-0.5 whitespace-nowrap font-medium"
+                        >
+                          {isNewParticipant ? "New Student" : `Repeat (${participantSessionCount})`}
+                        </Badge>
 
-                  {/* Action Buttons */}
-                  <div className="flex items-center justify-between gap-2">
-                    {session.status === "pending" ? (
-                      <>
-                        <div className="flex gap-2 flex-1">
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              openConfirmDialog(session.id, "accept")
-                            }
-                            disabled={actionLoading === session.id}
-                            className="flex-1 h-8 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg"
-                          >
-                            {actionLoading === session.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <>
-                                <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-                                Accept
-                              </>
-                            )}
-                          </Button>
-                          <Button
-                            size="sm"
+                        {showCountdown && (
+                          <Badge
                             variant="outline"
-                            onClick={() =>
-                              openConfirmDialog(session.id, "decline")
-                            }
-                            disabled={actionLoading === session.id}
-                            className="flex-1 h-8 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 text-xs font-medium rounded-lg"
+                            className="bg-gray-100 text-gray-700 border border-gray-200 rounded-md text-xs px-2 py-0.5 whitespace-nowrap font-medium"
                           >
-                            {actionLoading === session.id ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <>
-                                <XCircle className="h-3.5 w-3.5 mr-1.5" />
-                                Decline
-                              </>
+                            {getTimeRemaining(
+                              session.scheduled_date,
+                              session.scheduled_time
                             )}
-                          </Button>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            setDetailsModal({ open: true, session })
-                          }
-                          className="h-8 px-3 text-xs font-medium border-gray-200 rounded-lg flex items-center gap-1.5"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                          <span>View</span>
-                        </Button>
-                      </>
-                    ) : (
-                      <div className="w-full flex justify-end">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            setDetailsModal({ open: true, session })
-                          }
-                          className="h-8 px-3 text-xs font-medium border-gray-200 rounded-lg flex items-center gap-1.5"
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                          <span>View</span>
-                        </Button>
+                          </Badge>
+                        )}
                       </div>
-                    )}
+
+                      {session.message && (
+                        <div className="mt-4 max-w-2xl">
+                          <p className="text-sm text-gray-600 leading-6 whitespace-pre-wrap break-words line-clamp-3">
+                            <span className="font-medium text-gray-500">Mentee's Message:</span>{" "}
+                            {session.message}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="lg:min-w-[240px] lg:pl-7 lg:border-l border-gray-100 flex flex-col items-start lg:items-end gap-3">
+                      <div className="flex items-center gap-2 flex-wrap lg:justify-end">
+                        {session.total_amount && session.total_amount > 0 && (
+                          <span className="text-sm font-semibold text-green-600 whitespace-nowrap">
+                            ₹{session.total_amount.toFixed(2)}
+                          </span>
+                        )}
+                        {isUpcoming(session.scheduled_date, session.scheduled_time) &&
+                          effectiveStatus === "confirmed" && (
+                            <Badge
+                              variant="outline"
+                              className="bg-gray-100 text-gray-700 border border-gray-200 rounded-md text-xs px-2 py-0.5 whitespace-nowrap font-medium"
+                            >
+                              Upcoming
+                            </Badge>
+                          )}
+                        {getStatusBadge(effectiveStatus)}
+                      </div>
+
+                      {riskIndicator && (
+                        <Badge
+                          variant="outline"
+                          className="bg-gray-50 text-gray-600 border border-gray-200 rounded-md text-xs px-2 py-0.5 whitespace-nowrap flex items-center gap-1"
+                        >
+                          <ClockAlert className="h-3.5 w-3.5 text-gray-500" />
+                          <span>{riskIndicator}</span>
+                        </Badge>
+                      )}
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setDetailsModal({ open: true, session })}
+                        className="h-9 px-4 text-xs font-medium border-gray-200 rounded-lg flex items-center gap-1.5 bg-white hover:bg-gray-50"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>View</span>
+                      </Button>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })
+                </div>
+              );
+            })}
+          </div>
         ) : (
-          <Card className="bg-gradient-to-br from-gray-50 to-gray-100 border-0 rounded-2xl shadow-none lg:col-span-2">
+          <Card className="bg-gradient-to-br from-gray-50 to-gray-100 border-0 rounded-2xl shadow-none">
             <CardContent className="p-16">
               <div className="text-center max-w-md mx-auto">
                 <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white shadow-sm mb-5">
@@ -1302,41 +1450,86 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
         )}
       </div>
 
-      {/* Confirmation Dialog */}
-      <ConfirmationDialog
-        open={confirmDialog.open}
-        onOpenChange={(open) =>
-          setConfirmDialog({ open, sessionId: null, action: null })
-        }
-        onConfirm={() => {
-          if (confirmDialog.sessionId && confirmDialog.action) {
-            handleSessionAction(confirmDialog.sessionId, confirmDialog.action);
-          }
-        }}
-        title={
-          confirmDialog.action === "accept"
-            ? "Confirm Session"
-            : "Decline Session"
-        }
-        description={
-          confirmDialog.action === "accept"
-            ? "Are you sure you want to accept this session? The student will be notified and the session will be confirmed."
-            : "Are you sure you want to decline this session? This action cannot be undone and the student will be notified."
-        }
-        confirmText={
-          confirmDialog.action === "accept"
-            ? "Accept Session"
-            : "Decline Session"
-        }
-        variant={confirmDialog.action === "decline" ? "destructive" : "default"}
-      />
-
       {/* Session Details Modal */}
       <SessionDetailsModal
         open={detailsModal.open}
         onClose={() => setDetailsModal({ open: false, session: null })}
         session={detailsModal.session}
+        onCancelSession={handleCancelSession}
+        cancelLoading={cancelLoading}
       />
+
+      <Dialog
+        open={cancelDialog.open}
+        onOpenChange={(open) => {
+          if (cancelLoading) return;
+          setCancelDialog((prev) => ({
+            ...prev,
+            open,
+            session: open ? prev.session : null,
+            note: open ? prev.note : "",
+          }));
+          if (!open) {
+            setCancelNoteError("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Cancel Session</DialogTitle>
+            <DialogDescription>
+              Please provide a note for the student explaining why you are cancelling this booking.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Textarea
+              value={cancelDialog.note}
+              onChange={(event) => {
+                const nextValue = event.target.value.slice(
+                  0,
+                  CANCELLATION_NOTE_MAX_LENGTH
+                );
+                setCancelDialog((prev) => ({ ...prev, note: nextValue }));
+                if (cancelNoteError && nextValue.trim()) {
+                  setCancelNoteError("");
+                }
+              }}
+              placeholder="Example: I have an emergency and need to reschedule this session."
+              className="min-h-[120px]"
+              disabled={cancelLoading}
+            />
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-red-600">{cancelNoteError}</span>
+              <span className="text-gray-500">
+                {cancelDialog.note.length}/{CANCELLATION_NOTE_MAX_LENGTH}
+              </span>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setCancelDialog({ open: false, session: null, note: "" });
+                setCancelNoteError("");
+              }}
+              disabled={cancelLoading}
+            >
+              Keep Session
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirmMentorCancellation}
+              disabled={cancelLoading || !cancelDialog.note.trim()}
+            >
+              {cancelLoading ? "Cancelling..." : "Cancel and Notify Student"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
