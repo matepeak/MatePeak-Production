@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +9,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { CheckCircle2 } from "lucide-react";
+import SEO from "@/components/SEO";
 
 
 export default function MentorSignup() {
@@ -58,30 +58,41 @@ export default function MentorSignup() {
 
       if (error) {
         console.error('Signup error:', error);
+        const message = (error.message || '').toLowerCase();
         
         // Handle specific error cases with better messages
-        if (error.message.includes('fetch')) {
+        if (message.includes('fetch')) {
           toast.error("Connection error. Please check your internet connection and try again.");
-        } else if (error.message.includes('User already registered')) {
+        } else if (message.includes('user already registered')) {
           toast.error("An account with this email already exists. Please try logging in.");
-        } else if (error.message.includes('Invalid email')) {
+        } else if (message.includes('invalid email')) {
           toast.error("Please enter a valid email address.");
-        } else if (error.message.includes('Password')) {
+        } else if (message.includes('password')) {
           toast.error("Password must be at least 6 characters long.");
-        } else if (error.message.includes('rate limit') || error.message.includes('too many')) {
-          toast.error("Too many attempts. Please wait a moment and try again.");
+        } else if (error.status === 429 || message.includes('rate limit') || message.includes('too many')) {
+          toast.error("Too many signup attempts. Please wait 1-2 minutes, then try again or use Sign in if account already exists.");
         } else {
           toast.error(error.message || "Failed to create account. Please try again.");
         }
         return;
       }
 
-      // With email confirmation disabled, session should be available immediately
+      // If email confirmation is enabled, Supabase returns user but no session.
+      // This is a successful signup; user should verify email and then sign in.
+      if (data.user && !data.session) {
+        toast.success("Account created! Please verify your email, then sign in.", {
+          duration: 7000,
+        });
+        navigate("/expert/login");
+        return;
+      }
+
+      // With email confirmation disabled, session is available immediately.
       if (data.session) {
         toast.success("Account created successfully! Redirecting to onboarding...");
         navigate("/expert/onboarding");
       } else {
-        toast.error("Failed to create session. Please try logging in.");
+        toast.error("Signup completed but session could not be created. Please sign in.");
         navigate("/expert/login");
       }
     } catch (error: any) {
@@ -124,8 +135,15 @@ export default function MentorSignup() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
+    <>
+      <SEO
+        title="Mentor Signup | MatePeak"
+        description="Create your mentor account on MatePeak."
+        canonicalPath="/mentor/signup"
+        noindex
+      />
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
         <div className="text-center mb-8">
           <Link to="/" className="inline-block mb-4">
             <img 
@@ -274,7 +292,8 @@ export default function MentorSignup() {
           Sign in
         </Link>
       </p>
-    </div>
-  </div>
+        </div>
+      </div>
+    </>
   );
 }

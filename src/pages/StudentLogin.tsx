@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Eye, EyeOff } from "lucide-react";
+import SEO from "@/components/SEO";
 
 export default function StudentLogin() {
   const navigate = useNavigate();
@@ -78,8 +79,15 @@ export default function StudentLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
+    <>
+      <SEO
+        title="Student Login | MatePeak"
+        description="Sign in to your MatePeak student account."
+        canonicalPath="/student/login"
+        noindex
+      />
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
         <div className="text-center mb-8">
           <Link to="/" className="inline-block mb-4">
             <img 
@@ -212,7 +220,8 @@ export default function StudentLogin() {
             </Link>
           </p>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

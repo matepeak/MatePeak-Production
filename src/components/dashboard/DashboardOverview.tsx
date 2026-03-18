@@ -44,6 +44,9 @@ const DashboardOverview = ({
   mentorProfile,
   onNavigate,
 }: DashboardOverviewProps) => {
+  const SUCCESSFUL_PAYMENT_STATUSES = new Set(["paid", "completed"]);
+  const SUCCESSFUL_BOOKING_STATUSES = new Set(["confirmed", "completed"]);
+
   const navigate = useNavigate();
   const { toast } = useToast();
   const [stats, setStats] = useState<Stats>({
@@ -175,9 +178,18 @@ const DashboardOverview = ({
       const completed = sessions?.filter((s) => s.status === "completed") || [];
       const total = sessions?.length || 0;
 
-      // Calculate total earnings
-      const earnings = completed.reduce((sum, session) => {
-        return sum + (session.total_amount || 0);
+      // Calculate earnings only from mentor-side successful paid bookings
+      const earnings = (filteredMentorSessions || []).reduce((sum, session) => {
+        const amount = Number(session.total_amount || 0);
+        const paymentStatus = String(session.payment_status || "").trim().toLowerCase();
+        const bookingStatus = String(session.status || "").trim().toLowerCase();
+        const isSuccessfulPayment = SUCCESSFUL_PAYMENT_STATUSES.has(paymentStatus);
+        const isSuccessfulBooking = SUCCESSFUL_BOOKING_STATUSES.has(bookingStatus);
+
+        // Count only real successful paid mentor bookings.
+        if (!isSuccessfulPayment || !isSuccessfulBooking || amount <= 0) return sum;
+
+        return sum + amount;
       }, 0);
 
       // Fetch average rating from reviews (if reviews table exists)
@@ -285,10 +297,9 @@ const DashboardOverview = ({
     },
     {
       title: "Earnings",
-      value: "Coming Soon",
+      value: `Rs. ${stats.totalEarnings.toLocaleString("en-IN")}`,
       icon: IndianRupee,
       iconColor: "text-rose-400",
-      isComingSoon: true,
     },
     {
       title: "Average Rating",
