@@ -425,6 +425,7 @@ const Navbar = () => {
             {/* Desktop Navigation Links */}
             <div className="hidden md:flex items-center space-x-1 ml-8">
               <DropdownMenu
+                modal={false}
                 open={isExploreDropdownOpen}
                 onOpenChange={setIsExploreDropdownOpen}
               >
@@ -531,11 +532,11 @@ const Navbar = () => {
             {/* Desktop User Actions */}
             <div className="hidden md:flex items-center space-x-4 ml-auto">
               {user ? (
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="flex items-center gap-2 h-11 px-3 rounded-xl hover:bg-gray-100 transition-all border-2 border-transparent data-[state=open]:border-black focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                      className="flex items-center gap-2 h-11 px-3 rounded-xl hover:bg-gray-100 transition-all border border-transparent data-[state=open]:border-gray-300 focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
                     >
                       <Avatar className="h-8 w-8 ring-2 ring-gray-200">
                         <AvatarImage

@@ -77,31 +77,66 @@ const DashboardOverview = ({
     try {
       setLoading(true);
 
-      // Calculate date range based on selected period
       const now = new Date();
-      let startDate: Date | null = null;
+
+      // Calculate date range boundaries based on selected period
+      let rangeStart: Date | null = null;
+      let rangeEnd: Date | null = null;
 
       switch (timePeriod) {
-        case "today":
-          startDate = new Date(
+        case "today": {
+          const startOfDay = new Date(
             now.getFullYear(),
             now.getMonth(),
             now.getDate()
           );
+          const startOfNextDay = new Date(startOfDay);
+          startOfNextDay.setDate(startOfNextDay.getDate() + 1);
+          rangeStart = startOfDay;
+          rangeEnd = startOfNextDay;
           break;
-        case "week":
-          startDate = new Date(now);
-          startDate.setDate(now.getDate() - 7);
+        }
+        case "week": {
+          const startOfWeek = new Date(now);
+          const dayOfWeek = startOfWeek.getDay();
+          const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+          startOfWeek.setDate(startOfWeek.getDate() + diffToMonday);
+          startOfWeek.setHours(0, 0, 0, 0);
+
+          const startOfNextWeek = new Date(startOfWeek);
+          startOfNextWeek.setDate(startOfNextWeek.getDate() + 7);
+
+          rangeStart = startOfWeek;
+          rangeEnd = startOfNextWeek;
           break;
-        case "month":
-          startDate = new Date(now);
-          startDate.setDate(now.getDate() - 30);
+        }
+        case "month": {
+          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+          const startOfNextMonth = new Date(
+            now.getFullYear(),
+            now.getMonth() + 1,
+            1
+          );
+          rangeStart = startOfMonth;
+          rangeEnd = startOfNextMonth;
           break;
+        }
         case "all":
         default:
-          startDate = null;
+          rangeStart = null;
+          rangeEnd = null;
           break;
       }
+
+      const toLocalDateString = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      };
+
+      const startDateString = rangeStart ? toLocalDateString(rangeStart) : null;
+      const endDateString = rangeEnd ? toLocalDateString(rangeEnd) : null;
 
       // Fetch sessions where user is the mentor
       let mentorQuery = supabase
@@ -115,43 +150,21 @@ const DashboardOverview = ({
         .select("*")
         .eq("user_id", mentorProfile.id);
 
+      if (startDateString && endDateString) {
+        mentorQuery = mentorQuery
+          .gte("scheduled_date", startDateString)
+          .lt("scheduled_date", endDateString);
+        studentQuery = studentQuery
+          .gte("scheduled_date", startDateString)
+          .lt("scheduled_date", endDateString);
+      }
+
       const { data: mentorSessions } = await mentorQuery;
       const { data: studentSessions } = await studentQuery;
 
-      // Combine both types of sessions for total count
-      const allSessions = [
+      const sessions = [
         ...(mentorSessions || []),
         ...(studentSessions || []),
-      ];
-
-      // Apply date filter for other stats
-      let filteredMentorQuery = supabase
-        .from("bookings")
-        .select("*")
-        .eq("expert_id", mentorProfile.id);
-
-      let filteredStudentQuery = supabase
-        .from("bookings")
-        .select("*")
-        .eq("user_id", mentorProfile.id);
-
-      if (startDate) {
-        filteredMentorQuery = filteredMentorQuery.gte(
-          "created_at",
-          startDate.toISOString()
-        );
-        filteredStudentQuery = filteredStudentQuery.gte(
-          "created_at",
-          startDate.toISOString()
-        );
-      }
-
-      const { data: filteredMentorSessions } = await filteredMentorQuery;
-      const { data: filteredStudentSessions } = await filteredStudentQuery;
-
-      const sessions = [
-        ...(filteredMentorSessions || []),
-        ...(filteredStudentSessions || []),
       ];
 
       // Calculate stats
@@ -163,7 +176,7 @@ const DashboardOverview = ({
           return sessionDate > now && s.status === "confirmed";
         }) || [];
       const completed = sessions?.filter((s) => s.status === "completed") || [];
-      const total = allSessions?.length || 0; // Total includes all sessions from both roles
+      const total = sessions?.length || 0;
 
       // Calculate earnings only from mentor-side successful paid bookings
       const earnings = (filteredMentorSessions || []).reduce((sum, session) => {

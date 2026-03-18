@@ -29,19 +29,33 @@ export interface CreateBookingRequestData {
   message?: string;
 }
 
+interface BookingRequestDateRange {
+  startDate?: string | null;
+  endDate?: string | null;
+}
+
 /**
  * Fetch all booking requests for a student
  */
 export async function fetchBookingRequests(
-  menteeId: string
+  menteeId: string,
+  dateRange?: BookingRequestDateRange
 ): Promise<BookingRequest[]> {
   try {
     // Fetch requests without join for reliability
-    const { data: plainData, error: reqError } = await supabase
+    let requestQuery = supabase
       .from("booking_requests")
       .select("*")
       .eq("mentee_id", menteeId)
       .order("created_at", { ascending: false });
+
+    if (dateRange?.startDate && dateRange?.endDate) {
+      requestQuery = requestQuery
+        .gte("requested_date", dateRange.startDate)
+        .lt("requested_date", dateRange.endDate);
+    }
+
+    const { data: plainData, error: reqError } = await requestQuery;
 
     if (reqError) {
       console.error("❌ Error fetching booking requests:", reqError);
@@ -51,7 +65,7 @@ export async function fetchBookingRequests(
     const current = plainData || [];
 
     // Try fetching from legacy table if present and merge results
-    const legacy = await fetchLegacyTimeRequests(menteeId);
+    const legacy = await fetchLegacyTimeRequests(menteeId, dateRange);
     const allRequests = [...current, ...legacy];
 
     // Attach mentor details from expert_profiles, fallback to profiles
@@ -135,13 +149,24 @@ export async function fetchBookingRequests(
  * Legacy fallback: fetch from custom_time_requests if that table exists
  * and normalize to BookingRequest shape with minimal fields
  */
-async function fetchLegacyTimeRequests(menteeId: string): Promise<BookingRequest[]> {
+async function fetchLegacyTimeRequests(
+  menteeId: string,
+  dateRange?: BookingRequestDateRange
+): Promise<BookingRequest[]> {
   try {
-    const { data, error } = await supabase
+    let legacyQuery = supabase
       .from("custom_time_requests")
       .select("*")
       .eq("mentee_id", menteeId)
       .order("created_at", { ascending: false });
+
+    if (dateRange?.startDate && dateRange?.endDate) {
+      legacyQuery = legacyQuery
+        .gte("requested_date", dateRange.startDate)
+        .lt("requested_date", dateRange.endDate);
+    }
+
+    const { data, error } = await legacyQuery;
 
     if (error) {
       // If table doesn't exist or access denied, just return empty
