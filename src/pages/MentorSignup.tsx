@@ -51,7 +51,7 @@ export default function MentorSignup() {
             full_name: fullName,
             role: 'mentor'
           },
-          emailRedirectTo: `${window.location.origin}/`
+          emailRedirectTo: `${window.location.origin}/auth/callback`
         },
       });
 
@@ -76,12 +76,37 @@ export default function MentorSignup() {
         return;
       }
 
+      // Supabase may return a user object with empty identities when account already exists.
+      if (data.user?.identities && data.user.identities.length === 0) {
+        toast.error("An account with this email already exists. Please sign in.");
+        navigate("/expert/login");
+        return;
+      }
+
       // If email confirmation is enabled, Supabase returns user but no session.
       // This is a successful signup; user should verify email and then sign in.
       if (data.user && !data.session) {
-        toast.success("Account created! Please verify your email, then sign in.", {
-          duration: 7000,
+        const { error: resendError } = await supabase.auth.resend({
+          type: "signup",
+          email,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
         });
+
+        if (resendError) {
+          const resendMessage = (resendError.message || "").toLowerCase();
+          if (resendError.status === 429 || resendMessage.includes("rate limit")) {
+            toast.success("Account created. Verification email is rate-limited right now. Please wait a minute and then use login to resend.");
+          } else {
+            toast.success("Account created, but verification email could not be re-sent now. Please use login page to resend.");
+          }
+        } else {
+          toast.success("Account created! Verification email sent. Please check inbox/spam, then sign in.", {
+            duration: 7000,
+          });
+        }
+
         navigate("/expert/login");
         return;
       }

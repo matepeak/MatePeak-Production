@@ -64,7 +64,7 @@ const StudentSignup = () => {
             full_name: fullName,
             role: 'student'
           },
-          emailRedirectTo: `${window.location.origin}/`
+          emailRedirectTo: `${window.location.origin}/auth/callback`
         },
       });
 
@@ -98,6 +98,13 @@ const StudentSignup = () => {
         return;
       }
 
+      // Supabase may return a user object with empty identities when account already exists.
+      if (data.user?.identities && data.user.identities.length === 0) {
+        toast.error("An account with this email already exists. Please sign in.");
+        navigate("/student/login");
+        return;
+      }
+
       console.log('==========================================');
       console.log('SIGNUP SUCCESS');
       console.log('==========================================');
@@ -110,6 +117,23 @@ const StudentSignup = () => {
 
       // Check if email confirmation is required
       if (data.user && !data.session) {
+        const { error: resendError } = await supabase.auth.resend({
+          type: "signup",
+          email,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
+        });
+
+        if (resendError) {
+          const resendMessage = (resendError.message || "").toLowerCase();
+          if (resendError.status === 429 || resendMessage.includes("rate limit")) {
+            toast.success("Account created. Verification email is rate-limited right now. Please wait a minute and retry from login.");
+          } else {
+            toast.success("Account created, but verification email could not be re-sent now. Please use login page to resend.");
+          }
+        }
+
         // Email confirmation is required - show success message
         console.log('EMAIL CONFIRMATION REQUIRED');
         setEmailSent(true);
