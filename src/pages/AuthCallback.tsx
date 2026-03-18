@@ -16,76 +16,93 @@ export default function AuthCallback() {
   const handleEmailConfirmation = async () => {
     try {
       console.log('🔐 Auth Callback - Starting email confirmation');
-      
-      // Get the hash from URL (contains the tokens)
+
+      const url = new URL(window.location.href);
+      const query = url.searchParams;
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = hashParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token');
-      const type = hashParams.get('type');
 
-      console.log('🔐 Auth Callback - Type:', type);
-      console.log('🔐 Access Token:', accessToken ? 'Present' : 'Missing');
-      console.log('🔐 Refresh Token:', refreshToken ? 'Present' : 'Missing');
+      const queryType = query.get('type');
+      const hashType = hashParams.get('type');
+      const authType = queryType || hashType;
 
-      if (type === 'signup' && accessToken) {
-        // Set the session
-        const { data, error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken || '',
+      const code = query.get('code');
+      const tokenHash = query.get('token_hash');
+
+      console.log('🔐 Auth Callback - Type:', authType);
+      console.log('🔐 Code present:', !!code);
+      console.log('🔐 Token hash present:', !!tokenHash);
+
+      // Newer Supabase flow: code exchange
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) throw error;
+      } else if (tokenHash && authType) {
+        // Token-hash flow used in some templates
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: authType as any,
         });
+        if (error) throw error;
+      } else {
+        // Legacy hash fragment flow
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
 
-        if (error) {
-          console.error('Session set error:', error);
-          throw error;
+        if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (error) throw error;
         }
+      }
 
-        console.log('Email confirmed for user:', data.user?.id);
-        console.log('User metadata:', data.user?.user_metadata);
-
-        // Create/update profile if user exists
-        if (data.user) {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .upsert({
-              id: data.user.id,
-              email: data.user.email,
-              full_name: data.user.user_metadata?.full_name || '',
-              user_type: data.user.user_metadata?.user_type || 'student',
-              avatar_url: data.user.user_metadata?.avatar_url || null,
-            }, {
-              onConflict: 'id'
-            });
-
-          if (profileError) {
-            console.error('Profile creation/update error:', profileError);
-            // Don't throw - profile might already exist
-          } else {
-            console.log('Profile created/updated successfully');
-          }
-        }
-
-        setStatus('success');
-        setMessage('Email verified successfully! Redirecting to dashboard...');
-
-        // Redirect based on user type after 2 seconds
-        setTimeout(() => {
-          const userType = data.user?.user_metadata?.user_type;
-          console.log('🔀 Redirecting user type:', userType);
-          
-          if (userType === 'mentor') {
-            navigate('/mentor-dashboard');
-          } else {
-            navigate('/dashboard');
-          }
-        }, 2000);
-
-      } else if (type === 'recovery') {
-        // Password recovery
+      if (authType === 'recovery') {
         console.log('🔑 Password recovery detected');
         navigate('/reset-password');
-      } else {
-        throw new Error('Invalid confirmation link or missing tokens');
+        return;
       }
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        throw new Error('Email verified, but no active session was found. Please sign in.');
+      }
+
+      console.log('Email confirmed for user:', user.id);
+      console.log('User metadata:', user.user_metadata);
+
+      const role = user.user_metadata?.role || user.user_metadata?.user_type || 'student';
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          email: user.email,
+          full_name: user.user_metadata?.full_name || '',
+          user_type: role,
+          avatar_url: user.user_metadata?.avatar_url || null,
+        }, {
+          onConflict: 'id'
+        });
+
+      if (profileError) {
+        console.error('Profile creation/update error:', profileError);
+      }
+
+      setStatus('success');
+      setMessage('Email verified successfully! Redirecting...');
+
+      setTimeout(() => {
+        console.log('🔀 Redirecting role:', role);
+        if (role === 'mentor') {
+          navigate('/expert/onboarding');
+        } else {
+          navigate('/dashboard');
+        }
+      }, 1200);
 
     } catch (error: any) {
       console.error('==========================================');
