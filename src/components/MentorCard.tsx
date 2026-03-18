@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { useState, useEffect } from "react";
+import { useMentorLiveStatus } from "@/hooks/useMentorPresence";
 
 // Update the MentorProfile type to include connectionOptions
 export interface MentorProfile {
@@ -22,6 +22,8 @@ export interface MentorProfile {
   expertise_tags?: string[];
   tagline?: string; // Generated tagline like "Senior @ IIT Delhi | Computer Science"
   mentor_tier?: 'basic' | 'verified' | 'top'; // Mentor tier badge
+  is_profile_live?: boolean;
+  last_seen?: string | null;
 }
 
 interface MentorCardProps {
@@ -29,6 +31,7 @@ interface MentorCardProps {
   isNew?: boolean;
   isFavorite?: boolean;
   onToggleFavorite?: (mentorId: string) => void;
+  isOnlineOverride?: boolean;
 }
 
 const MentorCard = ({
@@ -36,7 +39,15 @@ const MentorCard = ({
   isNew,
   isFavorite = false,
   onToggleFavorite,
+  isOnlineOverride,
 }: MentorCardProps) => {
+  const { isOnline: isMentorOnlineFromHook } = useMentorLiveStatus(
+    isOnlineOverride === undefined ? mentor.id : undefined,
+    mentor.last_seen ?? null
+  );
+  const isMentorOnline =
+    isOnlineOverride === undefined ? isMentorOnlineFromHook : isOnlineOverride;
+
   const nameParts = mentor.name.split(" ");
   const initials =
     nameParts.length > 1
@@ -95,16 +106,21 @@ const MentorCard = ({
 
         {/* Header: Avatar, Name, Tagline, Rating */}
         <div className="flex items-start gap-4 mb-4 pr-10">
-          <Avatar className="h-16 w-16 flex-shrink-0 border-2 border-gray-100">
-            <AvatarImage
-              src={mentor.image}
-              alt={mentor.name}
-              className="object-cover"
-            />
-            <AvatarFallback className="bg-matepeak-primary text-white font-semibold text-lg">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative flex-shrink-0">
+            <Avatar className="h-16 w-16 border-2 border-gray-100">
+              <AvatarImage
+                src={mentor.image}
+                alt={mentor.name}
+                className="object-cover"
+              />
+              <AvatarFallback className="bg-matepeak-primary text-white font-semibold text-lg">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            {isMentorOnline && (
+              <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-white" />
+            )}
+          </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-0.5">

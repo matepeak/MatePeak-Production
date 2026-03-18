@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useMentorLiveStatus } from "@/hooks/useMentorPresence";
 
 interface ProfileHeaderProps {
   mentor: any;
@@ -57,6 +58,10 @@ export default function ProfileHeader({
   const navigate = useNavigate();
   const [isCheckingAuth, setIsCheckingAuth] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
+  const { isOnline: isMentorOnline } = useMentorLiveStatus(
+    mentor?.id,
+    mentor?.last_seen
+  );
 
   const handleBookingClick = async () => {
     setIsCheckingAuth(true);
@@ -170,8 +175,10 @@ export default function ProfileHeader({
                   {getInitials(mentor.full_name)}
                 </AvatarFallback>
               </Avatar>
-              {/* Online indicator */}
-              <div className="absolute bottom-1 right-1 h-3.5 w-3.5 bg-green-500 rounded-full border-2 border-white"></div>
+              {/* Live indicator */}
+              {mentor.is_profile_live && isMentorOnline && (
+                <div className="absolute bottom-1 right-1 h-3.5 w-3.5 bg-green-500 rounded-full border-2 border-white"></div>
+              )}
             </div>
           </div>
 

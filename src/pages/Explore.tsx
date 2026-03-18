@@ -3,8 +3,8 @@ import { useLocation, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import MentorCard from "@/components/MentorCard";
 import { MentorProfile } from "@/components/MentorCard";
+import ExploreMentorGrid from "@/components/explore/ExploreMentorGrid";
 import { fetchMentorCards } from "@/services/mentorCardService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1161,16 +1161,11 @@ const Explore = () => {
               {/* Mentor Grid */}
               {sortedMentors.length > 0 ? (
                 <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-                    {sortedMentors.map((mentor) => (
-                      <MentorCard
-                        key={mentor.id}
-                        mentor={mentor}
-                        isFavorite={favorites.includes(mentor.id)}
-                        onToggleFavorite={toggleFavorite}
-                      />
-                    ))}
-                  </div>
+                  <ExploreMentorGrid
+                    mentors={sortedMentors}
+                    favorites={favorites}
+                    onToggleFavorite={toggleFavorite}
+                  />
 
                   {/* Load More Button */}
                   {hasMore && (

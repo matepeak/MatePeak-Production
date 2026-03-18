@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import SEO from "@/components/SEO";
+import { useMentorPresenceMap } from "@/hooks/useMentorPresence";
 
 const MentorSearch = () => {
   const location = useLocation();
@@ -30,6 +31,7 @@ const MentorSearch = () => {
     priceRange: [0, 2000],
     aiResults: initialAIResults,
   });
+  const filteredMentorsPresenceMap = useMentorPresenceMap(filteredMentors);
 
   // Fetch mentors from database
   useEffect(() => {
@@ -274,6 +276,9 @@ const MentorSearch = () => {
                           key={mentor.id}
                           mentor={mentor}
                           isNew={idx < 8}
+                          isOnlineOverride={
+                            filteredMentorsPresenceMap[mentor.id] ?? false
+                          }
                         />
                       ))}
                     </div>

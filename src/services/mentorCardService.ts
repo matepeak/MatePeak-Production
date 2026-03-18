@@ -33,6 +33,8 @@ export interface ExpertProfileData {
   headline?: string;
   mentor_tier?: 'basic' | 'verified' | 'top';
   verification_status?: string;
+  is_profile_live?: boolean;
+  last_seen?: string | null;
 }
 
 /**
@@ -208,6 +210,8 @@ export function transformToMentorCard(
     expertise_tags: profile.expertise_tags || [],
     tagline: profile.headline || generateTagline(profile),
     mentor_tier: profile.mentor_tier || 'basic', // Include mentor tier for verified badge
+    is_profile_live: !!profile.is_profile_live,
+    last_seen: profile.last_seen || null,
   };
 }
 
