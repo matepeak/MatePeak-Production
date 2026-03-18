@@ -348,6 +348,28 @@ const DashboardOverview = ({
         username={mentorProfile.username} 
       />
 
+      <Card className="border border-gray-200 shadow-sm">
+        <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Phase 2 Onboarding</p>
+            <p className="text-xs text-gray-600 mt-1">
+              {mentorProfile?.phase_2_complete
+                ? "Update your Phase 2 verification and credibility details."
+                : "Complete Phase 2 to strengthen trust and improve profile visibility."}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant={mentorProfile?.phase_2_complete ? "outline" : "default"}
+            onClick={() => navigate("/expert/onboarding/phase-2")}
+            className="w-full sm:w-auto"
+          >
+            {mentorProfile?.phase_2_complete ? "Open Phase 2 Onboarding" : "Complete Phase 2"}
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Time Period Filters - Improved Design */}
       <div className="flex items-center gap-2 pb-2">
         <button
