@@ -1,4 +1,4 @@
-import { Star, Phone, Users, MessageCircle, Heart } from "lucide-react";
+import { Star, Phone, Users, MessageCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -29,16 +29,12 @@ export interface MentorProfile {
 interface MentorCardProps {
   mentor: MentorProfile;
   isNew?: boolean;
-  isFavorite?: boolean;
-  onToggleFavorite?: (mentorId: string) => void;
   isOnlineOverride?: boolean;
 }
 
 const MentorCard = ({
   mentor,
   isNew,
-  isFavorite = false,
-  onToggleFavorite,
   isOnlineOverride,
 }: MentorCardProps) => {
   const { isOnline: isMentorOnlineFromHook } = useMentorLiveStatus(
@@ -53,14 +49,6 @@ const MentorCard = ({
     nameParts.length > 1
       ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
       : mentor.name[0];
-
-  const handleFavoriteClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (onToggleFavorite) {
-      onToggleFavorite(mentor.id);
-    }
-  };
 
   const getConnectionIcon = (option: string) => {
     const lowerOption = option.toLowerCase();
@@ -83,25 +71,6 @@ const MentorCard = ({
               NEW
             </div>
           </div>
-        )}
-
-        {/* Favorite Button */}
-        {onToggleFavorite && (
-          <button
-            onClick={handleFavoriteClick}
-            className="absolute top-3 right-3 z-20 p-1 rounded-full bg-white/90 hover:bg-white shadow-sm hover:shadow-md transition-all backdrop-blur-sm"
-            aria-label={
-              isFavorite ? "Remove from favorites" : "Add to favorites"
-            }
-          >
-            <Heart
-              className={`h-4 w-4 transition-all ${
-                isFavorite
-                  ? "fill-red-500 text-red-500"
-                  : "text-gray-400 hover:text-red-500"
-              }`}
-            />
-          </button>
         )}
 
         {/* Header: Avatar, Name, Tagline, Rating */}

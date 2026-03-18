@@ -3,14 +3,10 @@ import { useMentorPresenceMap } from "@/hooks/useMentorPresence";
 
 interface ExploreMentorGridProps {
   mentors: MentorProfile[];
-  favorites: string[];
-  onToggleFavorite: (mentorId: string) => void;
 }
 
 const ExploreMentorGrid = ({
   mentors,
-  favorites,
-  onToggleFavorite,
 }: ExploreMentorGridProps) => {
   const presenceMap = useMentorPresenceMap(mentors);
 
@@ -20,8 +16,6 @@ const ExploreMentorGrid = ({
         <MentorCard
           key={mentor.id}
           mentor={mentor}
-          isFavorite={favorites.includes(mentor.id)}
-          onToggleFavorite={onToggleFavorite}
           isOnlineOverride={presenceMap[mentor.id] ?? false}
         />
       ))}

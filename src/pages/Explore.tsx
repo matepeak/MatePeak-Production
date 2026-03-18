@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useLocation, Link, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -32,8 +32,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { showWarningToast } from "@/utils/toast-helpers";
-import { Session } from "@supabase/supabase-js";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
 import SEO from "@/components/SEO";
 
@@ -55,9 +53,6 @@ const Explore = () => {
   >("newest");
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [session, setSession] = useState<Session | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState("all");
   const [minRating, setMinRating] = useState(0);
 
@@ -137,42 +132,6 @@ const Explore = () => {
         console.error("Failed to parse search history", e);
       }
     }
-
-    // Check authentication and load favorites
-    const initAuth = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      setSession(session);
-
-      // Only load favorites if user is logged in
-      if (session) {
-        const savedFavorites = localStorage.getItem("favoriteMentors");
-        if (savedFavorites) {
-          try {
-            setFavorites(JSON.parse(savedFavorites));
-          } catch (e) {
-            console.error("Failed to parse favorites", e);
-          }
-        }
-      }
-    };
-
-    initAuth();
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-
-      // Clear favorites if user logs out
-      if (!session) {
-        setShowFavoritesOnly(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
 
   // Save search to history
@@ -566,33 +525,10 @@ const Explore = () => {
     setSelectedExpertise("all");
     setSortBy("newest");
     setPriceRange([0, 10000]);
-    setShowFavoritesOnly(false);
     setSelectedLanguage("all");
     setMinRating(0);
     navigate("/explore", { replace: true });
     fetchDatabaseMentors();
-  };
-
-  // Toggle favorite - only for logged-in users
-  const toggleFavorite = (mentorId: string) => {
-    // Check if user is logged in
-    if (!session) {
-      showWarningToast("Sign in required", {
-        description: "Please sign in to save mentors to your favorites",
-        action: {
-          label: "Sign In",
-          onClick: () => navigate("/student/login"),
-        },
-      });
-      return;
-    }
-
-    const newFavorites = favorites.includes(mentorId)
-      ? favorites.filter((id) => id !== mentorId)
-      : [...favorites, mentorId];
-
-    setFavorites(newFavorites);
-    localStorage.setItem("favoriteMentors", JSON.stringify(newFavorites));
   };
 
   // Calculate relevance score for sorting
@@ -626,9 +562,6 @@ const Explore = () => {
 
   // Sort mentors with relevance support
   const sortedMentors = [...mentorCards]
-    .filter((mentor) =>
-      showFavoritesOnly ? favorites.includes(mentor.id) : true
-    )
     .filter((mentor) => {
       // Filter by minimum rating - only filter mentors who actually have ratings
       // Mentors without ratings (rating = 0 or no reviews) should still be shown
@@ -676,7 +609,6 @@ const Explore = () => {
     searchInput !== "" ||
     priceRange[0] !== 0 ||
     priceRange[1] !== 10000 ||
-    showFavoritesOnly ||
     selectedLanguage !== "all" ||
     minRating > 0;
 
@@ -1068,33 +1000,6 @@ const Explore = () => {
                           </Select>
                         </div>
 
-                        {/* Favorites Toggle - Only for logged-in users */}
-                        {session && (
-                          <div className="flex items-center justify-between">
-                            <label className="text-sm font-medium text-gray-700 font-poppins">
-                              Show Favorites Only
-                            </label>
-                            <button
-                              onClick={() =>
-                                setShowFavoritesOnly(!showFavoritesOnly)
-                              }
-                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                showFavoritesOnly
-                                  ? "bg-matepeak-primary"
-                                  : "bg-gray-200"
-                              }`}
-                            >
-                              <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                  showFavoritesOnly
-                                    ? "translate-x-6"
-                                    : "translate-x-1"
-                                }`}
-                              />
-                            </button>
-                          </div>
-                        )}
-
                         {/* Action Buttons */}
                         <div className="flex gap-2 pt-3 border-t border-gray-100">
                           {hasActiveFilters && (
@@ -1161,11 +1066,7 @@ const Explore = () => {
               {/* Mentor Grid */}
               {sortedMentors.length > 0 ? (
                 <>
-                  <ExploreMentorGrid
-                    mentors={sortedMentors}
-                    favorites={favorites}
-                    onToggleFavorite={toggleFavorite}
-                  />
+                  <ExploreMentorGrid mentors={sortedMentors} />
 
                   {/* Load More Button */}
                   {hasMore && (
@@ -1192,14 +1093,10 @@ const Explore = () => {
                 <div className="text-center py-20">
                   <Search className="h-16 w-16 text-gray-300 mx-auto mb-6" />
                   <h3 className="text-xl font-medium text-gray-900 mb-2 font-poppins">
-                    {showFavoritesOnly
-                      ? "No favorites yet"
-                      : "No results found"}
+                    No results found
                   </h3>
                   <p className="text-gray-600 font-poppins text-sm mb-6">
-                    {showFavoritesOnly ? (
-                      "Start adding mentors to your favorites by clicking the heart icon on their cards."
-                    ) : searchInput ? (
+                    {searchInput ? (
                       <>
                         Your search for{" "}
                         <span className="font-semibold">"{searchInput}"</span>{" "}
@@ -1211,7 +1108,7 @@ const Explore = () => {
                   </p>
 
                   {/* Helpful suggestions */}
-                  {searchInput && !showFavoritesOnly && (
+                  {searchInput && (
                     <div className="max-w-md mx-auto mb-6">
                       <p className="text-sm font-medium text-gray-700 mb-3 font-poppins">
                         Try these suggestions:
@@ -1270,7 +1167,7 @@ const Explore = () => {
                     </div>
                   )}
 
-                  {hasActiveFilters && !showFavoritesOnly && (
+                  {hasActiveFilters && (
                     <Button
                       onClick={handleClearFilters}
                       className="bg-matepeak-primary hover:bg-matepeak-secondary text-white font-poppins"
