@@ -9,6 +9,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { CheckCircle2, Mail } from "lucide-react";
+import SEO from "@/components/SEO";
 
 const StudentSignup = () => {
   const navigate = useNavigate();
@@ -167,8 +168,15 @@ const StudentSignup = () => {
   // Show email confirmation success screen
   if (emailSent) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 text-center">
+      <>
+        <SEO
+          title="Student Signup | MatePeak"
+          description="Create your student account on MatePeak."
+          canonicalPath="/student/signup"
+          noindex
+        />
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 text-center">
           <div className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
             <Mail className="h-10 w-10 text-green-600" />
           </div>
@@ -227,14 +235,22 @@ const StudentSignup = () => {
               Back to Home
             </Button>
           </div>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
+    <>
+      <SEO
+        title="Student Signup | MatePeak"
+        description="Create your student account on MatePeak."
+        canonicalPath="/student/signup"
+        noindex
+      />
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
         <div className="text-center mb-8">
           <Link to="/" className="inline-block mb-4">
             <img 
@@ -403,8 +419,9 @@ const StudentSignup = () => {
             </Link>
           </p>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
