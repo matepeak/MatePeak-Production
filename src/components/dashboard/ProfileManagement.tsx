@@ -1,18 +1,24 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Save, Camera, Upload, Eye, Globe, Plus, Trash2, AlertTriangle, ShieldAlert } from "lucide-react";
+import { Loader2, Save, Camera, Upload, Eye, Globe, Plus, Trash2, AlertTriangle, ShieldAlert, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ImageEditor from "@/components/onboarding/ImageEditor";
 import ExpertiseEditor from "@/components/dashboard/ExpertiseEditor";
 import DeleteAccountDialog from "@/components/dashboard/DeleteAccountDialog";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { deleteAccount } from "@/services/authService";
+import {
+  getNotificationPreferences,
+  upsertNotificationPreferences,
+} from "@/services/notificationService";
 import {
   Select,
   SelectContent,
@@ -43,6 +49,18 @@ interface ProfileManagementProps {
   onProfileUpdate: (profile: any) => void;
 }
 
+type EditableProfileSection = "none" | "basic" | "expertise";
+
+const mapProfileToBasicFormData = (profile: any) => ({
+  first_name: profile.full_name?.split(" ")[0] || "",
+  last_name: profile.full_name?.split(" ").slice(1).join(" ") || "",
+  headline: profile.headline || "",
+  introduction: profile.introduction || "",
+  teaching_experience: profile.teaching_experience || "",
+  motivation: profile.motivation || "",
+  languages: Array.isArray(profile.languages) ? profile.languages : [],
+});
+
 const ProfileManagement = ({
   mentorProfile,
   onProfileUpdate,
@@ -55,17 +73,52 @@ const ProfileManagement = ({
   const [editorOpen, setEditorOpen] = useState(false);
   const [tempImageUrl, setTempImageUrl] = useState<string>("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [activeEditSection, setActiveEditSection] = useState<EditableProfileSection>("none");
+  const [showDiscardBasicDialog, setShowDiscardBasicDialog] = useState(false);
+  const [savingNotifications, setSavingNotifications] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const [formData, setFormData] = useState({
-    first_name: mentorProfile.full_name?.split(' ')[0] || "",
-    last_name: mentorProfile.full_name?.split(' ').slice(1).join(' ') || "",
-    headline: mentorProfile.headline || "",
-    introduction: mentorProfile.introduction || "",
-    teaching_experience: mentorProfile.teaching_experience || "",
-    motivation: mentorProfile.motivation || "",
-    languages: mentorProfile.languages || [],
+  const [notifications, setNotifications] = useState({
+    in_app_enabled: true,
+    booking_lifecycle_enabled: true,
+    time_requests_enabled: true,
+    priority_dm_enabled: true,
+    email_enabled: false,
+    push_enabled: false,
   });
+  
+  const [formData, setFormData] = useState(() => mapProfileToBasicFormData(mentorProfile));
+  const [basicFormBaseline, setBasicFormBaseline] = useState(() => mapProfileToBasicFormData(mentorProfile));
+
+  const isBasicEditing = activeEditSection === "basic";
+
+  useEffect(() => {
+    const nextBaseline = mapProfileToBasicFormData(mentorProfile);
+    setBasicFormBaseline(nextBaseline);
+
+    if (!isBasicEditing) {
+      setFormData(nextBaseline);
+    }
+  }, [mentorProfile, isBasicEditing]);
+
+  useEffect(() => {
+    const loadNotificationPrefs = async () => {
+      if (!mentorProfile?.id) return;
+
+      const prefResult = await getNotificationPreferences(mentorProfile.id);
+      if (prefResult.success && prefResult.data) {
+        setNotifications({
+          in_app_enabled: prefResult.data.in_app_enabled,
+          booking_lifecycle_enabled: prefResult.data.booking_lifecycle_enabled,
+          time_requests_enabled: prefResult.data.time_requests_enabled,
+          priority_dm_enabled: prefResult.data.priority_dm_enabled,
+          email_enabled: prefResult.data.email_enabled,
+          push_enabled: prefResult.data.push_enabled,
+        });
+      }
+    };
+
+    loadNotificationPrefs();
+  }, [mentorProfile?.id]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -95,6 +148,53 @@ const ProfileManagement = ({
         i === index ? { ...lang, [field]: value } : lang
       ),
     }));
+  };
+
+  const hasBasicInfoChanges = () => {
+    if (formData.first_name !== basicFormBaseline.first_name) return true;
+    if (formData.last_name !== basicFormBaseline.last_name) return true;
+    if (formData.headline !== basicFormBaseline.headline) return true;
+    if (formData.introduction !== basicFormBaseline.introduction) return true;
+    if (formData.teaching_experience !== basicFormBaseline.teaching_experience) return true;
+    if (formData.motivation !== basicFormBaseline.motivation) return true;
+
+    const currentLanguages = JSON.stringify(formData.languages || []);
+    const baselineLanguages = JSON.stringify(basicFormBaseline.languages || []);
+    return currentLanguages !== baselineLanguages;
+  };
+
+  const startBasicEdit = () => {
+    setActiveEditSection("basic");
+  };
+
+  const handleCancelBasicEdit = () => {
+    if (!hasBasicInfoChanges()) {
+      setActiveEditSection("none");
+      return;
+    }
+
+    setShowDiscardBasicDialog(true);
+  };
+
+  const confirmDiscardBasicChanges = () => {
+    setFormData(basicFormBaseline);
+    setActiveEditSection("none");
+    setShowDiscardBasicDialog(false);
+  };
+
+  const startExpertiseEdit = () => {
+    if (isBasicEditing) {
+      setFormData(basicFormBaseline);
+    }
+    setActiveEditSection("expertise");
+  };
+
+  const handleExpertiseCancel = () => {
+    setActiveEditSection("none");
+  };
+
+  const handleExpertiseSaveSuccess = () => {
+    setActiveEditSection("none");
   };
 
   const handleProfilePictureClick = () => {
@@ -193,6 +293,10 @@ const ProfileManagement = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!isBasicEditing) {
+      return;
+    }
+
     // Validation
     if (!formData.first_name.trim()) {
       toast({
@@ -264,6 +368,10 @@ const ProfileManagement = ({
       if (error) throw error;
 
       onProfileUpdate(data);
+      const savedBaseline = mapProfileToBasicFormData(data);
+      setBasicFormBaseline(savedBaseline);
+      setFormData(savedBaseline);
+      setActiveEditSection("none");
 
       toast({
         title: "Profile updated",
@@ -309,6 +417,40 @@ const ProfileManagement = ({
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleNotificationToggle = async (
+    field:
+      | "in_app_enabled"
+      | "booking_lifecycle_enabled"
+      | "time_requests_enabled"
+      | "priority_dm_enabled"
+      | "email_enabled"
+      | "push_enabled",
+    checked: boolean
+  ) => {
+    const next = { ...notifications, [field]: checked };
+    setNotifications(next);
+
+    try {
+      setSavingNotifications(true);
+      const result = await upsertNotificationPreferences(mentorProfile.id, {
+        [field]: checked,
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to save notification preferences");
+      }
+    } catch (error: any) {
+      setNotifications((prev) => ({ ...prev, [field]: !checked }));
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update notification settings",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingNotifications(false);
     }
   };
 
@@ -413,14 +555,29 @@ const ProfileManagement = ({
       <ExpertiseEditor
         mentorProfile={mentorProfile}
         onProfileUpdate={onProfileUpdate}
+        isEditing={activeEditSection === "expertise"}
+        onStartEdit={startExpertiseEdit}
+        onCancelEdit={handleExpertiseCancel}
+        onSaveSuccess={handleExpertiseSaveSuccess}
       />
 
       {/* Basic Information */}
       <Card className="border-gray-200">
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between gap-3">
           <h3 className="text-lg font-semibold text-gray-900">
             Basic Information
           </h3>
+          {!isBasicEditing && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={startBasicEdit}
+              className="border-gray-300 hover:border-gray-400"
+            >
+              Edit
+            </Button>
+          )}
         </div>
         <CardContent className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -436,7 +593,10 @@ const ProfileManagement = ({
                   value={formData.first_name}
                   onChange={handleChange}
                   placeholder="Enter your first name"
-                  className="transition-all bg-gray-50 border-gray-300 focus:bg-white"
+                  className={`transition-all border-gray-300 ${
+                    isBasicEditing ? "bg-gray-50 focus:bg-white" : "bg-gray-100 cursor-not-allowed"
+                  }`}
+                  disabled={!isBasicEditing || loading}
                   required
                 />
               </div>
@@ -450,7 +610,10 @@ const ProfileManagement = ({
                   value={formData.last_name}
                   onChange={handleChange}
                   placeholder="Enter your last name"
-                  className="transition-all bg-gray-50 border-gray-300 focus:bg-white"
+                  className={`transition-all border-gray-300 ${
+                    isBasicEditing ? "bg-gray-50 focus:bg-white" : "bg-gray-100 cursor-not-allowed"
+                  }`}
+                  disabled={!isBasicEditing || loading}
                   required
                 />
               </div>
@@ -485,7 +648,10 @@ const ProfileManagement = ({
                 value={formData.headline}
                 onChange={handleChange}
                 placeholder="e.g., Expert Software Engineer | 10+ Years Experience"
-                className="transition-all bg-gray-50 border-gray-300 focus:bg-white"
+                  className={`transition-all border-gray-300 ${
+                    isBasicEditing ? "bg-gray-50 focus:bg-white" : "bg-gray-100 cursor-not-allowed"
+                  }`}
+                  disabled={!isBasicEditing || loading}
                 maxLength={100}
                 required
               />
@@ -506,7 +672,10 @@ const ProfileManagement = ({
                 onChange={handleChange}
                 placeholder="Tell students about yourself, your background, and expertise..."
                 rows={5}
-                className="transition-all resize-none bg-gray-50 border-gray-300 focus:bg-white"
+                  className={`transition-all resize-none border-gray-300 ${
+                    isBasicEditing ? "bg-gray-50 focus:bg-white" : "bg-gray-100 cursor-not-allowed"
+                  }`}
+                  disabled={!isBasicEditing || loading}
                 maxLength={400}
                 required
               />
@@ -527,7 +696,10 @@ const ProfileManagement = ({
                 onChange={handleChange}
                 placeholder="Describe your teaching or mentoring experience..."
                 rows={4}
-                className="transition-all resize-none bg-gray-50 border-gray-300 focus:bg-white"
+                  className={`transition-all resize-none border-gray-300 ${
+                    isBasicEditing ? "bg-gray-50 focus:bg-white" : "bg-gray-100 cursor-not-allowed"
+                  }`}
+                  disabled={!isBasicEditing || loading}
                 maxLength={400}
               />
               <p className="text-xs text-gray-500">
@@ -547,7 +719,10 @@ const ProfileManagement = ({
                 onChange={handleChange}
                 placeholder="Share what motivates you to teach and mentor others..."
                 rows={4}
-                className="transition-all resize-none bg-gray-50 border-gray-300 focus:bg-white"
+                  className={`transition-all resize-none border-gray-300 ${
+                    isBasicEditing ? "bg-gray-50 focus:bg-white" : "bg-gray-100 cursor-not-allowed"
+                  }`}
+                  disabled={!isBasicEditing || loading}
                 maxLength={400}
               />
               <p className="text-xs text-gray-500">
@@ -567,6 +742,7 @@ const ProfileManagement = ({
                   variant="outline"
                   size="sm"
                   onClick={handleAddLanguage}
+                  disabled={!isBasicEditing || loading}
                   className="border-gray-300 hover:border-gray-400"
                 >
                   <Plus className="w-4 h-4 mr-1" />
@@ -591,6 +767,7 @@ const ProfileManagement = ({
                           <Label className="text-xs text-gray-600">Language</Label>
                           <Select
                             value={lang.language}
+                            disabled={!isBasicEditing || loading}
                             onValueChange={(value) => handleLanguageChange(index, "language", value)}
                           >
                             <SelectTrigger className="bg-white">
@@ -609,6 +786,7 @@ const ProfileManagement = ({
                           <Label className="text-xs text-gray-600">Proficiency</Label>
                           <Select
                             value={lang.level}
+                            disabled={!isBasicEditing || loading}
                             onValueChange={(value) => handleLanguageChange(index, "level", value)}
                           >
                             <SelectTrigger className="bg-white">
@@ -629,6 +807,7 @@ const ProfileManagement = ({
                         variant="ghost"
                         size="icon"
                         onClick={() => handleRemoveLanguage(index)}
+                        disabled={!isBasicEditing || loading}
                         className="h-9 w-9 flex-shrink-0 hover:bg-red-50 hover:text-red-600 transition-colors mt-5"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -639,26 +818,37 @@ const ProfileManagement = ({
               )}
             </div>
 
-            {/* Submit Button */}
-            <div className="flex justify-end pt-4 border-t border-gray-200">
-              <Button
-                type="submit"
-                disabled={loading}
-                className="bg-gray-900 hover:bg-gray-800 text-white"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Changes
-                  </>
-                )}
-              </Button>
-            </div>
+            {/* Submit Controls */}
+            {isBasicEditing && (
+              <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancelBasicEdit}
+                  disabled={loading}
+                  className="border-gray-300 hover:border-gray-400"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="bg-gray-900 hover:bg-gray-800 text-white"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </form>
         </CardContent>
       </Card>
@@ -721,6 +911,107 @@ const ProfileManagement = ({
         </CardContent>
       </Card>
 
+      {/* Notification Preferences */}
+      <Card className="border-gray-200">
+        <div className="p-6 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            Notification Preferences
+          </h3>
+        </div>
+        <CardContent className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="mentor_in_app_enabled">In-App Notifications</Label>
+              <p className="text-sm text-gray-500">Receive notifications in dashboard bell</p>
+            </div>
+            <Switch
+              id="mentor_in_app_enabled"
+              checked={notifications.in_app_enabled}
+              disabled={savingNotifications}
+              onCheckedChange={(checked) =>
+                handleNotificationToggle("in_app_enabled", checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="mentor_booking_lifecycle_enabled">Booking Lifecycle</Label>
+              <p className="text-sm text-gray-500">New booking requests and booking updates</p>
+            </div>
+            <Switch
+              id="mentor_booking_lifecycle_enabled"
+              checked={notifications.booking_lifecycle_enabled}
+              disabled={savingNotifications || !notifications.in_app_enabled}
+              onCheckedChange={(checked) =>
+                handleNotificationToggle("booking_lifecycle_enabled", checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="mentor_time_requests_enabled">Time Requests</Label>
+              <p className="text-sm text-gray-500">Custom time request activity</p>
+            </div>
+            <Switch
+              id="mentor_time_requests_enabled"
+              checked={notifications.time_requests_enabled}
+              disabled={savingNotifications || !notifications.in_app_enabled}
+              onCheckedChange={(checked) =>
+                handleNotificationToggle("time_requests_enabled", checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="mentor_priority_dm_enabled">Priority DM</Label>
+              <p className="text-sm text-gray-500">New priority messages and replies</p>
+            </div>
+            <Switch
+              id="mentor_priority_dm_enabled"
+              checked={notifications.priority_dm_enabled}
+              disabled={savingNotifications || !notifications.in_app_enabled}
+              onCheckedChange={(checked) =>
+                handleNotificationToggle("priority_dm_enabled", checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+            <div className="space-y-0.5">
+              <Label htmlFor="mentor_email_enabled">Email Notifications</Label>
+              <p className="text-sm text-gray-500">Enable email delivery channel (future integration)</p>
+            </div>
+            <Switch
+              id="mentor_email_enabled"
+              checked={notifications.email_enabled}
+              disabled={savingNotifications}
+              onCheckedChange={(checked) =>
+                handleNotificationToggle("email_enabled", checked)
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="mentor_push_enabled">Push Notifications</Label>
+              <p className="text-sm text-gray-500">Enable push delivery channel (future integration)</p>
+            </div>
+            <Switch
+              id="mentor_push_enabled"
+              checked={notifications.push_enabled}
+              disabled={savingNotifications}
+              onCheckedChange={(checked) =>
+                handleNotificationToggle("push_enabled", checked)
+              }
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Danger Zone - Delete Account */}
       <Card className="border-red-200 bg-red-50/50">
         <div className="p-4 border-b border-red-200 bg-red-50">
@@ -764,6 +1055,16 @@ const ProfileManagement = ({
         onOpenChange={setDeleteDialogOpen}
         onConfirmDelete={handleDeleteAccount}
         mentorEmail={mentorProfile.email}
+      />
+
+      <ConfirmationDialog
+        open={showDiscardBasicDialog}
+        onOpenChange={setShowDiscardBasicDialog}
+        onConfirm={confirmDiscardBasicChanges}
+        title="Discard unsaved changes?"
+        description="You have unsaved changes in Basic Information. Discard them and exit edit mode?"
+        confirmText="Discard"
+        cancelText="Keep Editing"
       />
     </div>
   );

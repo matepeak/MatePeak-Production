@@ -156,7 +156,7 @@
     border-color: hsl(var(--border));
   }
 
-  input:not([type="checkbox"]):not([type="radio"]):not(.hero-search-input):focus,
+  input:not([type="checkbox"]):not([type="radio"]):not(.hero-search-input):not(.explore-search-input):focus,
   textarea:focus,
   button[role="combobox"]:focus {
     background-color: hsl(0 0% 100%);
@@ -166,7 +166,7 @@
   }
 
   /* Focus visible for better accessibility */
-  input:not([type="checkbox"]):not([type="radio"]):not(.hero-search-input):focus-visible,
+  input:not([type="checkbox"]):not([type="radio"]):not(.hero-search-input):not(.explore-search-input):focus-visible,
   textarea:focus-visible,
   button[role="combobox"]:focus-visible {
     background-color: hsl(0 0% 100%);

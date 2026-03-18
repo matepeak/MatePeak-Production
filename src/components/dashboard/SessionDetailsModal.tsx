@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import {
   Calendar,
   Clock,
@@ -15,6 +16,7 @@ import {
   Phone,
   MessageSquare,
   Video,
+  Loader2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -22,33 +24,80 @@ interface SessionDetailsModalProps {
   open: boolean;
   onClose: () => void;
   session: any;
+  onCancelSession?: (session: any) => void;
+  cancelLoading?: boolean;
 }
 
 const SessionDetailsModal = ({
   open,
   onClose,
   session,
+  onCancelSession,
+  cancelLoading = false,
 }: SessionDetailsModalProps) => {
   if (!session) return null;
 
-  // Use the enriched data from the session object
+  const normalizeParticipantField = (value: unknown) => {
+    if (typeof value !== "string") return null;
+    const normalized = value.trim();
+    if (!normalized) return null;
+
+    const placeholderValues = new Set([
+      "mentor",
+      "student",
+      "unknown",
+      "n/a",
+      "na",
+      "not provided",
+    ]);
+
+    return placeholderValues.has(normalized.toLowerCase()) ? null : normalized;
+  };
+
+  const now = new Date();
+  const sessionStart = new Date(`${session.scheduled_date}T${session.scheduled_time}`);
+  const cancellationReasonLower = String(session.cancellation_reason || "").toLowerCase();
+  const cancelledByLabel =
+    cancellationReasonLower.includes("mentor")
+      ? "Mentor"
+      : cancellationReasonLower.includes("student")
+      ? "Student"
+      : session.cancelled_by === session.expert_id
+      ? "Mentor"
+      : session.cancelled_by === session.user_id
+      ? "Student"
+      : session.cancelled_by
+      ? "User"
+      : "Not available";
+  const canCancelSession =
+    !!onCancelSession &&
+    ["pending", "confirmed"].includes((session.status || "").toLowerCase()) &&
+    sessionStart > now;
+
+  const isMentorSideSession = session.user_role === "expert";
+  const participantSectionTitle = isMentorSideSession
+    ? "Mentee Information"
+    : "Mentor Information";
+
   const participantName =
-    session.display_name ||
-    (session.user_role === "expert"
-      ? session.student?.full_name || session.student_name
-      : session.mentor_profile?.full_name || "Mentor");
+    normalizeParticipantField(
+      isMentorSideSession
+        ? session.student?.full_name || session.student_name || session.display_name
+        : session.mentor_profile?.full_name || session.display_name
+    ) || "Not Provided";
 
   const participantEmail =
-    session.display_email ||
-    (session.user_role === "expert"
-      ? session.student?.email || session.student_email
-      : session.mentor_profile?.email || "");
+    normalizeParticipantField(
+      isMentorSideSession
+        ? session.student?.email || session.student_email || session.display_email
+        : session.mentor_profile?.email || session.display_email
+    ) || "Not Provided";
 
-  const participantPhone =
-    session.display_phone ||
-    (session.user_role === "expert"
-      ? session.student?.phone
-      : session.mentor_profile?.phone);
+  const participantPhone = normalizeParticipantField(
+    isMentorSideSession
+      ? session.student?.phone || session.display_phone
+      : session.mentor_profile?.phone || session.display_phone
+  );
 
   const formatDate = (date: string, time: string) => {
     try {
@@ -94,6 +143,7 @@ const SessionDetailsModal = ({
           {/* Status Badge */}
           <div className="flex items-center justify-between">
             <Badge
+              variant="outline"
               className={`px-3 py-1 text-sm font-medium border ${getStatusColor(
                 session.status
               )}`}
@@ -187,7 +237,7 @@ const SessionDetailsModal = ({
           {/* Participant Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">
-              Mentee Information
+              {participantSectionTitle}
             </h3>
 
             <div className="space-y-3">
@@ -197,7 +247,7 @@ const SessionDetailsModal = ({
                 <div>
                   <p className="text-xs font-medium text-gray-600">Full Name</p>
                   <p className="text-sm text-gray-900 font-medium">
-                    {participantName || "Not provided"}
+                    {participantName}
                   </p>
                 </div>
               </div>
@@ -208,7 +258,7 @@ const SessionDetailsModal = ({
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-gray-600">Email</p>
                   <p className="text-sm text-gray-900 font-medium break-all">
-                    {participantEmail || "Not provided"}
+                    {participantEmail}
                   </p>
                 </div>
               </div>
@@ -284,6 +334,65 @@ const SessionDetailsModal = ({
               </p>
             </div>
           </div>
+
+          {session.status === "cancelled" && (
+            <>
+              <Separator />
+              <div className="space-y-2 text-sm">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Cancellation Details
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-gray-600">Cancelled At</p>
+                    <p className="text-gray-900 font-medium mt-1">
+                      {session.cancelled_at
+                        ? new Date(session.cancelled_at).toLocaleString()
+                        : "Not available"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Cancelled By</p>
+                    <p className="text-gray-900 font-medium mt-1">
+                      {cancelledByLabel}
+                    </p>
+                  </div>
+                </div>
+                {session.cancellation_reason && (
+                  <div>
+                    <p className="text-gray-600">Reason</p>
+                    <p className="text-gray-900 font-medium mt-1 whitespace-pre-wrap">
+                      {session.cancellation_reason}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {canCancelSession && (
+            <>
+              <Separator />
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={cancelLoading}
+                  onClick={() => onCancelSession?.(session)}
+                  className="min-w-[140px]"
+                >
+                  {cancelLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Cancelling...
+                    </>
+                  ) : (
+                    "Cancel Session"
+                  )}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>

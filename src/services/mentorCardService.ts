@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { SERVICE_CONFIG } from "@/config/serviceConfig";
+import { normalizeServiceType } from "@/config/serviceConfig";
 import { MentorProfile } from "@/components/MentorCard";
 
 /**
@@ -119,49 +120,96 @@ function generateTagline(profile: ExpertProfileData): string {
 export function transformToMentorCard(
   profile: ExpertProfileData
 ): MentorProfile {
-  // Calculate pricing from service_pricing using exact prices only
+  const isServiceEnabled = (enabled: unknown) =>
+    enabled === true || enabled === "true" || enabled === 1 || enabled === "1";
+
+  const toValidPrice = (value: unknown): number | null => {
+    if (value === null || value === undefined || value === "") return null;
+    const parsed = typeof value === "number" ? value : Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) return null;
+    return parsed;
+  };
+
+  // Calculate starting price as minimum effective price across enabled services.
   const getLowestPrice = () => {
-    if (!profile.service_pricing || typeof profile.service_pricing !== 'object') return 0;
+    if (!profile.service_pricing || typeof profile.service_pricing !== "object") {
+      return toValidPrice((profile as any).pricing) ?? 0;
+    }
 
     const prices: number[] = [];
 
-    Object.entries(profile.service_pricing).forEach(([key, service]: [string, any]) => {
-      if (service?.enabled && service.price !== undefined && service.price !== null) {
-        // Use the exact price set by the mentor (even if it's 0)
-        prices.push(service.price);
+    Object.entries(profile.service_pricing).forEach(([, service]: [string, any]) => {
+      if (!isServiceEnabled(service?.enabled)) {
+        return;
+      }
+
+      const effectivePrice =
+        toValidPrice(service?.discount_price) ?? toValidPrice(service?.price);
+
+      if (effectivePrice !== null) {
+        prices.push(effectivePrice);
       }
     });
 
-    return prices.length > 0 ? Math.min(...prices) : 0;
+    if (prices.length > 0) {
+      return Math.min(...prices);
+    }
+
+    return toValidPrice((profile as any).pricing) ?? 0;
   };
 
-  // Extract connection options from service_pricing
-  const getConnectionOptions = () => {
-    const options: string[] = [];
+  // Extract service names + type metadata from service_pricing
+  const getConnectionOptionDetails = () => {
+    const options: Array<{ name: string; serviceKey?: string; serviceType?: string }> = [];
 
     if (profile.service_pricing && typeof profile.service_pricing === 'object') {
       // Use service_pricing (new unified system)
       Object.entries(profile.service_pricing).forEach(([key, service]: [string, any]) => {
         if (service?.enabled) {
-          // Use shared SERVICE_CONFIG for consistent naming
-          const config = SERVICE_CONFIG[key as keyof typeof SERVICE_CONFIG];
-          if (config) {
-            options.push(config.name);
-          } else if (service.name) {
-            // Custom services - use their name
-            options.push(service.name);
-          }
+          const normalizedType = normalizeServiceType(key);
+          const mentorDefinedName = typeof service?.name === "string" ? service.name.trim() : "";
+          const fallbackName =
+            (normalizedType && SERVICE_CONFIG[normalizedType]?.name) ||
+            key;
+
+          options.push({
+            name: mentorDefinedName || fallbackName,
+            serviceKey: key,
+            serviceType: normalizedType || "custom",
+          });
         }
       });
     } else if (profile.services) {
       // Fallback to old services system for backward compatibility
-      if (profile.services.oneOnOneSession) options.push(SERVICE_CONFIG.oneOnOneSession.name);
-      if (profile.services.priorityDm) options.push(SERVICE_CONFIG.priorityDm.name);
-      if (profile.services.digitalProducts) options.push(SERVICE_CONFIG.digitalProducts.name);
+      if (profile.services.oneOnOneSession) {
+        options.push({
+          name: SERVICE_CONFIG.oneOnOneSession.name,
+          serviceKey: "oneOnOneSession",
+          serviceType: "oneOnOneSession",
+        });
+      }
+      if (profile.services.priorityDm) {
+        options.push({
+          name: SERVICE_CONFIG.priorityDm.name,
+          serviceKey: "priorityDm",
+          serviceType: "priorityDm",
+        });
+      }
+      if (profile.services.digitalProducts) {
+        options.push({
+          name: SERVICE_CONFIG.digitalProducts.name,
+          serviceKey: "digitalProducts",
+          serviceType: "digitalProducts",
+        });
+      }
     }
 
-    return options.length > 0 ? options : [SERVICE_CONFIG.oneOnOneSession.name];
+    return options.length > 0
+      ? options
+      : [{ name: SERVICE_CONFIG.oneOnOneSession.name, serviceKey: "oneOnOneSession", serviceType: "oneOnOneSession" }];
   };
+
+  const connectionOptionDetails = getConnectionOptionDetails();
 
   // Use categories array or fallback to single category
   const categories =
@@ -181,7 +229,8 @@ export function transformToMentorCard(
     reviewCount: Number(profile.total_reviews || 0),
     price: getLowestPrice(),
     bio: profile.bio || "",
-    connectionOptions: getConnectionOptions(),
+    connectionOptions: connectionOptionDetails.map((option) => option.name),
+    connectionOptionDetails,
     username: profile.username,
     expertise_tags: profile.expertise_tags || [],
     tagline: profile.headline || generateTagline(profile),

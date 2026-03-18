@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bell } from "lucide-react";
+import { Bell, CalendarCheck2, MessageCircle, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,110 +10,104 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
-
-interface Notification {
-  id: string;
-  type: "booking" | "message" | "review";
-  title: string;
-  description: string;
-  created_at: string;
-  read: boolean;
-}
+import { MAX_NOTIFICATIONS } from "@/config/constants";
+import {
+  AppNotification,
+  listNotifications,
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
+  subscribeToNotifications,
+} from "@/services/notificationService";
 
 interface NotificationBellProps {
-  mentorId: string;
+  recipientId: string;
+  onNavigateToView?: (view: string) => void;
 }
 
-export function NotificationBell({ mentorId }: NotificationBellProps) {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+export function NotificationBell({
+  recipientId,
+  onNavigateToView,
+}: NotificationBellProps) {
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     fetchNotifications();
-    
-    // Subscribe to real-time updates for bookings
-    const bookingsChannel = supabase
-      .channel('bookings_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'bookings',
-          filter: `expert_id=eq.${mentorId}`,
-        },
-        (payload) => {
-          addNotification({
-            id: payload.new.id,
-            type: 'booking',
-            title: 'New Booking Request',
-            description: `You have a new ${payload.new.session_type} booking request`,
-            created_at: payload.new.created_at,
-            read: false,
-          });
-        }
-      )
-      .subscribe();
+
+    const subscription = subscribeToNotifications(recipientId, () => {
+      fetchNotifications(true);
+    });
 
     return () => {
-      bookingsChannel.unsubscribe();
+      subscription.unsubscribe();
     };
-  }, [mentorId]);
+  }, [recipientId]);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (silent = false) => {
     try {
-      setLoading(true);
-
-      // Fetch recent bookings
-      const { data: bookings } = await supabase
-        .from("bookings")
-        .select("*")
-        .eq("expert_id", mentorId)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false })
-        .limit(5);
-
-      const notifs: Notification[] = [];
-
-      if (bookings) {
-        bookings.forEach((booking) => {
-          notifs.push({
-            id: booking.id,
-            type: "booking",
-            title: "New Booking Request",
-            description: `${booking.session_type} session`,
-            created_at: booking.created_at,
-            read: false,
-          });
-        });
+      if (!silent) {
+        setLoading(true);
       }
 
+      const result = await listNotifications(recipientId, {
+        limit: MAX_NOTIFICATIONS * 2,
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to fetch notifications");
+      }
+
+      const notifs = result.data;
+
       setNotifications(notifs);
-      setUnreadCount(notifs.filter((n) => !n.read).length);
+      setUnreadCount(notifs.filter((n) => !n.isRead).length);
     } catch (error) {
       console.error("Error fetching notifications:", error);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
-  const addNotification = (notification: Notification) => {
-    setNotifications((prev) => [notification, ...prev].slice(0, 10)); // Keep last 10
-    setUnreadCount((prev) => prev + 1);
-  };
+  const markAsRead = async (id: string) => {
+    const result = await markNotificationAsRead(id);
+    if (!result.success) {
+      console.error("Failed to mark notification as read:", result.error);
+      return;
+    }
 
-  const markAsRead = (id: string) => {
     setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      prev.map((n) =>
+        n.id === id
+          ? {
+              ...n,
+              readAt: new Date().toISOString(),
+              isRead: true,
+            }
+          : n
+      )
     );
     setUnreadCount((prev) => Math.max(0, prev - 1));
   };
 
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const markAllAsRead = async () => {
+    const result = await markAllNotificationsAsRead(recipientId);
+    if (!result.success) {
+      console.error("Failed to mark all notifications as read:", result.error);
+      return;
+    }
+
+    setNotifications((prev) =>
+      prev.map((n) => ({
+        ...n,
+        readAt: n.readAt || new Date().toISOString(),
+        isRead: true,
+      }))
+    );
     setUnreadCount(0);
   };
 
@@ -128,18 +122,36 @@ export function NotificationBell({ mentorId }: NotificationBellProps) {
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case "booking":
-        return "📅";
-      case "message":
-        return "💬";
+        return CalendarCheck2;
+      case "priority_dm":
+        return MessageCircle;
       case "review":
-        return "⭐";
+        return Star;
+      case "booking_request":
+        return CalendarCheck2;
       default:
-        return "🔔";
+        return Bell;
     }
   };
 
+  const handleNotificationClick = async (notification: AppNotification) => {
+    if (!notification.isRead) {
+      await markAsRead(notification.id);
+    }
+
+    if (
+      onNavigateToView &&
+      notification.routeView &&
+      ["sessions", "messages", "reviews", "requests", "time-request"].includes(notification.routeView)
+    ) {
+      onNavigateToView(notification.routeView);
+    }
+
+    setOpen(false);
+  };
+
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -156,13 +168,13 @@ export function NotificationBell({ mentorId }: NotificationBellProps) {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
-        <DropdownMenuLabel className="flex items-center justify-between">
-          <span className="font-semibold">Notifications</span>
+      <DropdownMenuContent align="end" className="w-[360px] rounded-2xl border border-gray-200 bg-white shadow-xl p-0 overflow-hidden">
+        <DropdownMenuLabel className="flex items-center justify-between px-4 py-3">
+          <span className="font-semibold text-gray-900">Notifications</span>
           {unreadCount > 0 && (
             <button
               onClick={markAllAsRead}
-              className="text-xs text-blue-600 hover:text-blue-700"
+              className="text-xs font-medium text-matepeak-primary hover:text-matepeak-secondary transition-colors"
             >
               Mark all as read
             </button>
@@ -171,7 +183,7 @@ export function NotificationBell({ mentorId }: NotificationBellProps) {
         <DropdownMenuSeparator />
         
         {loading ? (
-          <div className="p-4 text-center text-sm text-gray-500">
+          <div className="p-5 text-center text-sm text-gray-500">
             Loading notifications...
           </div>
         ) : notifications.length > 0 ? (
@@ -179,26 +191,31 @@ export function NotificationBell({ mentorId }: NotificationBellProps) {
             {notifications.map((notif) => (
               <DropdownMenuItem
                 key={notif.id}
-                className={`px-4 py-3 cursor-pointer ${
-                  !notif.read ? "bg-blue-50" : ""
+                className={`px-4 py-3.5 cursor-pointer border-b border-gray-100 last:border-b-0 data-[highlighted]:bg-gray-50 focus:bg-gray-50 ${
+                  !notif.isRead ? "bg-matepeak-primary/5" : "bg-white"
                 }`}
-                onClick={() => markAsRead(notif.id)}
+                onClick={() => handleNotificationClick(notif)}
               >
                 <div className="flex gap-3 w-full">
-                  <div className="text-2xl">{getNotificationIcon(notif.type)}</div>
+                  <div className="h-10 w-10 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    {(() => {
+                      const Icon = getNotificationIcon(notif.type);
+                      return <Icon className="h-5 w-5 text-gray-700" />;
+                    })()}
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className="text-sm font-semibold text-gray-900 truncate">
                       {notif.title}
                     </p>
-                    <p className="text-sm text-gray-600 truncate">
-                      {notif.description}
+                    <p className="text-sm text-gray-600 truncate mt-0.5">
+                      {notif.body}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      {getTimeAgo(notif.created_at)}
+                      {getTimeAgo(notif.createdAt)}
                     </p>
                   </div>
-                  {!notif.read && (
-                    <div className="h-2 w-2 rounded-full bg-blue-600 mt-2" />
+                  {!notif.isRead && (
+                    <div className="h-2.5 w-2.5 rounded-full bg-matepeak-primary mt-2" />
                   )}
                 </div>
               </DropdownMenuItem>
@@ -206,7 +223,7 @@ export function NotificationBell({ mentorId }: NotificationBellProps) {
           </div>
         ) : (
           <div className="p-8 text-center">
-            <Bell className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+            <Bell className="h-12 w-12 text-gray-300 mx-auto mb-2" />
             <p className="text-sm font-medium text-gray-900">No notifications</p>
             <p className="text-xs text-gray-500 mt-1">
               You're all caught up!

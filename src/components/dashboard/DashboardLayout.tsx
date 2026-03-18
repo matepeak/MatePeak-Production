@@ -217,7 +217,10 @@ const DashboardLayout = ({
 
             {/* Right side */}
             <div className="flex items-center gap-3">
-              <NotificationBell mentorId={mentorProfile.id} />
+              <NotificationBell
+                recipientId={mentorProfile.id}
+                onNavigateToView={(view) => onViewChange(view as DashboardView)}
+              />
 
               {/* User Menu */}
               <DropdownMenu>
