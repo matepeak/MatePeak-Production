@@ -20,6 +20,7 @@ import {
   Settings,
   Eye,
   PackageOpen,
+  Wallet,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -44,7 +45,8 @@ type DashboardView =
   | "messages"
   | "students"
   | "requests"
-  | "services";
+  | "services"
+  | "earnings";
 
 interface DashboardLayoutProps {
   activeView: DashboardView;
@@ -139,6 +141,17 @@ const DashboardLayout = ({
           id: "services" as DashboardView,
           label: "Services",
           icon: PackageOpen,
+          badge: null,
+        },
+      ],
+    },
+    {
+      label: "Earnings",
+      items: [
+        {
+          id: "earnings" as DashboardView,
+          label: "Earnings",
+          icon: Wallet,
           badge: null,
         },
       ],
