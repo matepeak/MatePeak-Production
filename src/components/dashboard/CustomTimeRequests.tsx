@@ -97,7 +97,7 @@ export default function CustomTimeRequests({
 
           return {
             ...request,
-            profiles: profileData || { full_name: "Unknown", email: "" },
+            profiles: profileData || { full_name: "Deleted User", email: "" },
           };
         })
       );
@@ -556,7 +556,7 @@ export default function CustomTimeRequests({
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <h3 className="text-sm font-semibold text-gray-900 truncate">
-                              {request.profiles?.full_name || "Unknown Student"}
+                              {request.profiles?.full_name || "Deleted User"}
                             </h3>
                             {isNewRequest(request.created_at) && (
                               <Badge className="bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0 h-4 leading-none">
