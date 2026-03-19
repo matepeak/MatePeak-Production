@@ -387,7 +387,7 @@ export default function CustomTimeRequests({
         );
       case "approved":
         return (
-          <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-200 hover:border-green-300 transition-colors">
+          <Badge className="bg-green-100 text-green-800 border-green-200">
             Approved
           </Badge>
         );
@@ -461,7 +461,7 @@ export default function CustomTimeRequests({
             </p>
           </div>
           {pendingCount > 0 && (
-            <Badge className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 text-sm font-semibold">
+            <Badge className="bg-amber-500 text-white px-4 py-1.5 text-sm font-semibold">
               {pendingCount} Pending
             </Badge>
           )}
@@ -559,7 +559,7 @@ export default function CustomTimeRequests({
                               {request.profiles?.full_name || "Unknown Student"}
                             </h3>
                             {isNewRequest(request.created_at) && (
-                              <Badge className="bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0 h-4 leading-none">
+                              <Badge className="bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0 h-4 leading-none">
                                 NEW
                               </Badge>
                             )}

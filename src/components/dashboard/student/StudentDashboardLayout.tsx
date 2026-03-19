@@ -18,6 +18,7 @@ import {
   GraduationCap,
   Clock,
 } from "lucide-react";
+import ClockPlus from "lucide-react/dist/esm/icons/clock-plus";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -76,7 +77,7 @@ const StudentDashboardLayout = ({
         {
           id: "time-request" as StudentView,
           label: "Time Request",
-          icon: Clock,
+          icon: ClockPlus,
           badge: null,
         },
         {
@@ -179,7 +180,7 @@ const StudentDashboardLayout = ({
               />
               
               {/* User Menu */}
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-2 px-3 h-11 rounded-xl hover:bg-gray-100 transition-all border-2 border-transparent data-[state=open]:border-black focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 group">
                     <div className="relative">
