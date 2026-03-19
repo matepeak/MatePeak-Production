@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Loader2, Save, Check, Tag, Briefcase, GraduationCap, Heart, Code, BookOpen, Palette, TrendingUp, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -118,19 +119,58 @@ const expertiseOptions = [
 interface ExpertiseEditorProps {
   mentorProfile: any;
   onProfileUpdate: (profile: any) => void;
+  isEditing: boolean;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+  onSaveSuccess: () => void;
 }
 
-const ExpertiseEditor = ({ mentorProfile, onProfileUpdate }: ExpertiseEditorProps) => {
+const ExpertiseEditor = ({
+  mentorProfile,
+  onProfileUpdate,
+  isEditing,
+  onStartEdit,
+  onCancelEdit,
+  onSaveSuccess,
+}: ExpertiseEditorProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+
+  const mapProfileToCategories = (profile: any): string[] =>
+    profile.categories || (profile.category ? [profile.category] : []);
+
+  const mapProfileToTags = (profile: any): string[] => profile.expertise_tags || [];
   
   // Initialize state with existing data
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(
-    mentorProfile.categories || (mentorProfile.category ? [mentorProfile.category] : [])
-  );
-  const [selectedTags, setSelectedTags] = useState<string[]>(
-    mentorProfile.expertise_tags || []
-  );
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(mapProfileToCategories(mentorProfile));
+  const [selectedTags, setSelectedTags] = useState<string[]>(mapProfileToTags(mentorProfile));
+  const [baselineCategories, setBaselineCategories] = useState<string[]>(mapProfileToCategories(mentorProfile));
+  const [baselineTags, setBaselineTags] = useState<string[]>(mapProfileToTags(mentorProfile));
+
+  const hasUnsavedChanges = () => {
+    const sortedSelectedCategories = [...selectedCategories].sort();
+    const sortedBaselineCategories = [...baselineCategories].sort();
+    const sortedSelectedTags = [...selectedTags].sort();
+    const sortedBaselineTags = [...baselineTags].sort();
+
+    return (
+      JSON.stringify(sortedSelectedCategories) !== JSON.stringify(sortedBaselineCategories) ||
+      JSON.stringify(sortedSelectedTags) !== JSON.stringify(sortedBaselineTags)
+    );
+  };
+
+  useEffect(() => {
+    const categories = mapProfileToCategories(mentorProfile);
+    const tags = mapProfileToTags(mentorProfile);
+    setBaselineCategories(categories);
+    setBaselineTags(tags);
+
+    if (!isEditing) {
+      setSelectedCategories(categories);
+      setSelectedTags(tags);
+    }
+  }, [mentorProfile, isEditing]);
 
   // Get available tags based on selected categories
   const availableTags = selectedCategories.length > 0 
@@ -140,6 +180,8 @@ const ExpertiseEditor = ({ mentorProfile, onProfileUpdate }: ExpertiseEditorProp
     : [];
 
   const toggleCategory = (category: string) => {
+    if (!isEditing) return;
+
     setSelectedCategories(prev => {
       const newCategories = prev.includes(category)
         ? prev.filter(c => c !== category)
@@ -160,6 +202,8 @@ const ExpertiseEditor = ({ mentorProfile, onProfileUpdate }: ExpertiseEditorProp
   };
 
   const toggleTag = (tag: string) => {
+    if (!isEditing) return;
+
     setSelectedTags(prev =>
       prev.includes(tag)
         ? prev.filter(t => t !== tag)
@@ -167,7 +211,27 @@ const ExpertiseEditor = ({ mentorProfile, onProfileUpdate }: ExpertiseEditorProp
     );
   };
 
+  const handleCancel = () => {
+    if (!hasUnsavedChanges()) {
+      onCancelEdit();
+      return;
+    }
+
+    setShowDiscardDialog(true);
+  };
+
+  const confirmDiscard = () => {
+    setSelectedCategories(baselineCategories);
+    setSelectedTags(baselineTags);
+    setShowDiscardDialog(false);
+    onCancelEdit();
+  };
+
   const handleSave = async () => {
+    if (!isEditing) {
+      return;
+    }
+
     if (selectedCategories.length === 0) {
       toast({
         title: "Expertise required",
@@ -195,6 +259,13 @@ const ExpertiseEditor = ({ mentorProfile, onProfileUpdate }: ExpertiseEditorProp
       if (error) throw error;
 
       onProfileUpdate(data);
+      const nextCategories = mapProfileToCategories(data);
+      const nextTags = mapProfileToTags(data);
+      setBaselineCategories(nextCategories);
+      setBaselineTags(nextTags);
+      setSelectedCategories(nextCategories);
+      setSelectedTags(nextTags);
+      onSaveSuccess();
 
       toast({
         title: "Expertise updated",
@@ -215,18 +286,31 @@ const ExpertiseEditor = ({ mentorProfile, onProfileUpdate }: ExpertiseEditorProp
   return (
     <Card className="border-gray-200 shadow-sm">
       <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-white rounded-lg shadow-sm">
-            <Briefcase className="w-5 h-5 text-gray-700" />
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-white rounded-lg shadow-sm">
+              <Briefcase className="w-5 h-5 text-gray-700" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Areas of Expertise
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Select your expertise areas and specific skills to help students find you
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">
-              Areas of Expertise
-            </h3>
-            <p className="text-sm text-gray-600 mt-1">
-              Select your expertise areas and specific skills to help students find you
-            </p>
-          </div>
+          {!isEditing && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onStartEdit}
+              className="border-gray-300 hover:border-gray-400"
+            >
+              Edit
+            </Button>
+          )}
         </div>
       </div>
       <CardContent className="p-6 space-y-6">
@@ -251,8 +335,10 @@ const ExpertiseEditor = ({ mentorProfile, onProfileUpdate }: ExpertiseEditorProp
                   key={option.value}
                   type="button"
                   onClick={() => toggleCategory(option.value)}
+                  disabled={!isEditing || loading}
                   className={cn(
                     "relative p-4 rounded-xl border-2 text-left transition-all duration-200 group",
+                    !isEditing && "cursor-not-allowed opacity-85",
                     isSelected
                       ? "bg-gray-50 border-gray-900 shadow-md hover:shadow-lg"
                       : "bg-white border-gray-200 hover:border-gray-300 hover:shadow-sm"
@@ -318,9 +404,11 @@ const ExpertiseEditor = ({ mentorProfile, onProfileUpdate }: ExpertiseEditorProp
                     key={tag}
                     type="button"
                     onClick={() => toggleTag(tag)}
+                    disabled={!isEditing || loading}
                     className={cn(
                       "px-4 py-2 rounded-lg text-xs font-medium transition-all duration-200",
                       "border",
+                      !isEditing && "cursor-not-allowed opacity-85",
                       isSelected
                         ? "bg-gray-900 text-white border-gray-900 shadow-sm hover:shadow-md hover:bg-gray-800"
                         : "bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50 hover:shadow-sm"
@@ -355,28 +443,51 @@ const ExpertiseEditor = ({ mentorProfile, onProfileUpdate }: ExpertiseEditorProp
             </div>
           )}
           
-          <div className="flex justify-end">
-            <Button
-              onClick={handleSave}
-              disabled={loading || selectedCategories.length === 0}
-              size="lg"
-              className="bg-gray-900 hover:bg-gray-800 text-white shadow-sm hover:shadow-md transition-all duration-200"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving Changes...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Expertise
-                </>
-              )}
-            </Button>
-          </div>
+          {isEditing ? (
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCancel}
+                disabled={loading}
+                className="border-gray-300 hover:border-gray-400"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={loading || selectedCategories.length === 0}
+                size="lg"
+                className="bg-gray-900 hover:bg-gray-800 text-white shadow-sm hover:shadow-md transition-all duration-200"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving Changes...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Expertise
+                  </>
+                )}
+              </Button>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-500 text-right">Click Edit to update your expertise settings.</p>
+          )}
         </div>
       </CardContent>
+
+      <ConfirmationDialog
+        open={showDiscardDialog}
+        onOpenChange={setShowDiscardDialog}
+        onConfirm={confirmDiscard}
+        title="Discard unsaved changes?"
+        description="You have unsaved expertise changes. Discard them and exit edit mode?"
+        confirmText="Discard"
+        cancelText="Keep Editing"
+      />
     </Card>
   );
 };

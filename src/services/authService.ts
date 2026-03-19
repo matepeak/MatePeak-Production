@@ -209,7 +209,7 @@ export async function deleteAccount() {
     await supabase
       .from('notifications')
       .delete()
-      .eq('user_id', userId);
+      .eq('recipient_id', userId);
 
     // 10. Delete expert profile
     const { error: profileError } = await supabase

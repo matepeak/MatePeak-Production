@@ -19,7 +19,6 @@ import {
   Star,
   MapPin,
   Calendar,
-  MessageCircle,
   Linkedin,
   Twitter,
   Globe,
@@ -218,28 +217,15 @@ export default function ProfileHeader({
                 </Button>
               </Link>
             ) : (
-              // Show booking and message buttons for other mentors
-              <>
-                <Button
-                  onClick={handleBookingClick}
-                  disabled={isCheckingAuth}
-                  className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium text-sm disabled:opacity-50"
-                >
-                  {isCheckingAuth
-                    ? "Checking..."
-                    : `Book ${mentor.full_name.split(" ")[0]}`}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 font-medium text-sm"
-                >
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  Message{" "}
-                  <span className="text-xs text-gray-400 ml-1">
-                    (Under Development)
-                  </span>
-                </Button>
-              </>
+              <Button
+                onClick={handleBookingClick}
+                disabled={isCheckingAuth}
+                className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium text-sm disabled:opacity-50"
+              >
+                {isCheckingAuth
+                  ? "Checking..."
+                  : `Book ${mentor.full_name.split(" ")[0]}`}
+              </Button>
             )}
           </div>
 

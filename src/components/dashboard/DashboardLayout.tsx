@@ -106,6 +106,17 @@ const DashboardLayout = ({
       ],
     },
     {
+      label: "Earnings",
+      items: [
+        {
+          id: "earnings" as DashboardView,
+          label: "Earnings (Under Development)",
+          icon: Wallet,
+          badge: null,
+        },
+      ],
+    },
+    {
       label: "Engage",
       items: [
         {
@@ -141,17 +152,6 @@ const DashboardLayout = ({
           id: "services" as DashboardView,
           label: "Services",
           icon: PackageOpen,
-          badge: null,
-        },
-      ],
-    },
-    {
-      label: "Earnings",
-      items: [
-        {
-          id: "earnings" as DashboardView,
-          label: "Earnings",
-          icon: Wallet,
           badge: null,
         },
       ],
@@ -230,12 +230,15 @@ const DashboardLayout = ({
 
             {/* Right side */}
             <div className="flex items-center gap-3">
-              <NotificationBell mentorId={mentorProfile.id} />
+              <NotificationBell
+                recipientId={mentorProfile.id}
+                onNavigateToView={(view) => onViewChange(view as DashboardView)}
+              />
 
               {/* User Menu */}
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 px-3 h-11 rounded-xl hover:bg-gray-100 transition-all border-2 border-transparent data-[state=open]:border-black focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 group">
+                  <button className="flex items-center gap-2 px-3 h-11 rounded-xl hover:bg-gray-100 transition-all border-[0.5px] border-transparent data-[state=open]:border-black focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 group">
                     <div className="relative">
                       <Avatar
                         className="h-8 w-8 ring-2 ring-gray-200"

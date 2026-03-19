@@ -629,48 +629,51 @@ const Explore = () => {
             {/* Clean Search Bar with Autocomplete and History */}
             <div className="mb-4 max-w-4xl">
               <div className="relative">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 sm:px-5 py-3.5 rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-sm focus-within:border-matepeak-primary focus-within:shadow-md transition-all bg-white">
-                  <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                  <Input
-                    ref={searchInputRef}
-                    type="text"
-                    placeholder="Search by name, expertise, skills, or institution..."
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    onFocus={() => {
-                      if (
-                        searchInput.length >= MIN_SEARCH_LENGTH ||
-                        searchHistory.length > 0
-                      ) {
-                        setShowSuggestions(true);
-                      }
-                    }}
-                    onBlur={() =>
-                      setTimeout(() => setShowSuggestions(false), 200)
-                    }
-                    className="!border-0 !focus-visible:ring-0 !focus-visible:ring-offset-0 !focus-visible:outline-none !focus-visible:border-0 !shadow-none !outline-none text-gray-900 font-poppins p-0 h-auto text-base placeholder:text-gray-500"
-                  />
-                  {searchInput && (
-                    <button
-                      onClick={() => {
-                        setSearchInput("");
-                        setSuggestions([]);
-                        setShowSuggestions(false);
-                        fetchDatabaseMentors();
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 sm:px-5 py-2.5 rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-sm focus-within:border-matepeak-primary focus-within:shadow-md transition-all bg-white">
+                  <div className="flex items-center gap-3 flex-1 min-w-0 h-11">
+                    <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="Search by name, expertise, skills, or institution..."
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                      onFocus={() => {
+                        if (
+                          searchInput.length >= MIN_SEARCH_LENGTH ||
+                          searchHistory.length > 0
+                        ) {
+                          setShowSuggestions(true);
+                        }
                       }}
-                      className="text-gray-400 hover:text-gray-600 flex-shrink-0"
-                    >
-                      <X className="h-5 w-5" />
-                    </button>
-                  )}
+                      onBlur={() =>
+                        setTimeout(() => setShowSuggestions(false), 200)
+                      }
+                      className="explore-search-input w-full h-full bg-transparent border-0 outline-none ring-0 focus:outline-none focus:ring-0 text-gray-900 font-poppins text-base placeholder:text-gray-500"
+                    />
+                    {searchInput && (
+                      <button
+                        onClick={() => {
+                          setSearchInput("");
+                          setSuggestions([]);
+                          setShowSuggestions(false);
+                          fetchDatabaseMentors();
+                        }}
+                        className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                        aria-label="Clear search"
+                      >
+                        <X className="h-5 w-5" />
+                      </button>
+                    )}
+                  </div>
                   <Button
                     onClick={handleSearch}
                     disabled={
                       searchInput.length > 0 &&
                       searchInput.length < MIN_SEARCH_LENGTH
                     }
-                    className="w-full sm:w-auto bg-matepeak-primary hover:bg-matepeak-secondary text-white font-poppins px-6 h-9 flex-shrink-0 disabled:opacity-50"
+                    className="w-full sm:w-auto bg-matepeak-primary hover:bg-matepeak-secondary text-white font-poppins px-6 h-11 flex-shrink-0 disabled:opacity-50"
                   >
                     Search
                   </Button>

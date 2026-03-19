@@ -6,6 +6,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useMentorLiveStatus } from "@/hooks/useMentorPresence";
 import PresenceDot from "@/components/PresenceDot";
+import { SERVICE_CONFIG, normalizeServiceType } from "@/config/serviceConfig";
+
+export interface MentorServiceOption {
+  name: string;
+  serviceKey?: string;
+  serviceType?: string;
+}
 
 // Update the MentorProfile type to include connectionOptions
 export interface MentorProfile {
@@ -19,6 +26,7 @@ export interface MentorProfile {
   price: number;
   bio: string;
   connectionOptions: string[];
+  connectionOptionDetails?: MentorServiceOption[];
   username?: string; // Optional username for new profile route
   expertise_tags?: string[];
   tagline?: string; // Generated tagline like "Senior @ IIT Delhi | Computer Science"
@@ -52,21 +60,47 @@ const MentorCard = ({
       ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
       : mentor.name[0];
 
-  const getConnectionIcon = (option: string) => {
-    const lowerOption = option.toLowerCase();
+  const getConnectionIcon = (option: MentorServiceOption) => {
+    const normalizedType =
+      (option.serviceType && normalizeServiceType(option.serviceType)) ||
+      (option.serviceKey && normalizeServiceType(option.serviceKey)) ||
+      null;
+
+    if (normalizedType) {
+      const Icon = SERVICE_CONFIG[normalizedType].icon;
+      return <Icon className="h-3.5 w-3.5" />;
+    }
+
+    const lowerOption = option.name.toLowerCase();
     if (lowerOption.includes("call") || lowerOption.includes("1:1")) {
       return <Phone className="h-3.5 w-3.5" />;
     } else if (lowerOption.includes("group")) {
       return <Users className="h-3.5 w-3.5" />;
+    } else if (
+      lowerOption.includes("resume") ||
+      lowerOption.includes("linkedin") ||
+      lowerOption.includes("digital") ||
+      lowerOption.includes("resource") ||
+      lowerOption.includes("document")
+    ) {
+      const Icon = SERVICE_CONFIG.digitalProducts.icon;
+      return <Icon className="h-3.5 w-3.5" />;
     } else if (lowerOption.includes("chat") || lowerOption.includes("doubt")) {
       return <MessageCircle className="h-3.5 w-3.5" />;
     }
     return <Phone className="h-3.5 w-3.5" />;
   };
 
+  const visibleExpertise = mentor.categories.slice(0, 2);
+  const serviceOptions: MentorServiceOption[] =
+    mentor.connectionOptionDetails && mentor.connectionOptionDetails.length > 0
+      ? mentor.connectionOptionDetails
+      : mentor.connectionOptions.map((name) => ({ name }));
+  const visibleServices = serviceOptions.slice(0, 3);
+
   return (
     <Card className="overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 h-full w-full max-w-[340px] mx-auto border border-gray-200 bg-white rounded-2xl">
-      <CardContent className="p-6 relative">
+      <CardContent className="p-6 relative h-full flex flex-col">
         {isNew && (
           <div className="absolute top-2 right-2 z-10">
             <div className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
@@ -134,18 +168,18 @@ const MentorCard = ({
         )}
 
         {/* Expertise Section */}
-        <div className="mb-4">
+        <div className="mb-4 h-[92px] flex flex-col">
           <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-2.5">
             EXPERTISE
           </h4>
-          <div className="flex flex-wrap gap-2">
-            {mentor.categories.slice(0, 3).map((category, index) => (
+          <div className="flex flex-wrap gap-2 overflow-hidden">
+            {visibleExpertise.map((category, index) => (
               <Badge
                 key={index}
                 variant="outline"
-                className="bg-white text-gray-700 border-gray-300 text-xs font-medium px-3 py-1 rounded-md hover:bg-gray-50 transition-colors"
+                className="max-w-full bg-white text-gray-700 border-gray-300 text-xs font-medium px-3 py-1 rounded-md hover:bg-gray-50 transition-colors"
               >
-                {category}
+                <span className="truncate">{category}</span>
               </Badge>
             ))}
           </div>
@@ -156,16 +190,16 @@ const MentorCard = ({
           <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-2.5">
             AVAILABLE SERVICES
           </h4>
-          <div className="flex flex-wrap gap-2">
-            {mentor.connectionOptions.slice(0, 3).map((option, index) => (
+          <div className="space-y-2">
+            {visibleServices.map((option, index) => (
               <Badge
                 key={index}
                 variant="outline"
-                className="bg-white text-gray-700 border-gray-300 text-xs font-medium px-3 py-1 rounded-md hover:bg-gray-50 transition-colors"
+                className="w-full justify-start bg-white text-gray-700 border-gray-300 text-xs font-medium px-3 py-1 rounded-md hover:bg-gray-50 transition-colors"
               >
-                <span className="flex items-center gap-1.5">
+                <span className="flex items-center gap-1.5 min-w-0">
                   {getConnectionIcon(option)}
-                  {option}
+                  <span className="truncate">{option.name}</span>
                 </span>
               </Badge>
             ))}
@@ -173,15 +207,10 @@ const MentorCard = ({
         </div>
 
         {/* Footer: Price and CTA */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+        <div className="mt-auto flex items-center justify-between pt-4 border-t border-gray-200">
           <div>
             <p className="text-xs text-gray-500 mb-0.5">Starting from</p>
-            <p className="text-xl font-bold text-gray-900">
-              ₹{mentor.price}
-              <span className="text-xs text-gray-500 font-normal ml-1">
-                /session
-              </span>
-            </p>
+            <p className="text-xl font-bold text-gray-900">₹{mentor.price}</p>
           </div>
           <Link
             to={

@@ -26,6 +26,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -172,6 +173,10 @@ const StudentDashboardLayout = ({
 
             {/* Right side */}
             <div className="flex items-center gap-3">
+              <NotificationBell
+                recipientId={studentProfile.id}
+                onNavigateToView={(view) => onViewChange(view as StudentView)}
+              />
               
               {/* User Menu */}
               <DropdownMenu>

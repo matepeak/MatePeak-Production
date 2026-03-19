@@ -23,7 +23,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import ProfileCompletionCard from "@/components/dashboard/ProfileCompletionCard";
 
 type TimePeriod = "today" | "week" | "month" | "all";
 
@@ -166,6 +165,7 @@ const DashboardOverview = ({
         ...(mentorSessions || []),
         ...(studentSessions || []),
       ];
+      const filteredMentorSessions = mentorSessions || [];
 
       // Calculate stats
       const upcoming =
@@ -282,7 +282,14 @@ const DashboardOverview = ({
     });
   };
 
-  const statCards = [
+  const statCards: Array<{
+    title: string;
+    value: number | string;
+    icon: any;
+    iconColor: string;
+    suffix?: string;
+    isComingSoon?: boolean;
+  }> = [
     {
       title: "Total Sessions",
       value: stats.totalSessions,
@@ -341,12 +348,6 @@ const DashboardOverview = ({
           </p>
         </div>
       </div>
-
-      {/* Profile Completion Card */}
-      <ProfileCompletionCard 
-        profileData={mentorProfile} 
-        username={mentorProfile.username} 
-      />
 
       {/* Time Period Filters - Improved Design */}
       <div className="flex items-center gap-2 pb-2">
@@ -640,7 +641,7 @@ const DashboardOverview = ({
                 </p>
               </div>
               {timeRequests.length > 0 && (
-                <Badge className="bg-amber-500 text-white px-2.5 py-0.5 text-xs font-semibold">
+                <Badge className="bg-amber-500 text-white px-2.5 py-0.5 text-xs font-semibold hover:bg-amber-500 hover:text-white">
                   {timeRequests.length} Pending
                 </Badge>
               )}
