@@ -9,7 +9,7 @@ export const emailTemplates = {
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
+    body { font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
     .container { max-width: 600px; margin: 0 auto; background-color: white; }
     .header { background-color: #111827; color: white; padding: 32px; text-align: center; }
     .content { padding: 32px; }
@@ -27,7 +27,7 @@ export const emailTemplates = {
   <div class="container">
     <div class="header">
       <img src="https://wpltqdlvrzukghiwvxqd.supabase.co/storage/v1/object/public/avatars/lovable-uploads/MatePeak_logo_with_name.png" alt="MatePeak" style="height: 40px; margin-bottom: 16px;" />
-      <h1>🎉 Booking Confirmed!</h1>
+      <h1>Booking Confirmed</h1>
     </div>
     
     <div class="content">
@@ -96,7 +96,7 @@ export const emailTemplates = {
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
+    body { font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
     .container { max-width: 600px; margin: 0 auto; background-color: white; }
     .header { background-color: #111827; color: white; padding: 32px; text-align: center; }
     .content { padding: 32px; }
@@ -115,7 +115,7 @@ export const emailTemplates = {
   <div class="container">
     <div class="header">
       <img src="https://wpltqdlvrzukghiwvxqd.supabase.co/storage/v1/object/public/avatars/lovable-uploads/MatePeak_logo_with_name.png" alt="MatePeak" style="height: 40px; margin-bottom: 16px;" />
-      <h1>📅 New Booking Received</h1>
+      <h1>New Booking Received</h1>
     </div>
     
     <div class="content">
@@ -194,22 +194,22 @@ export const emailTemplates = {
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
+    body { font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
     .container { max-width: 600px; margin: 0 auto; background-color: white; }
-    .header { background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); color: white; padding: 32px; text-align: center; }
+    .header { background-color: #111827; color: white; padding: 32px; text-align: center; }
     .content { padding: 32px; }
-    .card { background-color: #eff6ff; border-radius: 12px; padding: 20px; margin: 20px 0; border: 2px solid #3b82f6; }
-    .button { display: inline-block; background-color: #3b82f6; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; }
+    .card { background-color: #f9fafb; border-radius: 12px; padding: 20px; margin: 20px 0; border: 1px solid #e5e7eb; }
+    .button { display: inline-block; background-color: #111827; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; }
     .footer { background-color: #f9fafb; padding: 24px; text-align: center; color: #6b7280; font-size: 14px; }
     h1 { margin: 0; font-size: 24px; }
-    .time-badge { display: inline-block; background-color: #fef3c7; color: #92400e; padding: 8px 16px; border-radius: 20px; font-weight: 600; margin: 16px 0; }
+    .time-badge { display: inline-block; background-color: #f3f4f6; color: #374151; padding: 8px 16px; border-radius: 20px; font-weight: 600; margin: 16px 0; border: 1px solid #d1d5db; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
       <img src="https://wpltqdlvrzukghiwvxqd.supabase.co/storage/v1/object/public/avatars/lovable-uploads/MatePeak_logo_with_name.png" alt="MatePeak" style="height: 40px; margin-bottom: 16px;" />
-      <h1>⏰ ${
+      <h1>${
         hoursUntil === 24 ? "Session Tomorrow!" : "Session Starting Soon!"
       }</h1>
     </div>
@@ -225,7 +225,7 @@ export const emailTemplates = {
           <div class="time-badge">
             ${hoursUntil === 24 ? "Tomorrow" : "In 1 Hour"}
           </div>
-          <h2 style="margin: 16px 0; color: #1e40af;">${data.date} at ${
+          <h2 style="margin: 16px 0; color: #111827;">${data.date} at ${
       data.time
     }</h2>
           <p style="color: #6b7280; margin: 8px 0;">Duration: ${
@@ -252,15 +252,15 @@ export const emailTemplates = {
           ? `
       <p style="color: #6b7280; font-size: 14px;">
         <strong>Preparation Checklist:</strong><br>
-        ✓ Review your session notes<br>
-        ✓ Test your camera and microphone<br>
-        ✓ Prepare any questions or materials<br>
-        ✓ Find a quiet space for the call
+        - Review your session notes<br>
+        - Test your camera and microphone<br>
+        - Prepare any questions or materials<br>
+        - Find a quiet space for the call
       </p>
       `
           : `
       <p style="color: #dc2626; font-weight: 600; text-align: center;">
-        ⚠️ Your session starts in 1 hour. Please be ready!
+        Your session starts in 1 hour. Please be ready.
       </p>
       `
       }
@@ -286,12 +286,12 @@ export const emailTemplates = {
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
+    body { font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
     .container { max-width: 600px; margin: 0 auto; background-color: white; }
-    .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 32px; text-align: center; }
+    .header { background-color: #111827; color: white; padding: 32px; text-align: center; }
     .content { padding: 32px; }
-    .card { background-color: #f0fdf4; border-radius: 12px; padding: 20px; margin: 20px 0; border: 2px solid #10b981; }
-    .button { display: inline-block; background-color: #10b981; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; }
+    .card { background-color: #f9fafb; border-radius: 12px; padding: 20px; margin: 20px 0; border: 1px solid #e5e7eb; }
+    .button { display: inline-block; background-color: #111827; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; }
     .footer { background-color: #f9fafb; padding: 24px; text-align: center; color: #6b7280; font-size: 14px; }
     h1 { margin: 0; font-size: 24px; }
     .star-rating { font-size: 24px; margin: 16px 0; }
@@ -301,7 +301,7 @@ export const emailTemplates = {
   <div class="container">
     <div class="header">
       <img src="https://wpltqdlvrzukghiwvxqd.supabase.co/storage/v1/object/public/avatars/lovable-uploads/MatePeak_logo_with_name.png" alt="MatePeak" style="height: 40px; margin-bottom: 16px;" />
-      <h1>✨ Session Completed!</h1>
+      <h1>Session Completed</h1>
     </div>
     
     <div class="content">
@@ -319,7 +319,6 @@ export const emailTemplates = {
       <p>Your feedback helps us improve and helps other students find great mentors.</p>
       
       <div style="text-align: center; margin: 32px 0;">
-        <div class="star-rating">⭐⭐⭐⭐⭐</div>
         <a href="${data.reviewLink}" class="button">Leave a Review</a>
       </div>
       
@@ -347,7 +346,7 @@ export const emailTemplates = {
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
+    body { font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
     .container { max-width: 600px; margin: 0 auto; background-color: white; }
     .header { background-color: #ef4444; color: white; padding: 32px; text-align: center; }
     .content { padding: 32px; }
@@ -361,7 +360,7 @@ export const emailTemplates = {
   <div class="container">
     <div class="header">
       <img src="https://wpltqdlvrzukghiwvxqd.supabase.co/storage/v1/object/public/avatars/lovable-uploads/MatePeak_logo_with_name.png" alt="MatePeak" style="height: 40px; margin-bottom: 16px;" />
-      <h1>❌ Session Cancelled</h1>
+      <h1>Session Cancelled</h1>
     </div>
     
     <div class="content">
@@ -387,7 +386,7 @@ export const emailTemplates = {
         data.refundAmount
           ? `
       <p style="background-color: #d1fae5; border-radius: 8px; padding: 16px; color: #065f46;">
-        <strong>💰 Refund Processed:</strong> ₹${data.refundAmount} has been refunded to your account. It may take 5-7 business days to reflect.
+        <strong>Refund Processed:</strong> ₹${data.refundAmount} has been refunded to your account. It may take 5-7 business days to reflect.
       </p>
       `
           : ""
@@ -410,19 +409,19 @@ export const emailTemplates = {
   }),
 
   reviewRequest: (data: any) => ({
-    subject: `How was your session with ${data.mentorName}? ⭐`,
+    subject: `How was your session with ${data.mentorName}?`,
     html: `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
+    body { font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
     .container { max-width: 600px; margin: 0 auto; background-color: white; }
-    .header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 32px; text-align: center; }
+    .header { background-color: #111827; color: white; padding: 32px; text-align: center; }
     .content { padding: 32px; }
     .card { background-color: #f9fafb; border-radius: 12px; padding: 20px; margin: 20px 0; }
-    .button { display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; }
+    .button { display: inline-block; background-color: #111827; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; }
     .stars { font-size: 32px; margin: 20px 0; }
     .footer { background-color: #f9fafb; padding: 24px; text-align: center; color: #6b7280; font-size: 14px; }
     h1 { margin: 0; font-size: 24px; }
@@ -433,7 +432,7 @@ export const emailTemplates = {
   <div class="container">
     <div class="header">
       <img src="https://wpltqdlvrzukghiwvxqd.supabase.co/storage/v1/object/public/avatars/lovable-uploads/MatePeak_logo_with_name.png" alt="MatePeak" style="height: 40px; margin-bottom: 16px;" />
-      <h1>⭐ Share Your Experience</h1>
+      <h1>Share Your Experience</h1>
     </div>
     
     <div class="content">
@@ -455,8 +454,6 @@ export const emailTemplates = {
         </p>
       </div>
       
-      <div class="stars" style="text-align: center;">⭐ ⭐ ⭐ ⭐ ⭐</div>
-      
       <div style="text-align: center; margin: 32px 0;">
         <a href="${data.reviewLink}" class="button">Leave Your Review</a>
       </div>
@@ -468,7 +465,7 @@ export const emailTemplates = {
       <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
         <p style="text-align: center;">
           <strong>Enjoyed your session?</strong><br>
-          <a href="${data.bookAgainLink}" style="color: #6366f1; text-decoration: none; font-weight: 600;">Book another session with ${data.mentorName} →</a>
+          <a href="${data.bookAgainLink}" style="color: #111827; text-decoration: none; font-weight: 600;">Book another session with ${data.mentorName}</a>
         </p>
       </div>
     </div>
