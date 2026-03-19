@@ -6,6 +6,7 @@ import { MentorProfile } from "@/components/MentorCard";
 import { supabase } from "@/integrations/supabase/client";
 import { transformToMentorCard } from "@/services/mentorCardService";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
+import { useMentorPresenceMap } from "@/hooks/useMentorPresence";
 
 interface NewMentorsProps {
   sectionRef?: React.RefObject<HTMLDivElement>;
@@ -15,6 +16,7 @@ const NewMentors = ({ sectionRef }: NewMentorsProps) => {
   const [newMentors, setNewMentors] = useState<MentorProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const presenceMap = useMentorPresenceMap(newMentors);
 
   useEffect(() => {
     fetchNewMentors();
@@ -165,6 +167,7 @@ const NewMentors = ({ sectionRef }: NewMentorsProps) => {
                   key={mentor.id || index}
                   mentor={mentor}
                   isNew={true}
+                  isOnlineOverride={presenceMap[mentor.id] ?? false}
                 />
               ))}
             </div>

@@ -86,6 +86,9 @@ export default function ProfileCompletionCard({ profileData, username }: Profile
 
   const currentTierInfo = tierInfo[tier];
   const TierIcon = currentTierInfo.icon;
+  const hideNotLiveStatusForVerifiedMentor =
+    !isLive && (tier === 'verified' || tier === 'top');
+  const showNextTierCard = Boolean(currentTierInfo.nextTier && tier === 'basic');
 
   return (
     <Card className="shadow-sm border border-gray-200">
@@ -118,29 +121,35 @@ export default function ProfileCompletionCard({ profileData, username }: Profile
         {/* Status and Booking Limit */}
         <div className="grid grid-cols-2 gap-2">
           {/* Status Indicator */}
-          <div className={`p-3 rounded-lg flex flex-col justify-between h-full ${isLive ? 'bg-green-50' : 'bg-gray-50'}`}>
-            <div className="flex items-center gap-2 mb-1.5">
-              {isLive ? (
-                <>
-                  <Unlock className="w-4 h-4 text-green-600" />
-                  <span className="font-medium text-xs text-gray-900">Profile is Live! 🎉</span>
-                </>
-              ) : (
-                <>
-                  <Lock className="w-4 h-4 text-gray-600" />
-                  <span className="font-medium text-xs text-gray-900">Profile Not Yet Live</span>
-                </>
-              )}
+          {!hideNotLiveStatusForVerifiedMentor && (
+            <div className={`p-3 rounded-lg flex flex-col justify-between h-full ${isLive ? 'bg-green-50' : 'bg-gray-50'}`}>
+              <div className="flex items-center gap-2 mb-1.5">
+                {isLive ? (
+                  <>
+                    <Unlock className="w-4 h-4 text-green-600" />
+                    <span className="font-medium text-xs text-gray-900">Profile is Live! 🎉</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4 text-gray-600" />
+                    <span className="font-medium text-xs text-gray-900">Profile Not Yet Live</span>
+                  </>
+                )}
+              </div>
+              <p className="text-xs text-gray-600 leading-relaxed">
+                {isLive 
+                  ? "Students can find and book you now."
+                  : "Complete Phase 1 to go live."}
+              </p>
             </div>
-            <p className="text-xs text-gray-600 leading-relaxed">
-              {isLive 
-                ? "Students can find and book you now."
-                : "Complete Phase 1 to go live."}
-            </p>
-          </div>
+          )}
           
           {/* Booking Limit */}
-          <div className="p-3 bg-blue-50 rounded-lg flex flex-col justify-between h-full">
+          <div
+            className={`p-3 bg-blue-50 rounded-lg flex flex-col justify-between h-full ${
+              hideNotLiveStatusForVerifiedMentor ? 'col-span-2' : ''
+            }`}
+          >
             <div className="flex items-center gap-2 mb-1.5">
               <Users className="w-4 h-4 text-blue-600" />
               <span className="font-medium text-xs text-gray-900">Weekly Limit</span>
@@ -183,7 +192,11 @@ export default function ProfileCompletionCard({ profileData, username }: Profile
           )}
 
           {/* Current Tier Benefits */}
-          <div className="p-3 bg-gray-50 rounded-lg">
+          <div
+            className={`p-3 bg-gray-50 rounded-lg ${
+              missingFields.length === 0 && !showNextTierCard ? 'col-span-3' : ''
+            }`}
+          >
             <div className="flex items-center gap-2 mb-2">
               <Award className="w-4 h-4 text-gray-700" />
               <span className="font-medium text-xs text-gray-900">Current Benefits</span>
@@ -199,12 +212,12 @@ export default function ProfileCompletionCard({ profileData, username }: Profile
           </div>
 
           {/* Next Tier */}
-          {currentTierInfo.nextTier && (
+          {showNextTierCard && (
             <div className="p-3 bg-gray-50 rounded-lg border-l-2 border-gray-900">
               <div className="flex items-center gap-2 mb-2">
                 <Star className="w-4 h-4 text-gray-700" />
                 <span className="font-medium text-xs text-gray-900">
-                  Unlock {tierInfo[currentTierInfo.nextTier].label}
+                  Unlock {tierInfo[currentTierInfo.nextTier!].label}
                 </span>
               </div>
               <ul className="space-y-1">

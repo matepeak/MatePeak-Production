@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { 
-  Heart, 
   Star, 
   MessageSquare, 
   Calendar,
@@ -17,6 +16,8 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useMentorPresenceMap } from '@/hooks/useMentorPresence';
+import PresenceDot from '@/components/PresenceDot';
 
 interface MyMentorsProps {
   studentProfile: any;
@@ -24,10 +25,10 @@ interface MyMentorsProps {
 
 export default function MyMentors({ studentProfile }: MyMentorsProps) {
   const [mentors, setMentors] = useState<any[]>([]);
-  const [favoriteMentors, setFavoriteMentors] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
+  const mentorsPresenceMap = useMentorPresenceMap(mentors);
 
   useEffect(() => {
     fetchMyMentors();
@@ -48,7 +49,9 @@ export default function MyMentors({ studentProfile }: MyMentorsProps) {
             full_name,
             username,
             profile_picture_url,
-            headline
+            headline,
+            is_profile_live,
+            last_seen
           )
         `)
         .eq('student_id', user.id);
@@ -103,32 +106,12 @@ export default function MyMentors({ studentProfile }: MyMentorsProps) {
 
       setMentors(mentorsWithStats);
 
-      // TODO: Fetch favorite mentors from database
-      // For now using empty set
-      
     } catch (error: any) {
       console.error('Error fetching mentors:', error);
       toast.error('Failed to load mentors');
     } finally {
       setLoading(false);
     }
-  };
-
-  const toggleFavorite = async (mentorId: string) => {
-    const newFavorites = new Set(favoriteMentors);
-    if (newFavorites.has(mentorId)) {
-      newFavorites.delete(mentorId);
-      // TODO: Remove from database
-    } else {
-      newFavorites.add(mentorId);
-      // TODO: Add to database
-    }
-    setFavoriteMentors(newFavorites);
-    toast.success(
-      newFavorites.has(mentorId) 
-        ? 'Added to favorites' 
-        : 'Removed from favorites'
-    );
   };
 
   const filteredMentors = mentors.filter(mentor =>
@@ -201,10 +184,10 @@ export default function MyMentors({ studentProfile }: MyMentorsProps) {
           {filteredMentors.map((mentor) => (
             <Card key={mentor.id} className="hover:shadow-lg transition-all group">
               <CardContent className="p-6">
-                {/* Header with Avatar and Favorite */}
+                {/* Header with Avatar */}
                 <div className="flex items-start justify-between mb-4">
                   <div 
-                    className="h-16 w-16 rounded-full bg-gray-300 overflow-hidden cursor-pointer"
+                    className="relative h-16 w-16 rounded-full bg-gray-300 overflow-hidden cursor-pointer"
                     onClick={() => navigate(`/mentor/${mentor.username || mentor.id}`)}
                   >
                     {mentor.profile_picture_url ? (
@@ -218,21 +201,10 @@ export default function MyMentors({ studentProfile }: MyMentorsProps) {
                         {mentor.full_name?.charAt(0) || 'M'}
                       </div>
                     )}
+                    {mentor.is_profile_live && mentorsPresenceMap[mentor.id] && (
+                      <PresenceDot className="absolute -top-0.5 -right-0.5" />
+                    )}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => toggleFavorite(mentor.id)}
-                    className="hover:bg-red-50"
-                  >
-                    <Heart
-                      className={`h-5 w-5 ${
-                        favoriteMentors.has(mentor.id)
-                          ? 'fill-red-500 text-red-500'
-                          : 'text-gray-400'
-                      }`}
-                    />
-                  </Button>
                 </div>
 
                 {/* Mentor Info */}

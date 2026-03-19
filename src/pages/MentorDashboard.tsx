@@ -12,6 +12,7 @@ import MentorPriorityDmInbox from "@/components/dashboard/MentorPriorityDmInbox"
 import StudentDirectory from "@/components/dashboard/StudentDirectory";
 import CustomTimeRequests from "@/components/dashboard/CustomTimeRequests";
 import ServicesManagement from "@/components/dashboard/ServicesManagement";
+import MentorEarnings from "@/components/dashboard/MentorEarnings";
 import { useToast } from "@/hooks/use-toast";
 
 type DashboardView =
@@ -23,7 +24,8 @@ type DashboardView =
   | "messages"
   | "students"
   | "requests"
-  | "services";
+  | "services"
+  | "earnings";
 
 const MentorDashboard = () => {
   const navigate = useNavigate();
@@ -202,6 +204,9 @@ const MentorDashboard = () => {
       )}
       {activeView === "services" && (
         <ServicesManagement mentorId={mentorProfile.id} />
+      )}
+      {activeView === "earnings" && (
+        <MentorEarnings mentorProfile={mentorProfile} />
       )}
     </DashboardLayout>
   );
