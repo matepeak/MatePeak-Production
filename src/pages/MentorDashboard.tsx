@@ -101,7 +101,7 @@ const MentorDashboard = () => {
         .from("profiles")
         .select("email")
         .eq("id", session.user.id)
-        .single();
+        .maybeSingle();
 
       // Flatten the email from profiles
       const profileWithEmail = {

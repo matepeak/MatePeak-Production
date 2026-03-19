@@ -252,7 +252,7 @@ const DashboardOverview = ({
             .from("profiles")
             .select("full_name, email")
             .eq("id", request.mentee_id)
-            .single();
+            .maybeSingle();
 
           return {
             ...request,
