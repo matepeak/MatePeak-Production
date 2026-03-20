@@ -65,20 +65,21 @@ const sendMentorCancellationEmail = async (payload: {
 <head>
   <meta charset="utf-8" />
 </head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#111827;">
-  <div style="max-width:600px;margin:0 auto;background:#ffffff;">
-    <div style="background:#111827;color:#ffffff;padding:24px 28px;">
-      <h2 style="margin:0;font-size:22px;">Session Cancelled</h2>
+<body style="margin:0;padding:28px 14px;background:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#111827;">
+  <div style="max-width:620px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;">
+    <div style="background:#ffffff;padding:30px 32px 12px;">
+      <h2 style="margin:0;font-size:28px;line-height:1.25;">Session Cancelled</h2>
+      <p style="margin:10px 0 0;color:#4b5563;font-size:15px;">Your booking was cancelled by the mentor.</p>
     </div>
-    <div style="padding:24px 28px;line-height:1.6;">
+    <div style="padding:12px 32px 30px;line-height:1.6;">
       <p style="margin-top:0;">Hi ${payload.studentName},</p>
       <p>${payload.mentorName} has cancelled your upcoming ${serviceName}.</p>
-      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin:16px 0;">
-        <p style="margin:0 0 6px 0;"><strong>Date:</strong> ${date}</p>
-        <p style="margin:0 0 6px 0;"><strong>Time:</strong> ${time}</p>
-        <p style="margin:0;"><strong>Reason:</strong> ${payload.cancellationReason}</p>
+      <div style="background:#ffffff;border:2px solid #111827;border-radius:14px;padding:16px 16px 8px;margin:16px 0;">
+        <p style="margin:0 0 10px 0;padding-bottom:10px;border-bottom:1px solid #e5e7eb;"><strong style="color:#6b7280;">Date:</strong> <span style="float:right;font-weight:700;color:#111827;">${date}</span></p>
+        <p style="margin:0 0 10px 0;padding-bottom:10px;border-bottom:1px solid #e5e7eb;"><strong style="color:#6b7280;">Time:</strong> <span style="float:right;font-weight:700;color:#111827;">${time}</span></p>
+        <p style="margin:0;"><strong style="color:#6b7280;">Reason:</strong> <span style="float:right;font-weight:700;color:#111827;">${payload.cancellationReason}</span></p>
       </div>
-      <p style="margin-bottom:0;color:#4b5563;">If you need help rebooking, please contact support@matepeak.com.</p>
+      <p style="margin-bottom:0;color:#4b5563;font-size:14px;">You can rebook from your dashboard. Need help? Contact support@matepeak.com.</p>
     </div>
   </div>
 </body>

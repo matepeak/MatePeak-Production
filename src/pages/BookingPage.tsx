@@ -62,6 +62,47 @@ const getLocalDateString = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+const getBookingEmailCopy = (
+  serviceType: SelectedService["type"],
+  serviceName: string,
+  mentorName: string,
+  studentName: string
+) => {
+  if (serviceType === "digitalProducts") {
+    return {
+      studentSubject: `Digital Product Confirmed: ${serviceName} by ${mentorName}`,
+      mentorSubject: `New Digital Product Order: ${serviceName} from ${studentName}`,
+      studentHeader: "Digital Product Confirmed",
+      mentorHeader: "New Digital Product Order",
+      studentIntro: `Your digital product from ${mentorName} is confirmed.`,
+      mentorIntro: `You received a new digital product order from ${studentName}.`,
+      detailsTitle: "Order Details",
+    };
+  }
+
+  if (serviceType === "priorityDm") {
+    return {
+      studentSubject: `Priority DM Confirmed: ${serviceName} with ${mentorName}`,
+      mentorSubject: `New Priority DM Request: ${serviceName} from ${studentName}`,
+      studentHeader: "Priority DM Confirmed",
+      mentorHeader: "New Priority DM Request",
+      studentIntro: `Your priority DM request with ${mentorName} is confirmed.`,
+      mentorIntro: `You have a new priority DM request from ${studentName}.`,
+      detailsTitle: "Request Details",
+    };
+  }
+
+  return {
+    studentSubject: `Session Confirmed: ${serviceName} with ${mentorName}`,
+    mentorSubject: `New Session Scheduled: ${serviceName} with ${studentName}`,
+    studentHeader: "Session Confirmed",
+    mentorHeader: "New Session Scheduled",
+    studentIntro: `Your session with ${mentorName} is confirmed.`,
+    mentorIntro: `You have a new session scheduled with ${studentName}.`,
+    detailsTitle: "Session Details",
+  };
+};
+
 const BookingPage = () => {
   const isServiceEnabled = (value: any) =>
     value === true || value === "true" || value === 1 || value === "1";
@@ -299,6 +340,14 @@ const BookingPage = () => {
         new Date(bookingData.scheduled_date),
         "EEEE, MMMM d, yyyy"
       );
+      const emailCopy = getBookingEmailCopy(
+        serviceDetails.type,
+        serviceDetails.name,
+        mentorName,
+        studentDetails.name
+      );
+      const requiresScheduling = serviceRequiresScheduling(serviceDetails.type);
+      const isDigitalProduct = serviceDetails.type === "digitalProducts";
 
       const hasMeetingLink =
         bookingData.meeting_link && bookingData.meeting_link.trim() !== "";
@@ -315,14 +364,14 @@ const BookingPage = () => {
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
     .container { max-width: 600px; margin: 0 auto; background-color: white; }
-    .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 32px; text-align: center; }
+    .header { background: #f9fafb; color: #111827; padding: 24px 32px; text-align: center; border-bottom: 1px solid #e5e7eb; }
     .content { padding: 32px; }
     .card { background-color: #f9fafb; border-radius: 12px; padding: 20px; margin: 20px 0; }
-    .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
-    .detail-label { color: #6b7280; font-weight: 500; }
+    .detail-row { padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
+    .detail-label { color: #6b7280; font-weight: 600; display: inline-block; min-width: 110px; margin-right: 12px; }
     .detail-value { color: #111827; font-weight: 600; }
-    .meeting-box { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border-radius: 12px; padding: 24px; margin: 20px 0; text-align: center; }
-    .meeting-button { display: inline-block; background-color: white; color: #2563eb; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 12px 0; }
+    .meeting-box { background: #f9fafb; color: #111827; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin: 20px 0; text-align: center; }
+    .meeting-button { display: inline-block; background-color: #222222; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 12px 0; }
     .footer { background-color: #f9fafb; padding: 24px; text-align: center; color: #6b7280; font-size: 14px; }
   </style>
 </head>
@@ -330,45 +379,55 @@ const BookingPage = () => {
   <div class="container">
     <div class="header">
       <img src="https://wpltqdlvrzukghiwvxqd.supabase.co/storage/v1/object/public/avatars/lovable-uploads/MatePeak_logo_with_name.png" alt="MatePeak" style="height: 40px; margin-bottom: 16px;" />
-      <h1 style="margin: 0; font-size: 28px;">✅ Booking Confirmed!</h1>
-      <p style="margin: 8px 0 0 0; font-size: 16px; opacity: 0.9;">Your session has been successfully booked</p>
+      <h1 style="margin: 0; font-size: 28px;">${emailCopy.studentHeader}</h1>
+      <p style="margin: 8px 0 0 0; font-size: 16px; opacity: 0.9;">${
+        requiresScheduling
+          ? "Your session has been successfully confirmed"
+          : "Your request has been successfully confirmed"
+      }</p>
     </div>
     
     <div class="content">
       <p style="color: #111827; font-size: 16px;">Hi ${studentDetails.name},</p>
-      <p style="color: #6b7280; font-size: 14px;">Great news! Your booking with <strong>${mentorName}</strong> has been confirmed.</p>
+      <p style="color: #6b7280; font-size: 14px;">${emailCopy.studentIntro}</p>
       
       <div class="card">
-        <h3 style="color: #111827; margin-top: 0;">📋 Booking Details</h3>
+        <h3 style="color: #111827; margin-top: 0;">${emailCopy.detailsTitle}</h3>
         <div class="detail-row">
-          <span class="detail-label">Mentor</span>
+          <span class="detail-label">Mentor:&nbsp;</span>
           <span class="detail-value">${mentorName}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Service</span>
+          <span class="detail-label">Service:&nbsp;</span>
           <span class="detail-value">${serviceDetails.name}</span>
         </div>
+        ${
+          requiresScheduling
+            ? `
         <div class="detail-row">
-          <span class="detail-label">Date</span>
+          <span class="detail-label">Date:&nbsp;</span>
           <span class="detail-value">${formattedDate}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Time</span>
+          <span class="detail-label">Time:&nbsp;</span>
           <span class="detail-value">${bookingData.scheduled_time} ${
         selectedDateTime?.timezone || mentorData?.timezone || ""
       }</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Duration</span>
+          <span class="detail-label">Duration:&nbsp;</span>
           <span class="detail-value">${serviceDetails.duration} minutes</span>
         </div>
+        `
+            : ""
+        }
       </div>
       
       ${
         hasMeetingLink
           ? `
       <div class="meeting-box">
-        <h3 style="color: white; margin-top: 0;">🎥 Video Meeting Link</h3>
+        <h3 style="color: #111827; margin-top: 0;">Video Meeting Link</h3>
         <p style="opacity: 0.9; font-size: 14px; margin: 8px 0;">Join the session using ${meetingProvider}</p>
         <a href="${meetingLink}" class="meeting-button">Join Meeting</a>
         <p style="opacity: 0.8; font-size: 12px; margin: 16px 0 0 0;">
@@ -381,12 +440,20 @@ const BookingPage = () => {
       
       <p style="color: #6b7280; font-size: 14px;">
         <strong>What to expect:</strong><br>
-        • You'll receive a reminder 24 hours before the session<br>
-        • Another reminder will be sent 1 hour before<br>
+        ${
+          requiresScheduling
+            ? `
+        - You'll receive a reminder 24 hours before the session<br>
+        - Another reminder will be sent 1 hour before<br>
         ${
           hasMeetingLink
-            ? "• Use the meeting link above to join at the scheduled time<br>"
-            : "• Meeting link will be available in your dashboard<br>"
+            ? "- Use the meeting link above to join at the scheduled time<br>"
+            : "- Meeting link will be available in your dashboard<br>"
+        }
+        `
+            : isDigitalProduct
+            ? "- Access details will be shared in your dashboard and email updates<br>"
+            : "- You will receive a response update in your dashboard and email<br>"
         }
       </p>
     </div>
@@ -402,7 +469,7 @@ const BookingPage = () => {
       await supabase.functions.invoke("send-email", {
         body: {
           to: studentDetails.email,
-          subject: `Booking Confirmed: ${serviceDetails.name} with ${mentorName}`,
+          subject: emailCopy.studentSubject,
           html: studentEmailHtml,
         },
       });
@@ -423,11 +490,11 @@ const BookingPage = () => {
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
     .container { max-width: 600px; margin: 0 auto; background-color: white; }
-    .header { background-color: #111827; color: white; padding: 32px; text-align: center; }
+    .header { background-color: #f9fafb; color: #111827; padding: 24px 32px; text-align: center; border-bottom: 1px solid #e5e7eb; }
     .content { padding: 32px; }
     .card { background-color: #f9fafb; border-radius: 12px; padding: 20px; margin: 20px 0; }
-    .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
-    .detail-label { color: #6b7280; font-weight: 500; }
+    .detail-row { padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
+    .detail-label { color: #6b7280; font-weight: 600; display: inline-block; min-width: 110px; margin-right: 12px; }
     .detail-value { color: #111827; font-weight: 600; }
     .footer { background-color: #f9fafb; padding: 24px; text-align: center; color: #6b7280; font-size: 14px; }
   </style>
@@ -436,39 +503,45 @@ const BookingPage = () => {
   <div class="container">
     <div class="header">
       <img src="https://wpltqdlvrzukghiwvxqd.supabase.co/storage/v1/object/public/avatars/lovable-uploads/MatePeak_logo_with_name.png" alt="MatePeak" style="height: 40px; margin-bottom: 16px;" />
-      <h1 style="margin: 0; font-size: 28px;">🎉 New Booking Request!</h1>
+      <h1 style="margin: 0; font-size: 28px;">${emailCopy.mentorHeader}</h1>
     </div>
     
     <div class="content">
       <p style="color: #111827; font-size: 16px;">Hi ${mentorName},</p>
-      <p style="color: #6b7280; font-size: 14px;">You have a new booking request from ${studentDetails.name}.</p>
+      <p style="color: #6b7280; font-size: 14px;">${emailCopy.mentorIntro}</p>
       
       <div class="card">
-        <h3 style="color: #111827; margin-top: 0;">📋 Booking Details</h3>
+        <h3 style="color: #111827; margin-top: 0;">${emailCopy.detailsTitle}</h3>
         <div class="detail-row">
-          <span class="detail-label">Student</span>
+          <span class="detail-label">Student:&nbsp;</span>
           <span class="detail-value">${studentDetails.name}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Email</span>
+          <span class="detail-label">Email:&nbsp;</span>
           <span class="detail-value">${studentDetails.email}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Service</span>
+          <span class="detail-label">Service:&nbsp;</span>
           <span class="detail-value">${serviceDetails.name}</span>
         </div>
+        ${
+          requiresScheduling
+            ? `
         <div class="detail-row">
-          <span class="detail-label">Date</span>
+          <span class="detail-label">Date:&nbsp;</span>
           <span class="detail-value">${formattedDate}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Time</span>
+          <span class="detail-label">Time:&nbsp;</span>
           <span class="detail-value">${bookingData.scheduled_time}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Duration</span>
+          <span class="detail-label">Duration:&nbsp;</span>
           <span class="detail-value">${serviceDetails.duration} minutes</span>
         </div>
+        `
+            : ""
+        }
       </div>
       
       <p style="color: #6b7280; font-size: 14px;">
@@ -487,7 +560,7 @@ const BookingPage = () => {
         await supabase.functions.invoke("send-email", {
           body: {
             to: mentorProfile.email,
-            subject: `New Booking: ${serviceDetails.name} with ${studentDetails.name}`,
+            subject: emailCopy.mentorSubject,
             html: mentorEmailHtml,
           },
         });
@@ -737,7 +810,7 @@ const BookingPage = () => {
                 </div>
               </div>
 
-              {/* Modern Step Indicator — hidden for Priority DM (2-step, no date/time) */}
+              {/* Modern Step Indicator - hidden for Priority DM (2-step, no date/time) */}
               {showStepTracking && (
               <div className="flex justify-center">
                 <div className="w-full max-w-md">
