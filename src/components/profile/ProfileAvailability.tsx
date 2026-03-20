@@ -7,7 +7,6 @@ import {
   Calendar as CalendarIcon,
   Clock,
   XCircle,
-  CheckCircle,
   Loader2,
   ChevronLeft,
   ChevronRight,
@@ -53,6 +52,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { TimePicker } from "@/components/ui/time-picker";
 import { format } from "date-fns";
 import { autoMigrateAvailabilitySlots } from "@/utils/availabilityMigration";
 
@@ -103,6 +103,9 @@ const getLocalDateString = (date: Date): string => {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
+
+const fromDateString = (dateString: string): Date =>
+  new Date(`${dateString}T00:00:00`);
 
 // Timezone utilities
 const getUserTimezone = () => {
@@ -236,7 +239,17 @@ export default function ProfileAvailability({
   // Authentication state
   const [isCheckingAuth, setIsCheckingAuth] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
-  const [alertDaysPreference, setAlertDaysPreference] = useState<string[]>([]);
+  const [alertSingleDate, setAlertSingleDate] = useState("");
+  const [alertRangeStart, setAlertRangeStart] = useState("");
+  const [alertRangeEnd, setAlertRangeEnd] = useState("");
+  const [alertTimeStart, setAlertTimeStart] = useState("");
+  const [alertTimeEnd, setAlertTimeEnd] = useState("");
+  const [alertSingleDatePopoverOpen, setAlertSingleDatePopoverOpen] =
+    useState(false);
+  const [alertRangeStartPopoverOpen, setAlertRangeStartPopoverOpen] =
+    useState(false);
+  const [alertRangeEndPopoverOpen, setAlertRangeEndPopoverOpen] =
+    useState(false);
   const [submittingAlert, setSubmittingAlert] = useState(false);
 
   // All Slots Modal state
@@ -360,7 +373,19 @@ export default function ProfileAvailability({
         if (alertData) {
           setAlertsEnabled(true);
           setAlertEmail(alertData.email);
-          setAlertDaysPreference(alertData.preferred_days || []);
+          setAlertSingleDate(alertData.preferred_single_date || "");
+          setAlertRangeStart(alertData.preferred_range_start || "");
+          setAlertRangeEnd(alertData.preferred_range_end || "");
+          setAlertTimeStart(
+            alertData.preferred_time_start
+              ? alertData.preferred_time_start.slice(0, 5)
+              : ""
+          );
+          setAlertTimeEnd(
+            alertData.preferred_time_end
+              ? alertData.preferred_time_end.slice(0, 5)
+              : ""
+          );
         }
       }
     } catch (error) {
@@ -686,8 +711,50 @@ export default function ProfileAvailability({
   };
 
   const handleAlertSubscription = async () => {
-    if (!alertEmail || alertDaysPreference.length === 0) {
-      toast.error("Please provide email and select preferred days");
+    if (!alertEmail) {
+      toast.error("Please provide email");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(alertEmail)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    const hasSingleDate = !!alertSingleDate;
+    const hasRangeStart = !!alertRangeStart;
+    const hasRangeEnd = !!alertRangeEnd;
+    const hasCompleteRange = hasRangeStart && hasRangeEnd;
+    const hasPartialRange = (hasRangeStart && !hasRangeEnd) || (!hasRangeStart && hasRangeEnd);
+
+    if (hasPartialRange) {
+      toast.error("Please provide both start and end dates for date range");
+      return;
+    }
+
+    if (!hasSingleDate && !hasCompleteRange) {
+      toast.error("Please select either one preferred date or a preferred date range");
+      return;
+    }
+
+    if (hasSingleDate && (hasRangeStart || hasRangeEnd)) {
+      toast.error("Select either one preferred date or a date range, not both");
+      return;
+    }
+
+    if (hasCompleteRange && alertRangeStart > alertRangeEnd) {
+      toast.error("Date range is invalid. End date must be after start date.");
+      return;
+    }
+
+    if ((alertTimeStart && !alertTimeEnd) || (!alertTimeStart && alertTimeEnd)) {
+      toast.error("Please provide both start and end times");
+      return;
+    }
+
+    if (alertTimeStart && alertTimeEnd && alertTimeStart >= alertTimeEnd) {
+      toast.error("Time range is invalid. End time must be after start time.");
       return;
     }
 
@@ -710,20 +777,45 @@ export default function ProfileAvailability({
       }
 
       // Create or update alert subscription
+      const fullPayload = {
+        mentee_id: user.id,
+        mentor_id: mentorId,
+        email: alertEmail,
+        preferred_single_date: alertSingleDate || null,
+        preferred_range_start: alertRangeStart || null,
+        preferred_range_end: alertRangeEnd || null,
+        preferred_time_start: alertTimeStart || null,
+        preferred_time_end: alertTimeEnd || null,
+        is_active: true,
+      };
+
       const { error } = await supabase.from("availability_alerts").upsert(
-        {
-          mentee_id: user.id,
-          mentor_id: mentorId,
-          email: alertEmail,
-          preferred_days: alertDaysPreference,
-          is_active: true,
-        },
+        fullPayload,
         {
           onConflict: "mentee_id,mentor_id",
         }
       );
 
-      if (error) throw error;
+      const message = (error?.message || "").toLowerCase();
+      const code = (error?.code || "").toLowerCase();
+
+      if (error) {
+        if (
+          error.code === "42P01" ||
+          code === "pgrst205" ||
+          message.includes("preferred_single_date") ||
+          message.includes("preferred_range_start") ||
+          message.includes("preferred_range_end") ||
+          message.includes("availability_alerts")
+        ) {
+          toast.error(
+            "Alerts are temporarily unavailable. Please update alert schema in this environment and try again."
+          );
+          return;
+        }
+
+        throw error;
+      }
 
       setAlertsEnabled(true);
       toast.success(
@@ -732,17 +824,14 @@ export default function ProfileAvailability({
       setAlertDialogOpen(false);
     } catch (error) {
       console.error("Error setting up alerts:", error);
-      toast.error("Failed to enable alerts. Please try again.");
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to enable alerts. Please try again.";
+      toast.error(message);
     } finally {
       setSubmittingAlert(false);
     }
-  };
-
-  // Toggle alert day preference
-  const toggleAlertDay = (day: string) => {
-    setAlertDaysPreference((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
-    );
   };
 
   const isDateBlocked = (date: Date) => {
@@ -753,6 +842,8 @@ export default function ProfileAvailability({
   const weekSchedule = getWeekSchedule();
   const hasAnyAvailability =
     recurringSlots.length > 0 || specificSlots.length > 0;
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
 
   // Calculate current page number (1-based) for pagination
   // Each page represents a 7-day period
@@ -1362,82 +1453,216 @@ export default function ProfileAvailability({
       </Dialog>
       {/* Availability Alerts Dialog */}
       <Dialog open={alertDialogOpen} onOpenChange={setAlertDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold">
+        <DialogContent className="sm:max-w-[580px] w-[calc(100vw-2rem)] max-h-[90vh] overflow-hidden p-0 rounded-2xl bg-white flex flex-col">
+          <DialogHeader className="px-6 pt-6 pb-3">
+            <DialogTitle className="text-xl font-semibold tracking-tight">
               Get Availability Alerts
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-sm text-gray-600 leading-relaxed">
               Receive notifications when {mentorName} adds new availability
               slots that match your preferences.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="alert-email">Email Address</Label>
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-4 bg-gray-50/40">
+            <div className="space-y-2 p-4 rounded-2xl border border-gray-200/70 bg-white">
+              <Label htmlFor="alert-email" className="text-sm font-medium text-gray-800">
+                Email Address <span className="text-red-500">*</span>
+              </Label>
               <Input
                 id="alert-email"
                 type="email"
                 placeholder="your.email@example.com"
                 value={alertEmail}
                 onChange={(e) => setAlertEmail(e.target.value)}
-                className="border-gray-300"
+                className="h-11 rounded-xl border-gray-300 bg-white"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Preferred Days (Select at least one)</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {DAYS_OF_WEEK.map((day, index) => (
-                  <Button
-                    key={day}
-                    type="button"
-                    variant="outline"
-                    onClick={() => toggleAlertDay(day)}
-                    className={`justify-start transition-all ${
-                      alertDaysPreference.includes(day)
-                        ? "bg-matepeak-primary text-white border-matepeak-primary hover:bg-matepeak-primary/90 hover:text-white"
-                        : "border-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
-                    <CheckCircle
-                      className={`h-4 w-4 mr-2 ${
-                        alertDaysPreference.includes(day)
-                          ? "opacity-100"
-                          : "opacity-0"
+            <div className="space-y-4 p-4 rounded-2xl border border-gray-200/70 bg-white">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-800">
+                  Preferred Date <span className="text-red-500">*</span>
+                </Label>
+                <Popover
+                  open={alertSingleDatePopoverOpen}
+                  onOpenChange={setAlertSingleDatePopoverOpen}
+                >
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={`h-11 w-full justify-start rounded-xl border-gray-300 bg-white text-left font-normal ${
+                        !alertSingleDate ? "text-gray-500" : "text-gray-900"
                       }`}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {alertSingleDate
+                        ? format(fromDateString(alertSingleDate), "PPP")
+                        : "Select date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={alertSingleDate ? fromDateString(alertSingleDate) : undefined}
+                      onSelect={(date) => {
+                        if (!date) return;
+                        const value = format(date, "yyyy-MM-dd");
+                        setAlertSingleDate(value);
+                        setAlertRangeStart("");
+                        setAlertRangeEnd("");
+                        setAlertSingleDatePopoverOpen(false);
+                      }}
+                      disabled={(date) => date < todayStart}
+                      initialFocus
                     />
-                    {day}
-                  </Button>
-                ))}
+                  </PopoverContent>
+                </Popover>
+                <p className="text-xs text-gray-500">Choose one date or use date range below.</p>
+              </div>
+
+              <div className="relative py-1">
+                <div className="h-px bg-gray-200" />
+                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 px-3 bg-white text-xs font-medium tracking-wide text-gray-500">
+                  OR
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-800">Preferred Date Range (Required if no single date)</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Popover
+                    open={alertRangeStartPopoverOpen}
+                    onOpenChange={setAlertRangeStartPopoverOpen}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={`h-11 w-full justify-start rounded-xl border-gray-300 bg-white text-left font-normal ${
+                          !alertRangeStart ? "text-gray-500" : "text-gray-900"
+                        }`}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {alertRangeStart
+                          ? format(fromDateString(alertRangeStart), "MMM d, yyyy")
+                          : "Start date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={alertRangeStart ? fromDateString(alertRangeStart) : undefined}
+                        onSelect={(date) => {
+                          if (!date) return;
+                          const value = format(date, "yyyy-MM-dd");
+                          setAlertRangeStart(value);
+                          if (alertRangeEnd && value > alertRangeEnd) {
+                            setAlertRangeEnd("");
+                          }
+                          setAlertSingleDate("");
+                          setAlertRangeStartPopoverOpen(false);
+                        }}
+                        disabled={(date) => date < todayStart}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+
+                  <Popover
+                    open={alertRangeEndPopoverOpen}
+                    onOpenChange={setAlertRangeEndPopoverOpen}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={`h-11 w-full justify-start rounded-xl border-gray-300 bg-white text-left font-normal ${
+                          !alertRangeEnd ? "text-gray-500" : "text-gray-900"
+                        }`}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {alertRangeEnd
+                          ? format(fromDateString(alertRangeEnd), "MMM d, yyyy")
+                          : "End date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={alertRangeEnd ? fromDateString(alertRangeEnd) : undefined}
+                        onSelect={(date) => {
+                          if (!date) return;
+                          const value = format(date, "yyyy-MM-dd");
+                          setAlertRangeEnd(value);
+                          setAlertSingleDate("");
+                          setAlertRangeEndPopoverOpen(false);
+                        }}
+                        disabled={(date) => {
+                          if (date < todayStart) return true;
+                          if (alertRangeStart) {
+                            return date < fromDateString(alertRangeStart);
+                          }
+                          return false;
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
             </div>
 
-            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="space-y-2 p-4 rounded-2xl border border-gray-200/70 bg-white">
+              <Label className="text-sm font-medium text-gray-800">Preferred Time Range (Optional)</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <TimePicker
+                  value={alertTimeStart}
+                  onChange={(value) => {
+                    setAlertTimeStart(value);
+                    if (alertTimeEnd && alertTimeEnd <= value) {
+                      setAlertTimeEnd("");
+                    }
+                  }}
+                />
+                <TimePicker
+                  value={alertTimeEnd}
+                  onChange={setAlertTimeEnd}
+                  minTime={alertTimeStart || undefined}
+                />
+              </div>
+            </div>
+
+            <div className="p-4 bg-green-50 rounded-2xl border border-green-100">
               <div className="flex items-start gap-2">
                 <Bell className="h-4 w-4 text-green-600 mt-0.5" />
-                <p className="text-sm text-green-900">
-                  <strong>You'll be notified when:</strong> New slots are added
-                  on your preferred days or existing slots become available.
-                </p>
+                <div className="space-y-1">
+                  <p className="text-sm text-green-900">
+                    <strong>You'll be notified when:</strong> New slots are added
+                    on your selected date/date range or existing slots become available.
+                  </p>
+                  <p className="text-xs text-green-800">
+                    For date range + time range alerts, we email the first matching slot (earliest date and time).
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="px-6 py-4 bg-white">
             <Button
               variant="outline"
               onClick={() => setAlertDialogOpen(false)}
               disabled={submittingAlert}
-              className="border-gray-300"
+              className="rounded-xl border-gray-300"
             >
               Cancel
             </Button>
             <Button
               onClick={handleAlertSubscription}
               disabled={submittingAlert}
-              className="bg-matepeak-primary hover:bg-matepeak-primary/90"
+              className="rounded-xl bg-matepeak-primary hover:bg-matepeak-primary/90"
             >
               {submittingAlert ? (
                 <>

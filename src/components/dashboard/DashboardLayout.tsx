@@ -20,6 +20,7 @@ import {
   Settings,
   Eye,
   PackageOpen,
+  Wallet,
 } from "lucide-react";
 import ClockPlus from "lucide-react/dist/esm/icons/clock-plus";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -45,7 +46,8 @@ type DashboardView =
   | "messages"
   | "students"
   | "requests"
-  | "services";
+  | "services"
+  | "earnings";
 
 interface DashboardLayoutProps {
   activeView: DashboardView;
@@ -101,6 +103,17 @@ const DashboardLayout = ({
           label: "Time Requests",
           icon: ClockPlus,
           badge: null, // Can add pending count here
+        },
+      ],
+    },
+    {
+      label: "Earnings",
+      items: [
+        {
+          id: "earnings" as DashboardView,
+          label: "Earnings (Under Development)",
+          icon: Wallet,
+          badge: null,
         },
       ],
     },
@@ -226,7 +239,7 @@ const DashboardLayout = ({
               {/* User Menu */}
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 px-3 h-11 rounded-xl hover:bg-gray-100 transition-all border-2 border-transparent data-[state=open]:border-black focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 group">
+                  <button className="flex items-center gap-2 px-3 h-11 rounded-xl hover:bg-gray-100 transition-all border-[0.5px] border-transparent data-[state=open]:border-black focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 group">
                     <div className="relative">
                       <Avatar
                         className="h-8 w-8 ring-2 ring-gray-200"

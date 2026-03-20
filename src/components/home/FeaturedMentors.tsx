@@ -9,6 +9,7 @@ import {
   ExpertProfileData,
 } from "@/services/mentorCardService";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
+import { useMentorPresenceMap } from "@/hooks/useMentorPresence";
 
 interface FeaturedMentorsProps {
   sectionRef: React.RefObject<HTMLDivElement>;
@@ -82,6 +83,7 @@ const FeaturedMentors = ({ sectionRef }: FeaturedMentorsProps) => {
   const [allMentors, setAllMentors] = useState<MentorProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const presenceMap = useMentorPresenceMap(allMentors);
 
   // Get actual categories from mentors instead of hardcoding
   const categories = useMemo(() => {
@@ -322,7 +324,11 @@ const FeaturedMentors = ({ sectionRef }: FeaturedMentorsProps) => {
                     <>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                         {categoryMentors.map((mentor) => (
-                          <MentorCard key={mentor.id} mentor={mentor} />
+                          <MentorCard
+                            key={mentor.id}
+                            mentor={mentor}
+                            isOnlineOverride={presenceMap[mentor.id] ?? false}
+                          />
                         ))}
                       </div>
                       <div className="text-center mt-8">
