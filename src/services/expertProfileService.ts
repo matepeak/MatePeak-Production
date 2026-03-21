@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { FormValues } from "@/hooks/useExpertOnboardingForm";
+import { notifyAvailabilityAlertMatches } from "@/services/availabilityAlertService";
 
 export async function updateExpertProfile(data: FormValues | any) {
   // Get current user
@@ -274,6 +275,7 @@ async function saveAvailabilitySlots(expertId: string, availableHours: any) {
       } else {
         console.log(`✅ Successfully saved ${slots.length} availability slots for expert ${expertId}`);
         console.log('✅ Inserted data:', insertedData);
+        await notifyAvailabilityAlertMatches(expertId, slots);
       }
     } else {
       console.log('⚠️ No slots to insert (all days disabled or no slots defined)');

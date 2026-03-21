@@ -67,6 +67,46 @@ const getLocalDateString = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+const getBookingEmailCopy = (
+  serviceType: SelectedService["type"],
+  serviceName: string,
+  mentorName: string,
+  studentName: string
+) => {
+  if (serviceType === "digitalProducts") {
+    return {
+      studentSubject: `Digital Product Confirmed: ${serviceName} by ${mentorName}`,
+      mentorSubject: `New Digital Product Order: ${serviceName} from ${studentName}`,
+      studentHeader: "Digital Product Confirmed",
+      mentorHeader: "New Digital Product Order",
+      studentIntro: `Your digital product from ${mentorName} is confirmed.`,
+      mentorIntro: `You received a new digital product order from ${studentName}.`,
+      detailsTitle: "Order Details",
+    };
+  }
+
+  if (serviceType === "priorityDm") {
+    return {
+      studentSubject: `Priority DM Confirmed: ${serviceName} with ${mentorName}`,
+      mentorSubject: `New Priority DM Request: ${serviceName} from ${studentName}`,
+      studentHeader: "Priority DM Confirmed",
+      mentorHeader: "New Priority DM Request",
+      studentIntro: `Your priority DM request with ${mentorName} is confirmed.`,
+      mentorIntro: `You have a new priority DM request from ${studentName}.`,
+      detailsTitle: "Request Details",
+    };
+  }
+
+  return {
+    studentSubject: `Session Confirmed: ${serviceName} with ${mentorName}`,
+    mentorSubject: `New Session Scheduled: ${serviceName} with ${studentName}`,
+    studentHeader: "Session Confirmed",
+    mentorHeader: "New Session Scheduled",
+    studentIntro: `Your session with ${mentorName} is confirmed.`,
+    mentorIntro: `You have a new session scheduled with ${studentName}.`,
+    detailsTitle: "Session Details",
+  };
+};
 export default function BookingDialog({
   open,
   onOpenChange,
@@ -168,6 +208,12 @@ export default function BookingDialog({
       );
       const isDigitalProduct = serviceDetails.type === "digitalProducts";
       const digitalProductLink = bookingData.digital_product_link || "";
+      const emailCopy = getBookingEmailCopy(
+        serviceDetails.type,
+        serviceDetails.name,
+        mentorName,
+        studentDetails.name
+      );
 
       // Check if meeting link exists
       const hasMeetingLink =
@@ -176,40 +222,62 @@ export default function BookingDialog({
       const meetingProvider = bookingData.meeting_provider || "Jitsi Meet";
 
       // Email to Student
+      const studentPrimaryActionUrl = isDigitalProduct
+        ? digitalProductLink || `${window.location.origin}/dashboard`
+        : hasMeetingLink
+        ? meetingLink
+        : `${window.location.origin}/dashboard`;
+      const studentPrimaryActionLabel = isDigitalProduct
+        ? "Access Product"
+        : hasMeetingLink
+        ? "Join Meeting"
+        : "Open Dashboard";
+
       const studentEmailHtml = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
-    .container { max-width: 600px; margin: 0 auto; background-color: white; }
-    .header { background-color: #10b981; color: white; padding: 32px; text-align: center; }
-    .content { padding: 32px; }
-    .card { background-color: #f9fafb; border-radius: 12px; padding: 20px; margin: 20px 0; }
-    .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
-    .detail-label { color: #6b7280; font-weight: 500; }
-    .detail-value { color: #111827; font-weight: 600; }
-    .meeting-button { display: inline-block; background-color: #10b981; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 20px 0; }
-    .meeting-box { background-color: #ecfdf5; border: 2px solid #10b981; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center; }
-    .footer { background-color: #f9fafb; padding: 24px; text-align: center; color: #6b7280; font-size: 14px; }
-    h1 { margin: 0; font-size: 24px; }
+    body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .wrapper { width: 100%; padding: 60px 0; display: flex; justify-content: center; }
+    .container { width: 100%; }
+    .inner-container { width: 520px; margin: 0 auto; background: #ffffff; border-radius: 10px; padding: 40px; }
+    .logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
+    .header { text-align: center; background: #ffffff; margin-bottom: 28px; color: #111; }
+    .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+    .subtitle { font-size: 14px; color: #555; margin-top: 12px; line-height: 1.6; }
+    .content { background: #ffffff; }
+    .content p { font-size: 14px; color: #555; margin-bottom: 18px; line-height: 1.6; }
+    .card { background: #f4f5f7; border-radius: 8px; padding: 20px; margin: 30px 0; }
+    .card h2 { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: #111; margin-top: 0; }
+    .detail-row { font-size: 13px; color: #444; padding: 10px 0; border-bottom: 1px solid #e5e5e5; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label { color: #111; font-weight: 600; display: inline-block; min-width: 110px; }
+    .detail-value { color: #444; }
+    .action-wrap { text-align: center; margin: 36px 0; }
+    .action-button { background-color: #000; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; display: inline-block; }
+    .note { font-size: 13px; color: #666; text-align: center; line-height: 1.6; margin-bottom: 32px; }
+    .footer { text-align: center; font-size: 12px; color: #888; margin-top: 12px; background: #ffffff; }
+    .link { color: #000; text-decoration: none; font-weight: 500; }
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="wrapper"><div class="container"><div class="inner-container">
+    <div class="logo">MatePeak</div>
     <div class="header">
-      <h1>🎉 Booking Confirmed!</h1>
+      <h1>${emailCopy.studentHeader}</h1>
+      <div class="subtitle">Your request has been successfully confirmed.</div>
     </div>
     
     <div class="content">
       <p>Hi ${studentDetails.name},</p>
-      <p>Great news! Your booking with <strong>${mentorName}</strong> has been confirmed.</p>
+      <p>${emailCopy.studentIntro}</p>
       
       <div class="card">
-        <h2 style="color: #111827; font-size: 20px; margin-top: 0;">Session Details</h2>
+        <h2 style="color: #111827; font-size: 20px; margin-top: 0;">${emailCopy.detailsTitle}</h2>
         <div class="detail-row">
-          <span class="detail-label">Service</span>
+          <span class="detail-label">Service:&nbsp;</span>
           <span class="detail-value">${serviceDetails.name}</span>
         </div>
         ${
@@ -217,79 +285,46 @@ export default function BookingDialog({
             ? ""
             : `
         <div class="detail-row">
-          <span class="detail-label">Date</span>
+          <span class="detail-label">Date:&nbsp;</span>
           <span class="detail-value">${formattedDate}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Time</span>
+          <span class="detail-label">Time:&nbsp;</span>
           <span class="detail-value">${bookingData.scheduled_time} (${
         selectedDateTime?.timezone || timezone
       })</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Duration</span>
+          <span class="detail-label">Duration:&nbsp;</span>
           <span class="detail-value">${serviceDetails.duration} minutes</span>
         </div>
         `
         }
         <div class="detail-row">
-          <span class="detail-label">Status</span>
-          <span class="detail-value" style="color: #10b981;">FREE - Beta Special</span>
+          <span class="detail-label">Status:</span>
+          <span class="detail-value">Confirmed</span>
         </div>
       </div>
       
-      ${
-        hasMeetingLink
-          ? `
-      <div class="meeting-box">
-        <h3 style="color: #111827; margin-top: 0;">🎥 Video Meeting Link</h3>
-        <p style="color: #6b7280; font-size: 14px; margin: 8px 0;">Join the session using ${meetingProvider}</p>
-        <a href="${meetingLink}" class="meeting-button">Join Meeting</a>
-        <p style="color: #6b7280; font-size: 12px; margin: 16px 0 0 0;">
-          Click the button above when it's time for your session.<br>
-          You can also find this link in your dashboard.
-        </p>
+      <div class="action-wrap">
+        <a href="${studentPrimaryActionUrl}" class="action-button">${studentPrimaryActionLabel}</a>
       </div>
-      `
-          : ""
-      }
 
-      ${
-        isDigitalProduct && digitalProductLink
-          ? `
-      <div class="meeting-box">
-        <h3 style="color: #111827; margin-top: 0;">📦 Access Your Digital Product</h3>
-        <p style="color: #6b7280; font-size: 14px; margin: 8px 0;">Use this secure link to access your purchase.</p>
-        <a href="${digitalProductLink}" class="meeting-button">Access Product</a>
-      </div>
-      `
-          : ""
-      }
-      
-      <p style="color: #6b7280; font-size: 14px;">
-        <strong>What to expect:</strong><br>
+      <p class="note">
         ${
           isDigitalProduct
-            ? digitalProductLink
-              ? "• Your product access link is ready above<br>"
-              : "• Your mentor will share access details shortly<br>"
-            : "• You'll receive a reminder 24 hours before the session<br>• Another reminder will be sent 1 hour before<br>"
-        }
-        ${
-          isDigitalProduct
-            ? ""
+            ? "Your access details are available now and are also saved in your dashboard."
             : hasMeetingLink
-            ? "• Use the meeting link above to join at the scheduled time<br>"
-            : "• Meeting link will be available in your dashboard<br>"
+            ? `Use ${meetingProvider} at the scheduled time. We will also send reminder emails before your session.`
+            : "Your dashboard has the latest booking details and session updates."
         }
       </p>
     </div>
     
     <div class="footer">
-      <p>Need help? <a href="mailto:support@matepeak.com">Contact Support</a></p>
-      <p>&copy; 2025 Spark Mentor Connect. All rights reserved.</p>
+      Need help? <a href="mailto:support@matepeak.com" class="link">Contact Support</a>
     </div>
-  </div>
+  </div></div></div>
 </body>
 </html>
       `;
@@ -298,7 +333,7 @@ export default function BookingDialog({
       await supabase.functions.invoke("send-email", {
         body: {
           to: studentDetails.email,
-          subject: `Booking Confirmed: ${serviceDetails.name} with ${mentorName}`,
+          subject: emailCopy.studentSubject,
           html: studentEmailHtml,
         },
       });
@@ -312,47 +347,56 @@ export default function BookingDialog({
 
       if (mentorProfile?.email) {
         // Email to Mentor
+        const mentorPrimaryActionUrl = `${window.location.origin}/mentor/dashboard`;
         const mentorEmailHtml = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
-    .container { max-width: 600px; margin: 0 auto; background-color: white; }
-    .header { background-color: #111827; color: white; padding: 32px; text-align: center; }
-    .content { padding: 32px; }
-    .card { background-color: #f9fafb; border-radius: 12px; padding: 20px; margin: 20px 0; }
-    .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
-    .detail-label { color: #6b7280; font-weight: 500; }
-    .detail-value { color: #111827; font-weight: 600; }
-    .message-box { background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 16px; margin: 16px 0; }
-    .meeting-button { display: inline-block; background-color: #111827; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 20px 0; }
-    .meeting-box { background-color: #f3f4f6; border: 2px solid #111827; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center; }
-    .footer { background-color: #f9fafb; padding: 24px; text-align: center; color: #6b7280; font-size: 14px; }
-    h1 { margin: 0; font-size: 24px; }
+    body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .wrapper { width: 100%; padding: 60px 0; display: flex; justify-content: center; }
+    .container { width: 520px; background: #ffffff; border-radius: 10px; padding: 40px; }
+    .logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
+    .header { text-align: center; background: #ffffff; margin-bottom: 28px; color: #111; }
+    .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+    .subtitle { font-size: 14px; color: #555; margin-top: 12px; line-height: 1.6; }
+    .content { background: #ffffff; }
+    .content p { font-size: 14px; color: #555; margin-bottom: 18px; line-height: 1.6; }
+    .card { background: #f4f5f7; border-radius: 8px; padding: 20px; margin: 30px 0; }
+    .card h2 { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: #111; margin-top: 0; }
+    .detail-row { font-size: 13px; color: #444; padding: 10px 0; border-bottom: 1px solid #e5e5e5; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label { color: #111; font-weight: 600; display: inline-block; min-width: 110px; }
+    .detail-value { color: #444; }
+    .message-box { background: #f4f5f7; border-radius: 8px; padding: 20px; margin: 20px 0; color: #555; border: none; }
+    .action-wrap { text-align: center; margin: 36px 0; }
+    .action-button { background-color: #000; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; display: inline-block; }
+    .note { font-size: 13px; color: #666; text-align: center; line-height: 1.6; margin-bottom: 32px; }
+    .footer { text-align: center; font-size: 12px; color: #888; margin-top: 12px; background: #ffffff; }
+    .link { color: #000; text-decoration: none; font-weight: 500; }
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="wrapper"><div class="container">
+    <div class="logo">MatePeak</div>
     <div class="header">
-      <h1>📅 New Booking Received</h1>
+      <h1>${emailCopy.mentorHeader}</h1>
+      <div class="subtitle">A new booking has been confirmed on MatePeak.</div>
     </div>
     
     <div class="content">
       <p>Hi ${mentorProfile.full_name || "there"},</p>
-      <p>You have a new booking from <strong>${
-        studentDetails.name
-      }</strong>.</p>
+      <p>${emailCopy.mentorIntro}</p>
       
       <div class="card">
-        <h2 style="color: #111827; font-size: 20px; margin-top: 0;">Session Details</h2>
+        <h2 style="color: #111827; font-size: 20px; margin-top: 0;">${emailCopy.detailsTitle}</h2>
         <div class="detail-row">
-          <span class="detail-label">Student</span>
+          <span class="detail-label">Student:&nbsp;</span>
           <span class="detail-value">${studentDetails.name}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Service</span>
+          <span class="detail-label">Service:&nbsp;</span>
           <span class="detail-value">${serviceDetails.name}</span>
         </div>
         ${
@@ -360,17 +404,17 @@ export default function BookingDialog({
             ? ""
             : `
         <div class="detail-row">
-          <span class="detail-label">Date</span>
+          <span class="detail-label">Date:&nbsp;</span>
           <span class="detail-value">${formattedDate}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Time</span>
+          <span class="detail-label">Time:&nbsp;</span>
           <span class="detail-value">${bookingData.scheduled_time} (${
           selectedDateTime?.timezone || timezone
         })</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Duration</span>
+          <span class="detail-label">Duration:&nbsp;</span>
           <span class="detail-value">${serviceDetails.duration} minutes</span>
         </div>
         `
@@ -381,65 +425,32 @@ export default function BookingDialog({
         studentDetails.purpose
           ? `
       <div class="message-box">
-        <strong>Session Purpose:</strong><br>
+        <strong>Student Goal:</strong><br>
         ${studentDetails.purpose}
       </div>
       `
           : ""
       }
-      
-      ${
-        hasMeetingLink
-          ? `
-      <div class="meeting-box">
-        <h3 style="color: #111827; margin-top: 0;">🎥 Video Meeting Link</h3>
-        <p style="color: #6b7280; font-size: 14px; margin: 8px 0;">Host the session using ${meetingProvider}</p>
-        <a href="${meetingLink}" class="meeting-button">Start Meeting</a>
-        <p style="color: #6b7280; font-size: 12px; margin: 16px 0 0 0;">
-          Click the button above to start or join the meeting at the scheduled time.<br>
-          Share this link with your student if needed.
-        </p>
-      </div>
-      `
-          : ""
-      }
 
-      ${
-        isDigitalProduct && digitalProductLink
-          ? `
-      <div class="meeting-box">
-        <h3 style="color: #111827; margin-top: 0;">📦 Product Link Shared</h3>
-        <p style="color: #6b7280; font-size: 14px; margin: 8px 0;">The student can access the product using this link:</p>
-        <a href="${digitalProductLink}" class="meeting-button">View Product Link</a>
+      <div class="action-wrap">
+        <a href="${mentorPrimaryActionUrl}" class="action-button">Open Mentor Dashboard</a>
       </div>
-      `
-          : ""
-      }
-      
-      <p style="color: #6b7280; font-size: 14px;">
-        <strong>Next Steps:</strong><br>
-        • Review the session purpose above<br>
-        • Check your dashboard for full details<br>
+
+      <p class="note">
         ${
           isDigitalProduct
-            ? "• Ensure the product link stays active for student access<br>"
+            ? "Keep your product link active and follow up with the student if needed."
             : hasMeetingLink
-            ? "• Use the meeting link above at the scheduled time<br>"
-            : "• Meeting link is available in your dashboard<br>"
-        }
-        ${
-          isDigitalProduct
-            ? "• Follow up with the student if they need support"
-            : "• Prepare any materials needed for the session"
+            ? `Use ${meetingProvider} at the scheduled time. The meeting link is already available in your booking.`
+            : "Review the full booking details and next steps from your dashboard."
         }
       </p>
     </div>
     
     <div class="footer">
-      <p>Questions? <a href="mailto:support@matepeak.com">Contact Support</a></p>
-      <p>&copy; 2025 Spark Mentor Connect. All rights reserved.</p>
+      Need help? <a href="mailto:support@matepeak.com" class="link">Contact Support</a>
     </div>
-  </div>
+  </div></div>
 </body>
 </html>
         `;
@@ -448,7 +459,7 @@ export default function BookingDialog({
         await supabase.functions.invoke("send-email", {
           body: {
             to: mentorProfile.email,
-            subject: `New Booking: ${serviceDetails.name} with ${studentDetails.name}`,
+            subject: emailCopy.mentorSubject,
             html: mentorEmailHtml,
           },
         });
@@ -509,18 +520,18 @@ export default function BookingDialog({
       if (result.success) {
         // Store booking data for success modal
         setCreatedBooking(result.data);
-        console.log("✅ Booking created successfully:", result.data);
+        console.log("Booking created successfully:", result.data);
 
         // Send confirmation emails (async, don't wait)
         sendConfirmationEmails(result.data, details, selectedService);
 
         // Close booking dialog immediately
         handleClose();
-        console.log("🚪 Booking dialog closed");
+        console.log("Booking dialog closed");
 
         // Show success modal after dialog animation completes (600ms for smooth transition)
         setTimeout(() => {
-          console.log("🎉 Showing success modal");
+          console.log("Showing success modal");
           setShowSuccessModal(true);
         }, 600);
       } else {
@@ -675,7 +686,7 @@ export default function BookingDialog({
       </Dialog>
 
       {/* Success Modal - Separate from booking dialog */}
-      {console.log("🔍 Success Modal Check:", {
+      {console.log("Success Modal Check:", {
         showSuccessModal,
         hasCreatedBooking: !!createdBooking,
         hasBookingDetails: !!bookingDetails,

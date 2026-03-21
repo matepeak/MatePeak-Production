@@ -35,6 +35,7 @@ import { Label } from "@/components/ui/label";
 import { TimePicker } from "@/components/ui/time-picker";
 import { autoMigrateAvailabilitySlots } from "@/utils/availabilityMigration";
 import { ToastAction } from "@/components/ui/toast";
+import { notifyAvailabilityAlertMatches } from "@/services/availabilityAlertService";
 
 interface AvailabilitySlot {
   id?: string;
@@ -657,6 +658,8 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
         .insert(slotsToInsert);
 
       if (error) throw error;
+
+      await notifyAvailabilityAlertMatches(mentorProfile.id, slotsToInsert);
 
       toast({
         title: "Availability Updated",

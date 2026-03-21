@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { useLocation, Link, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import MentorCard from "@/components/MentorCard";
 import { MentorProfile } from "@/components/MentorCard";
+import ExploreMentorGrid from "@/components/explore/ExploreMentorGrid";
 import { fetchMentorCards } from "@/services/mentorCardService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,8 +32,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { showWarningToast } from "@/utils/toast-helpers";
-import { Session } from "@supabase/supabase-js";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
 import SEO from "@/components/SEO";
 
@@ -55,15 +53,13 @@ const Explore = () => {
   >("newest");
   const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [session, setSession] = useState<Session | null>(null);
   const [selectedLanguage, setSelectedLanguage] = useState("all");
   const [minRating, setMinRating] = useState(0);
 
   // Production-ready search features
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearchActive, setIsSearchActive] = useState(false);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [error, setError] = useState<Error | null>(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -137,42 +133,6 @@ const Explore = () => {
         console.error("Failed to parse search history", e);
       }
     }
-
-    // Check authentication and load favorites
-    const initAuth = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      setSession(session);
-
-      // Only load favorites if user is logged in
-      if (session) {
-        const savedFavorites = localStorage.getItem("favoriteMentors");
-        if (savedFavorites) {
-          try {
-            setFavorites(JSON.parse(savedFavorites));
-          } catch (e) {
-            console.error("Failed to parse favorites", e);
-          }
-        }
-      }
-    };
-
-    initAuth();
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-
-      // Clear favorites if user logs out
-      if (!session) {
-        setShowFavoritesOnly(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
 
   // Save search to history
@@ -566,33 +526,10 @@ const Explore = () => {
     setSelectedExpertise("all");
     setSortBy("newest");
     setPriceRange([0, 10000]);
-    setShowFavoritesOnly(false);
     setSelectedLanguage("all");
     setMinRating(0);
     navigate("/explore", { replace: true });
     fetchDatabaseMentors();
-  };
-
-  // Toggle favorite - only for logged-in users
-  const toggleFavorite = (mentorId: string) => {
-    // Check if user is logged in
-    if (!session) {
-      showWarningToast("Sign in required", {
-        description: "Please sign in to save mentors to your favorites",
-        action: {
-          label: "Sign In",
-          onClick: () => navigate("/student/login"),
-        },
-      });
-      return;
-    }
-
-    const newFavorites = favorites.includes(mentorId)
-      ? favorites.filter((id) => id !== mentorId)
-      : [...favorites, mentorId];
-
-    setFavorites(newFavorites);
-    localStorage.setItem("favoriteMentors", JSON.stringify(newFavorites));
   };
 
   // Calculate relevance score for sorting
@@ -626,9 +563,6 @@ const Explore = () => {
 
   // Sort mentors with relevance support
   const sortedMentors = [...mentorCards]
-    .filter((mentor) =>
-      showFavoritesOnly ? favorites.includes(mentor.id) : true
-    )
     .filter((mentor) => {
       // Filter by minimum rating - only filter mentors who actually have ratings
       // Mentors without ratings (rating = 0 or no reviews) should still be shown
@@ -676,7 +610,6 @@ const Explore = () => {
     searchInput !== "" ||
     priceRange[0] !== 0 ||
     priceRange[1] !== 10000 ||
-    showFavoritesOnly ||
     selectedLanguage !== "all" ||
     minRating > 0;
 
@@ -697,9 +630,9 @@ const Explore = () => {
             {/* Clean Search Bar with Autocomplete and History */}
             <div className="mb-4 max-w-4xl">
               <div className="relative">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 sm:px-5 py-2.5 rounded-xl border border-gray-200 hover:border-gray-300 hover:shadow-sm focus-within:border-matepeak-primary focus-within:shadow-md transition-all bg-white">
-                  <div className="flex items-center gap-3 flex-1 min-w-0 h-11">
-                    <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                <div className="flex items-center gap-2.5 px-3.5 py-1.5 border border-gray-200 bg-white rounded-full">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 h-9 sm:h-10">
+                    <Search className="h-4.5 w-4.5 text-gray-400 flex-shrink-0" />
                     <input
                       ref={searchInputRef}
                       type="text"
@@ -708,6 +641,7 @@ const Explore = () => {
                       onChange={(e) => setSearchInput(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                       onFocus={() => {
+                        setIsSearchActive(true);
                         if (
                           searchInput.length >= MIN_SEARCH_LENGTH ||
                           searchHistory.length > 0
@@ -716,11 +650,17 @@ const Explore = () => {
                         }
                       }}
                       onBlur={() =>
-                        setTimeout(() => setShowSuggestions(false), 200)
+                        setTimeout(() => {
+                          setShowSuggestions(false);
+                          setIsSearchActive(false);
+                        }, 200)
                       }
-                      className="explore-search-input w-full h-full bg-transparent border-0 outline-none ring-0 focus:outline-none focus:ring-0 text-gray-900 font-poppins text-base placeholder:text-gray-500"
+                      className="explore-search-input w-full h-full bg-transparent border-0 outline-none ring-0 focus:outline-none focus:ring-0 text-gray-900 font-poppins text-sm sm:text-base placeholder:text-gray-500"
                     />
-                    {searchInput && (
+                  </div>
+
+                  {(isSearchActive || searchInput.trim().length > 0) && (
+                    <>
                       <button
                         onClick={() => {
                           setSearchInput("");
@@ -728,23 +668,23 @@ const Explore = () => {
                           setShowSuggestions(false);
                           fetchDatabaseMentors();
                         }}
-                        className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                        className="h-9 w-9 sm:h-10 sm:w-10 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors flex-shrink-0"
                         aria-label="Clear search"
                       >
                         <X className="h-5 w-5" />
                       </button>
-                    )}
-                  </div>
-                  <Button
-                    onClick={handleSearch}
-                    disabled={
-                      searchInput.length > 0 &&
-                      searchInput.length < MIN_SEARCH_LENGTH
-                    }
-                    className="w-full sm:w-auto bg-matepeak-primary hover:bg-matepeak-secondary text-white font-poppins px-6 h-11 flex-shrink-0 disabled:opacity-50"
+
+                      <div className="h-8 w-px bg-gray-200" />
+                    </>
+                  )}
+
+                  <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="h-9 w-9 sm:h-10 sm:w-10 rounded-md flex items-center justify-center text-gray-500 hover:text-matepeak-primary hover:bg-gray-50 transition-colors flex-shrink-0"
+                    aria-label="Open filters"
                   >
-                    Search
-                  </Button>
+                    <SlidersHorizontal className="h-4.5 w-4.5" />
+                  </button>
                 </div>
 
                 {/* Autocomplete Dropdown */}
@@ -802,66 +742,8 @@ const Explore = () => {
                         )}
                     </div>
                   )}
-              </div>
 
-              {/* Error Message */}
-              {error && (
-                <div className="mt-3">
-                  <ConnectionStatus 
-                    error={error} 
-                    onRetry={() => fetchDatabaseMentors()} 
-                    isRetrying={loading}
-                  />
-                </div>
-              )}
-
-              {/* Search Tips */}
-              {searchInput.length > 0 &&
-                searchInput.length < MIN_SEARCH_LENGTH && (
-                  <div className="mt-2 text-sm text-gray-500 font-poppins">
-                    Enter at least {MIN_SEARCH_LENGTH} characters to search
-                  </div>
-                )}
-            </div>
-
-            {/* Clean Category Pills */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm text-gray-700 font-poppins font-bold mr-1">
-                Try:
-              </span>
-              {[
-                "Career Growth",
-                "Mental Health",
-                "Interview Prep",
-                "Academic Success",
-              ].map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => searchWithQuery(cat)}
-                  className={`px-4 py-1.5 rounded-full border text-sm font-poppins transition-all ${
-                    searchInput === cat
-                      ? "border-matepeak-primary bg-matepeak-primary/5 text-matepeak-primary"
-                      : "border-gray-200 hover:border-matepeak-primary hover:bg-gray-50 text-gray-700 hover:text-matepeak-primary"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-
-              {/* Separator Pipe */}
-              <span className="text-gray-300 text-lg font-light mx-1">|</span>
-
-              {/* Filters Dropdown */}
-              <div className="relative ml-2">
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="px-4 py-1.5 rounded-full border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-poppins flex items-center gap-1.5 transition-all"
-                >
-                  <SlidersHorizontal className="h-3.5 w-3.5" />
-                  More filters
-                </button>
-
-                {/* Dropdown Menu */}
+                {/* Filters Dropdown */}
                 {showFilters && (
                   <>
                     {/* Backdrop to close dropdown */}
@@ -871,7 +753,7 @@ const Explore = () => {
                     />
 
                     {/* Dropdown Content */}
-                    <div className="absolute top-full mt-2 right-0 w-[420px] bg-white rounded-xl border border-gray-200 shadow-xl z-50 p-5">
+                    <div className="absolute top-full mt-2 right-0 w-[min(420px,calc(100vw-2rem))] bg-white rounded-xl border border-gray-200 shadow-xl z-50 p-5 max-md:fixed max-md:left-4 max-md:right-4 max-md:top-auto max-md:bottom-4 max-md:mt-0 max-md:w-auto max-md:max-h-[75vh] max-md:overflow-y-auto">
                       <div className="space-y-4">
                         {/* Category Filter */}
                         <div>
@@ -1071,33 +953,6 @@ const Explore = () => {
                           </Select>
                         </div>
 
-                        {/* Favorites Toggle - Only for logged-in users */}
-                        {session && (
-                          <div className="flex items-center justify-between">
-                            <label className="text-sm font-medium text-gray-700 font-poppins">
-                              Show Favorites Only
-                            </label>
-                            <button
-                              onClick={() =>
-                                setShowFavoritesOnly(!showFavoritesOnly)
-                              }
-                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                showFavoritesOnly
-                                  ? "bg-matepeak-primary"
-                                  : "bg-gray-200"
-                              }`}
-                            >
-                              <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                  showFavoritesOnly
-                                    ? "translate-x-6"
-                                    : "translate-x-1"
-                                }`}
-                              />
-                            </button>
-                          </div>
-                        )}
-
                         {/* Action Buttons */}
                         <div className="flex gap-2 pt-3 border-t border-gray-100">
                           {hasActiveFilters && (
@@ -1128,6 +983,54 @@ const Explore = () => {
                     </div>
                   </>
                 )}
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="mt-3">
+                  <ConnectionStatus 
+                    error={error} 
+                    onRetry={() => fetchDatabaseMentors()} 
+                    isRetrying={loading}
+                  />
+                </div>
+              )}
+
+              {/* Search Tips */}
+              {searchInput.length > 0 &&
+                searchInput.length < MIN_SEARCH_LENGTH && (
+                  <div className="mt-2 text-sm text-gray-500 font-poppins">
+                    Enter at least {MIN_SEARCH_LENGTH} characters to search
+                  </div>
+                )}
+            </div>
+
+            {/* Clean Category Pills */}
+            <div className="w-full overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex w-full items-center gap-1.5 sm:gap-2.5 flex-nowrap pr-1">
+                <span className="text-[11px] sm:text-sm font-bold text-gray-900 font-poppins whitespace-nowrap leading-none">
+                  Try:
+                </span>
+                <div className="flex items-center gap-1 sm:gap-2 flex-nowrap">
+                  {[
+                    "Career Growth",
+                    "Mental Health",
+                    "Interview Prep",
+                    "Academic Success",
+                  ].map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => searchWithQuery(cat)}
+                      className={`h-6 sm:h-8 inline-flex items-center justify-center text-[10px] sm:text-sm px-2 sm:px-3.5 rounded-full bg-white border transition-all font-poppins whitespace-nowrap leading-none ${
+                        searchInput === cat
+                          ? "border-matepeak-primary bg-matepeak-primary/5 text-matepeak-primary"
+                          : "border-gray-200 text-gray-700 hover:border-matepeak-primary hover:text-matepeak-primary"
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -1164,16 +1067,7 @@ const Explore = () => {
               {/* Mentor Grid */}
               {sortedMentors.length > 0 ? (
                 <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-                    {sortedMentors.map((mentor) => (
-                      <MentorCard
-                        key={mentor.id}
-                        mentor={mentor}
-                        isFavorite={favorites.includes(mentor.id)}
-                        onToggleFavorite={toggleFavorite}
-                      />
-                    ))}
-                  </div>
+                  <ExploreMentorGrid mentors={sortedMentors} />
 
                   {/* Load More Button */}
                   {hasMore && (
@@ -1200,14 +1094,10 @@ const Explore = () => {
                 <div className="text-center py-20">
                   <Search className="h-16 w-16 text-gray-300 mx-auto mb-6" />
                   <h3 className="text-xl font-medium text-gray-900 mb-2 font-poppins">
-                    {showFavoritesOnly
-                      ? "No favorites yet"
-                      : "No results found"}
+                    No results found
                   </h3>
                   <p className="text-gray-600 font-poppins text-sm mb-6">
-                    {showFavoritesOnly ? (
-                      "Start adding mentors to your favorites by clicking the heart icon on their cards."
-                    ) : searchInput ? (
+                    {searchInput ? (
                       <>
                         Your search for{" "}
                         <span className="font-semibold">"{searchInput}"</span>{" "}
@@ -1219,7 +1109,7 @@ const Explore = () => {
                   </p>
 
                   {/* Helpful suggestions */}
-                  {searchInput && !showFavoritesOnly && (
+                  {searchInput && (
                     <div className="max-w-md mx-auto mb-6">
                       <p className="text-sm font-medium text-gray-700 mb-3 font-poppins">
                         Try these suggestions:
@@ -1278,7 +1168,7 @@ const Explore = () => {
                     </div>
                   )}
 
-                  {hasActiveFilters && !showFavoritesOnly && (
+                  {hasActiveFilters && (
                     <Button
                       onClick={handleClearFilters}
                       className="bg-matepeak-primary hover:bg-matepeak-secondary text-white font-poppins"

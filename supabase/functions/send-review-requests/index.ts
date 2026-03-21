@@ -20,6 +20,19 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+const sessionTypeMap: Record<string, string> = {
+  oneOnOneSession: "1:1 Mentoring Session",
+  chatAdvice: "Chat Advice",
+  priorityDm: "Priority DM",
+  digitalProducts: "Digital Product",
+  notes: "Session Notes",
+};
+
+const getServiceDisplayName = (sessionType?: string) => {
+  if (!sessionType) return "Session";
+  return sessionTypeMap[sessionType] || sessionType;
+};
+
 const getErrorMessage = (error: unknown) => {
   if (error instanceof Error) {
     return error.message;
@@ -28,74 +41,71 @@ const getErrorMessage = (error: unknown) => {
   return "Unknown error occurred";
 };
 
-// Email template for review requests (inlined for dashboard deployment)
-const reviewRequestEmailTemplate = (data: any) => ({
-  subject: `How was your session with ${data.mentorName}?`,
-  html: `
+const buildReviewRequestEmail = (data: {
+  studentName: string;
+  mentorName: string;
+  serviceName: string;
+  date: string;
+  time: string;
+  duration: number;
+  reviewLink: string;
+  bookAgainLink: string;
+}) => {
+  const subject = `How was your session with ${data.mentorName}?`;
+
+  const html = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; color: #111827; }
-    .container { max-width: 600px; margin: 0 auto; background-color: white; }
-    .header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 28px; text-align: center; }
-    .content { padding: 32px; }
-    .card { background-color: #f9fafb; border-radius: 12px; padding: 20px; margin: 20px 0; }
-    .button { display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; }
-    .stars { font-size: 28px; margin: 18px 0; letter-spacing: 2px; }
-    .footer { background-color: #f9fafb; padding: 24px; text-align: center; color: #6b7280; font-size: 14px; }
-    h1 { margin: 0; font-size: 24px; }
-    .subtext { color: #6b7280; font-size: 14px; text-align: center; margin-top: 12px; }
+    body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111; }
+    .container { width: 100%; background-color: #e9ebed; padding: 48px 16px; }
+    .inner-container { max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 10px; padding: 40px; }
+    .logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
+    .header { text-align: center; background: #ffffff; margin-bottom: 28px; }
+    .header h1 { margin: 0; font-size: 24px; font-weight: 600; color: #111; }
+    .subtitle { font-size: 14px; color: #555; margin-top: 12px; line-height: 1.6; }
+    .content { background: #ffffff; }
+    .content p { font-size: 14px; color: #555; margin-bottom: 18px; line-height: 1.6; }
+    .card { background: #f4f5f7; border-radius: 8px; padding: 20px; margin: 30px 0; }
+    .detail-row { font-size: 13px; color: #444; padding: 10px 0; border-bottom: 1px solid #e5e5e5; display: block; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label { font-weight: 600; color: #111; }
+    .detail-value { color: #444; }
+    .cta-wrap { text-align: center; margin: 36px 0; }
+    .button { background-color: #000; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; display: inline-block; }
+    .note { font-size: 13px; color: #666; text-align: center; line-height: 1.6; margin-bottom: 32px; }
+    .footer { text-align: center; font-size: 12px; color: #888; margin-top: 12px; background: #ffffff; }
+    .link { color: #000; text-decoration: none; font-weight: 500; }
   </style>
 </head>
 <body>
   <div class="container">
-    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
-      Your 60-second review helps other learners choose the right mentor.
-    </div>
-    <div class="header">
-      <h1>How was your session?</h1>
-    </div>
-    
+  <div class="inner-container">
+    <div class="logo">MatePeak</div>
+    <div class="header"><h1>Share Your Feedback</h1><div class="subtitle">Your session is complete and your feedback helps mentors improve.</div></div>
     <div class="content">
       <p>Hi ${data.studentName},</p>
-      <p>Thanks for learning with <strong>${data.mentorName}</strong>.</p>
-      
+      <p>Your session with <strong>${data.mentorName}</strong> is complete. We'd love your feedback.</p>
       <div class="card">
-        <p style="text-align: center; margin: 0;">
-          <strong>Session Details</strong><br>
-          ${data.serviceName} with ${data.mentorName}<br>
-          ${data.date} • ${data.duration} minutes
-        </p>
+        <div class="detail-row"><span class="detail-label">Service</span><span class="detail-value">${data.serviceName}</span></div>
+        <div class="detail-row"><span class="detail-label">Date</span><span class="detail-value">${data.date}</span></div>
+        <div class="detail-row"><span class="detail-label">Time</span><span class="detail-value">${data.time}</span></div>
+        <div class="detail-row"><span class="detail-label">Duration</span><span class="detail-value">${data.duration} minutes</span></div>
       </div>
-      
-      <div class="stars" style="text-align: center;">⭐ ⭐ ⭐ ⭐ ⭐</div>
-      
-      <div style="text-align: center; margin: 32px 0;">
-        <a href="${data.reviewLink}" class="button">Leave a Review</a>
-      </div>
-
-      <p class="subtext">Takes less than 1 minute: 1–5 stars + short comment.</p>
-
-      <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
-        <p style="text-align: center;">
-          <strong>Enjoyed your session?</strong><br>
-          <a href="${data.bookAgainLink}" style="color: #6366f1; text-decoration: none; font-weight: 600;">Book another session with ${data.mentorName} →</a>
-        </p>
-      </div>
+      <div class="cta-wrap"><a class="button" href="${data.reviewLink}">Write a Review</a></div>
+      <p class="note">Want another session? Book again from your dashboard: ${data.bookAgainLink}</p>
     </div>
-    
-    <div class="footer">
-      <p>Questions? <a href="mailto:support@matepeak.com">Contact Support</a></p>
-      <p>&copy; 2025 MatePeak - Be a Solopreneur. All rights reserved.</p>
-    </div>
+    <div class="footer">Need help? <a href="mailto:support@matepeak.com" class="link">Contact Support</a></div>
+  </div>
   </div>
 </body>
 </html>
-  `,
-});
+  `;
+
+  return { subject, html };
+};
 
 // Helper to format date
 const formatDate = (dateStr: string) => {
@@ -154,7 +164,7 @@ Deno.serve(async (req: Request) => {
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log("🔍 Checking for sessions ready for review requests...");
+    console.log("Checking for sessions ready for review requests...");
 
     // Get sessions ready for review using our database function
     const { data: sessions, error } = await supabase.rpc(
@@ -166,7 +176,7 @@ Deno.serve(async (req: Request) => {
       throw error;
     }
 
-    console.log(`📧 Found ${sessions?.length || 0} sessions ready for review`);
+    console.log(`Found ${sessions?.length || 0} sessions ready for review`);
 
     let emailsSent = 0;
     const errors: any[] = [];
@@ -186,7 +196,7 @@ Deno.serve(async (req: Request) => {
         const emailData = {
           studentName: session.student_name,
           mentorName: session.mentor_name,
-          serviceName: session.service_type,
+          serviceName: getServiceDisplayName(session.service_type),
           date: formatDate(session.scheduled_date),
           time: session.scheduled_time,
           duration: session.duration || 60,
@@ -194,8 +204,7 @@ Deno.serve(async (req: Request) => {
           bookAgainLink,
         };
 
-        // Generate email from template
-        const email = reviewRequestEmailTemplate(emailData);
+        const email = buildReviewRequestEmail(emailData);
 
         // Send email
         await sendEmail(session.student_email, email.subject, email.html);
@@ -206,7 +215,7 @@ Deno.serve(async (req: Request) => {
         });
 
         emailsSent++;
-        console.log(`✅ Review request sent to ${session.student_email}`);
+        console.log(`Review request sent to ${session.student_email}`);
       } catch (emailError: unknown) {
         console.error(
           `Error sending review request for booking ${session.booking_id}:`,
@@ -230,14 +239,14 @@ Deno.serve(async (req: Request) => {
       errors: errors.length > 0 ? errors : undefined,
     };
 
-    console.log("📊 Summary:", response.stats);
+    console.log("Summary:", response.stats);
 
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error: unknown) {
-    console.error("❌ Fatal error in send-review-requests:", error);
+    console.error("Fatal error in send-review-requests:", error);
     return new Response(
       JSON.stringify({
         success: false,

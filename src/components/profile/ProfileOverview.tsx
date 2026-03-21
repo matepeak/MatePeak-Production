@@ -1,14 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Heart,
   Sparkles,
@@ -19,11 +10,9 @@ import {
   Star,
   Quote,
   IndianRupee,
-  Calendar,
-  Clock3,
-  Trophy,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SERVICE_CONFIG } from "@/config/serviceConfig";
 
@@ -56,13 +45,12 @@ export default function ProfileOverview({
   mentor,
   stats,
 }: ProfileOverviewProps) {
+  const navigate = useNavigate();
+
   const isServiceEnabled = (enabled: unknown) =>
     enabled === true || enabled === "true" || enabled === 1;
 
   const [featuredReviews, setFeaturedReviews] = useState<any[]>([]);
-  const [selectedService, setSelectedService] = useState<ServiceListItem | null>(
-    null
-  );
   const [serviceStatsByType, setServiceStatsByType] = useState<
     Record<string, ServiceStats>
   >({});
@@ -300,6 +288,16 @@ export default function ProfileOverview({
 
   const services = getServicesList();
 
+  const handleServiceDetailsClick = (serviceKey: string) => {
+    if (!mentor?.username) {
+      return;
+    }
+
+    navigate(
+      `/mentor/${mentor.username}/services/${encodeURIComponent(serviceKey)}`
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* How I'd Describe Myself */}
@@ -428,7 +426,7 @@ export default function ProfileOverview({
                 return (
                   <button
                     type="button"
-                    onClick={() => setSelectedService(service)}
+                    onClick={() => handleServiceDetailsClick(service.key)}
                     key={index}
                     className="group relative w-full text-left bg-white rounded-2xl border border-gray-200 p-5 transition-all duration-200 hover:border-gray-300 hover:bg-gray-50 h-full flex flex-col"
                   >
@@ -570,133 +568,6 @@ export default function ProfileOverview({
           </CardContent>
         </Card>
       )}
-
-      <Dialog
-        open={Boolean(selectedService)}
-        onOpenChange={(open) => {
-          if (!open) setSelectedService(null);
-        }}
-      >
-        <DialogContent className="sm:max-w-[560px] p-0 overflow-hidden rounded-3xl border border-gray-200 shadow-xl">
-          {selectedService && (
-            <>
-              <DialogHeader className="px-7 pt-7 pb-4 bg-white border-b border-gray-100">
-                <div className="flex items-start gap-4">
-                  <div className="h-11 w-11 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center">
-                    <selectedService.icon className="h-6 w-6 text-matepeak-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <DialogTitle className="text-[22px] font-semibold tracking-tight text-gray-900 leading-tight">
-                      {selectedService.name}
-                    </DialogTitle>
-                    <DialogDescription className="mt-1.5 text-sm text-gray-500 leading-relaxed">
-                      {selectedService.description || "Personalized mentoring service."}
-                    </DialogDescription>
-                  </div>
-                </div>
-              </DialogHeader>
-
-              <div className="px-7 py-6 space-y-6 bg-white">
-                <div className="flex items-end gap-1">
-                  <IndianRupee className="h-5 w-5 text-gray-700 mb-1" />
-                  <span className="text-[32px] leading-none font-semibold tracking-tight text-gray-900">
-                    {formatPrice(selectedService.discount_price || selectedService.price)}
-                  </span>
-                  <span className="text-sm text-gray-500 ml-1 mb-1">
-                    {getPriceUnit(selectedService.key)}
-                  </span>
-                  {selectedService.discount_price && (
-                    <span className="text-sm text-gray-400 line-through ml-2 mb-1">
-                      ₹{formatPrice(selectedService.price)}
-                    </span>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-3.5">
-                    <div className="flex items-center gap-1.5 text-gray-500 text-[11px] uppercase tracking-wide mb-1.5">
-                      <Star className="h-3.5 w-3.5" />
-                      Rating
-                    </div>
-                    <p className="text-lg font-semibold tracking-tight text-gray-900">
-                      {serviceStatsByType[selectedService.key]?.reviewCount > 0
-                        ? `${serviceStatsByType[selectedService.key].averageRating.toFixed(1)} / 5`
-                        : "Not rated yet"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-3.5">
-                    <div className="flex items-center gap-1.5 text-gray-500 text-[11px] uppercase tracking-wide mb-1.5">
-                      <Trophy className="h-3.5 w-3.5" />
-                      Sessions
-                    </div>
-                    <p className="text-lg font-semibold tracking-tight text-gray-900">
-                      {serviceStatsByType[selectedService.key]?.completedSessions || 0}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-3.5">
-                    <div className="flex items-center gap-1.5 text-gray-500 text-[11px] uppercase tracking-wide mb-1.5">
-                      <Clock3 className="h-3.5 w-3.5" />
-                      Reviews
-                    </div>
-                    <p className="text-lg font-semibold tracking-tight text-gray-900">
-                      {serviceStatsByType[selectedService.key]?.reviewCount || 0}
-                    </p>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-3.5">
-                  <h4 className="text-sm font-semibold tracking-tight text-gray-900">Service Details</h4>
-                  <div className="space-y-2 text-sm text-gray-700">
-                    <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3.5 py-2.5">
-                      <span>Delivery Type</span>
-                      <span className="font-medium">
-                        {SERVICE_CONFIG[selectedService.key]?.typeLabel || "Mentoring Service"}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3.5 py-2.5">
-                      <span>Scheduling</span>
-                      <span className="font-medium">
-                        {SERVICE_CONFIG[selectedService.key]?.requiresScheduling
-                          ? "Appointment based"
-                          : "Instant / self-paced"}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3.5 py-2.5">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3.5 w-3.5" />
-                        Latest Booking
-                      </span>
-                      <span className="font-medium">
-                        {serviceStatsByType[selectedService.key]?.latestSessionDate
-                          ? new Date(
-                              serviceStatsByType[selectedService.key].latestSessionDate as string
-                            ).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })
-                          : "No bookings yet"}
-                      </span>
-                    </div>
-
-                    {selectedService.hasFreeDemo && (
-                      <div className="rounded-xl bg-gray-50 border border-gray-200 px-3.5 py-2.5 text-gray-700 font-medium">
-                        Includes a free demo option.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
