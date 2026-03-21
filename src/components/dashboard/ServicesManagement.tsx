@@ -1322,12 +1322,12 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                                   </Badge>
                                 )}
                                 {service.hasFreeDemo && (
-                                  <Badge className="bg-green-100 text-green-700 hover:bg-green-100 text-xs">
+                                  <Badge className="bg-green-100 text-green-700 text-xs">
                                     Free Demo
                                   </Badge>
                                 )}
                                 {service.enabled ? (
-                                  <Badge className="bg-green-100 text-green-700 hover:bg-green-100 text-xs">
+                                  <Badge className="bg-green-100 text-green-700 text-xs">
                                     Active
                                   </Badge>
                                 ) : (
@@ -1512,13 +1512,16 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                   <Label htmlFor="modal-edit-price">Price (₹) *</Label>
                   <Input
                     id="modal-edit-price"
-                    type="number"
-                    min="0"
-                    value={editForm.price}
+                    type="text"
+                    inputMode="decimal"
+                    value={editForm.price ?? ""}
                     onChange={(e) =>
                       setEditForm({
                         ...editForm,
-                        price: parseFloat(e.target.value) || 0,
+                        price:
+                          e.target.value.trim() === ""
+                            ? undefined
+                            : Math.max(0, parseFloat(e.target.value) || 0),
                       })
                     }
                   />
@@ -1531,14 +1534,14 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                 </Label>
                 <Input
                   id="modal-edit-discount-price"
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   value={editForm.discount_price || ""}
                   onChange={(e) =>
                     setEditForm({
                       ...editForm,
                       discount_price: e.target.value
-                        ? parseFloat(e.target.value)
+                        ? Math.max(0, parseFloat(e.target.value) || 0)
                         : undefined,
                     })
                   }
