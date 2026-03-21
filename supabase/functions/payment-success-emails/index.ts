@@ -23,6 +23,53 @@ const sessionTypeMap: Record<string, string> = {
   notes: "Session Notes",
 };
 
+const getBookingEmailCopy = (
+  serviceType: string,
+  serviceName: string,
+  mentorName: string,
+  studentName: string,
+) => {
+  if (serviceType === "digitalProducts") {
+    return {
+      studentSubject: `Digital Product Received: ${serviceName} by ${mentorName}`,
+      mentorSubject: `Digital Product Order Received: ${serviceName} from ${studentName}`,
+      studentHeader: "Digital Product Received",
+      mentorHeader: "Digital Product Order Received",
+      studentIntro: `Your digital product from ${mentorName} is ready to access.`,
+      mentorIntro: `You received a new digital product order from ${studentName}.`,
+      detailsTitle: "Order Details",
+      studentSubtitle: "",
+      mentorSubtitle: "",
+    };
+  }
+
+  if (serviceType === "priorityDm") {
+    return {
+      studentSubject: `Priority DM Received: ${serviceName} with ${mentorName}`,
+      mentorSubject: `Priority DM Received: ${serviceName} from ${studentName}`,
+      studentHeader: "Priority DM Received",
+      mentorHeader: "Priority DM Received",
+      studentIntro: `Your priority DM request with ${mentorName} was received.`,
+      mentorIntro: `You received a new priority DM request from ${studentName}.`,
+      detailsTitle: "Request Details",
+      studentSubtitle: "",
+      mentorSubtitle: "",
+    };
+  }
+
+  return {
+    studentSubject: `Session Confirmed: ${serviceName} with ${mentorName}`,
+    mentorSubject: `New Session Scheduled: ${serviceName} with ${studentName}`,
+    studentHeader: "Session Confirmed",
+    mentorHeader: "New Session Scheduled",
+    studentIntro: `Your session with ${mentorName} is confirmed.`,
+    mentorIntro: `You have a new session scheduled with ${studentName}.`,
+    detailsTitle: "Session Details",
+    studentSubtitle: "",
+    mentorSubtitle: "",
+  };
+};
+
 const formatDate = (dateStr: string) => {
   const date = new Date(dateStr);
   return date.toLocaleDateString("en-US", {
@@ -31,6 +78,16 @@ const formatDate = (dateStr: string) => {
     month: "long",
     day: "numeric",
   });
+};
+
+const formatTime24 = (timeValue: string) => {
+  const parts = String(timeValue || "").split(":");
+  if (parts.length >= 2) {
+    const hh = parts[0].padStart(2, "0");
+    const mm = parts[1].padStart(2, "0");
+    return `${hh}:${mm}`;
+  }
+  return String(timeValue || "");
 };
 
 const buildStudentBookingConfirmationEmail = (data: {
@@ -44,18 +101,32 @@ const buildStudentBookingConfirmationEmail = (data: {
   duration: number;
   amount: number;
   meetingLink?: string;
+  productLink?: string;
 }) => {
   const isScheduled = data.serviceType === "oneOnOneSession";
-  const primaryActionUrl = data.meetingLink || `${siteUrl}/dashboard`;
-  const primaryActionLabel = data.meetingLink ? "Join Meeting" : "Open Dashboard";
+  const isDigitalProduct = data.serviceType === "digitalProducts";
+  const copy = getBookingEmailCopy(
+    data.serviceType,
+    data.serviceName,
+    data.mentorName,
+    data.studentName,
+  );
+  const primaryActionUrl = isDigitalProduct
+    ? data.productLink || `${siteUrl}/dashboard`
+    : data.meetingLink || `${siteUrl}/dashboard`;
+  const primaryActionLabel = isDigitalProduct
+    ? "Access Product"
+    : data.meetingLink
+    ? "Open Meeting Link"
+    : "Open Dashboard";
 
   const html = `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><style>
 body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111; }
-.wrapper { width: 100%; padding: 60px 0; display: flex; justify-content: center; }
-.container { width: 520px; background: #ffffff; border-radius: 10px; padding: 40px; }
+.container { width: 100%; background-color: #e9ebed; padding: 48px 16px; }
+.inner-container { max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 10px; padding: 40px; }
 .logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
 .header { text-align: center; background: #ffffff; margin-bottom: 28px; }
 .title { margin: 0; font-size: 24px; font-weight: 600; color: #111; }
@@ -74,26 +145,29 @@ body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-sys
 .link { color: #000; text-decoration: none; font-weight: 500; }
 </style></head>
 <body>
-<div class="wrapper"><div class="container">
+<div class="container"><div class="inner-container">
 <div class="logo">MatePeak</div>
-<div class="header"><h1 class="title">${data.serviceType === "digitalProducts" ? "Digital Product Confirmed" : "Booking Confirmed"}</h1><p class="subtitle">Your request has been successfully confirmed.</p></div>
+<div class="header"><h1 class="title">${copy.studentHeader}</h1>${copy.studentSubtitle ? `<p class="subtitle">${copy.studentSubtitle}</p>` : ""}</div>
 <div class="content">
 <p>Hi ${data.studentName},</p>
-<p>Your booking with <strong>${data.mentorName}</strong> is confirmed.</p>
+<p>${copy.studentIntro}</p>
 <div class="details">
-<h2 class="details-heading">Order Details</h2>
+<h2 class="details-heading">${copy.detailsTitle}</h2>
 <div class="detail-row"><span class="detail-label">Service</span><span class="detail-value">${data.serviceName}</span></div>
+<div class="detail-row"><span class="detail-label">Mentor</span><span class="detail-value">${data.mentorName}</span></div>
 ${isScheduled ? `<div class="detail-row"><span class="detail-label">Date</span><span class="detail-value">${data.date}</span></div>` : ""}
-${isScheduled ? `<div class="detail-row"><span class="detail-label">Time</span><span class="detail-value">${data.time} (${data.timezone})</span></div>` : ""}
+${isScheduled ? `<div class="detail-row"><span class="detail-label">Schedule</span><span class="detail-value">${formatTime24(data.time)} (${data.timezone})</span></div>` : ""}
 ${isScheduled ? `<div class="detail-row"><span class="detail-label">Duration</span><span class="detail-value">${data.duration} minutes</span></div>` : ""}
 <div class="detail-row"><span class="detail-label">Amount Paid</span><span class="detail-value">INR ${data.amount}</span></div>
 </div>
-<div class="cta-wrap"><a class="cta" href="${primaryActionUrl}">${primaryActionLabel}</a></div>
+${isDigitalProduct && data.productLink ? `<div class="cta-wrap"><a class="cta" href="${data.productLink}">Access Product</a></div><p style="font-size: 13px; color: #555; margin-top: 8px;">Product link: <a href="${data.productLink}" class="link">${data.productLink}</a></p>` : ""}
+${isScheduled && data.meetingLink ? `<div class="cta-wrap"><a class="cta" href="${data.meetingLink}">Open Meeting Link</a></div><p style="font-size: 13px; color: #555; margin-top: 8px;">Meeting link: <a href="${data.meetingLink}" class="link">${data.meetingLink}</a></p>` : ""}
+${!isScheduled && !isDigitalProduct ? `<div class="cta-wrap"><a class="cta" href="${siteUrl}/dashboard">Open Dashboard</a></div>` : ""}
 </div><div class="footer">Need help? <a href="mailto:support@matepeak.com" class="link">Contact Support</a></div></div></div></body></html>
   `;
 
   return {
-    subject: `Booking confirmed with ${data.mentorName}`,
+    subject: copy.studentSubject,
     html,
   };
 };
@@ -112,14 +186,21 @@ const buildMentorBookingConfirmationEmail = (data: {
   dashboardLink: string;
 }) => {
   const isScheduled = data.serviceType === "oneOnOneSession";
+  const copy = getBookingEmailCopy(
+    data.serviceType,
+    data.serviceName,
+    data.mentorName,
+    data.studentName,
+  );
+  const messageLabel = data.serviceType === "priorityDm" ? "Student Message" : "Student Goal";
 
   const html = `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><style>
 body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111; }
-.wrapper { width: 100%; padding: 60px 0; display: flex; justify-content: center; }
-.container { width: 520px; background: #ffffff; border-radius: 10px; padding: 40px; }
+.container { width: 100%; background-color: #e9ebed; padding: 48px 16px; }
+.inner-container { max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 10px; padding: 40px; }
 .logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
 .header { text-align: center; background: #ffffff; margin-bottom: 28px; }
 .title { margin: 0; font-size: 24px; font-weight: 600; color: #111; }
@@ -138,27 +219,28 @@ body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-sys
 .link { color: #000; text-decoration: none; font-weight: 500; }
 </style></head>
 <body>
-<div class="wrapper"><div class="container">
+<div class="container"><div class="inner-container">
 <div class="logo">MatePeak</div>
-<div class="header"><h1 class="title">New Paid Booking</h1><p class="subtitle">A student has confirmed a booking with you.</p></div>
+<div class="header"><h1 class="title">${copy.mentorHeader}</h1>${copy.mentorSubtitle ? `<p class="subtitle">${copy.mentorSubtitle}</p>` : ""}</div>
 <div class="content">
 <p>Hi ${data.mentorName},</p>
-<p>You have a confirmed paid booking from <strong>${data.studentName}</strong>.</p>
+<p>${copy.mentorIntro}</p>
 <div class="details">
-<h2 class="details-heading">Booking Details</h2>
+<h2 class="details-heading">${copy.detailsTitle}</h2>
 <div class="detail-row"><span class="detail-label">Service</span><span class="detail-value">${data.serviceName}</span></div>
+<div class="detail-row"><span class="detail-label">Student</span><span class="detail-value">${data.studentName}</span></div>
 ${isScheduled ? `<div class="detail-row"><span class="detail-label">Date</span><span class="detail-value">${data.date}</span></div>` : ""}
-${isScheduled ? `<div class="detail-row"><span class="detail-label">Time</span><span class="detail-value">${data.time} (${data.timezone})</span></div>` : ""}
+${isScheduled ? `<div class="detail-row"><span class="detail-label">Schedule</span><span class="detail-value">${formatTime24(data.time)} (${data.timezone})</span></div>` : ""}
 ${isScheduled ? `<div class="detail-row"><span class="detail-label">Duration</span><span class="detail-value">${data.duration} minutes</span></div>` : ""}
 <div class="detail-row"><span class="detail-label">Earnings</span><span class="detail-value">INR ${data.earnings}</span></div>
-${data.purpose ? `<div class="detail-row"><span class="detail-label">Student Goal</span><span class="detail-value">${data.purpose}</span></div>` : ""}
+${data.purpose ? `<div class="detail-row"><span class="detail-label">${messageLabel}</span><span class="detail-value">${data.purpose}</span></div>` : ""}
 </div>
 <div class="cta-wrap"><a class="cta" href="${data.dashboardLink}">Open Mentor Dashboard</a></div>
 </div><div class="footer">Need help? <a href="mailto:support@matepeak.com" class="link">Contact Support</a></div></div></div></body></html>
   `;
 
   return {
-    subject: `New booking from ${data.studentName}`,
+    subject: copy.mentorSubject,
     html,
   };
 };
@@ -329,7 +411,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: mentorExpert } = await supabase
       .from("expert_profiles")
-      .select("full_name, username")
+      .select("full_name, username, email")
       .eq("id", booking.expert_id)
       .maybeSingle();
 
@@ -343,15 +425,40 @@ Deno.serve(async (req: Request) => {
     const studentEmailFromAuth = await resolveEmailViaAuthAdmin(supabase, booking.user_id);
     const mentorEmailFromAuth = await resolveEmailViaAuthAdmin(supabase, booking.expert_id);
 
+    const studentEmailSource = studentProfile?.email
+      ? "profiles"
+      : booking.user_email
+      ? "bookings"
+      : studentEmailFromAuth
+      ? "auth"
+      : "missing";
+    const mentorEmailSource = mentorExpert?.email
+      ? "expert_profiles"
+      : mentorProfile?.email
+      ? "profiles"
+      : mentorEmailFromAuth
+      ? "auth"
+      : "missing";
+
     const studentEmail =
       studentProfile?.email || booking.user_email || studentEmailFromAuth || "";
-    const mentorEmail = mentorProfile?.email || mentorEmailFromAuth || "";
+    const mentorEmail = mentorExpert?.email || mentorProfile?.email || mentorEmailFromAuth || "";
 
     console.info("[payment-success-emails] Resolved recipients", {
       booking_id,
       studentEmail: studentEmail || null,
       mentorEmail: mentorEmail || null,
+      studentEmailSource,
+      mentorEmailSource,
     });
+
+    if (!mentorEmail) {
+      console.warn("[payment-success-emails] mentor email missing", {
+        booking_id,
+        mentor_profile_id: booking.expert_id,
+        mentorEmailSource,
+      });
+    }
 
     const date = formatDate(booking.scheduled_date);
     const time = booking.scheduled_time;
@@ -370,6 +477,7 @@ Deno.serve(async (req: Request) => {
       duration: booking.duration,
       amount,
       meetingLink: booking.meeting_link,
+      productLink: booking.digital_product_link,
     });
 
     const mentorTemplate = buildMentorBookingConfirmationEmail({

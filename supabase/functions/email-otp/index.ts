@@ -59,8 +59,8 @@ const sendOtpEmail = async (to: string, otp: string): Promise<void> => {
   <meta charset="utf-8">
   <style>
     body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-    .wrapper { width: 100%; padding: 60px 0; display: flex; justify-content: center; }
-    .container { width: 520px; background: #ffffff; border-radius: 10px; padding: 40px; }
+    .container { width: 100%; background-color: #e9ebed; padding: 48px 16px; }
+    .inner-container { max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 10px; padding: 40px; }
     .logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
     .header { text-align: center; background: #ffffff; margin-bottom: 28px; }
     .content { color: #111827; background-color: #ffffff; }
@@ -73,7 +73,7 @@ const sendOtpEmail = async (to: string, otp: string): Promise<void> => {
   </style>
 </head>
 <body>
-  <div class="wrapper"><div class="container">
+  <div class="container"><div class="inner-container">
     <div class="logo">MatePeak</div>
     <div class="header">
       <h2 style="margin:0;">MatePeak Email Verification</h2>

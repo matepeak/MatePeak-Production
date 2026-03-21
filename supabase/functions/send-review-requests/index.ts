@@ -60,8 +60,8 @@ const buildReviewRequestEmail = (data: {
   <meta charset="utf-8">
   <style>
     body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111; }
-    .wrapper { width: 100%; padding: 60px 0; display: flex; justify-content: center; }
-    .container { width: 520px; background: #ffffff; border-radius: 10px; padding: 40px; }
+    .container { width: 100%; background-color: #e9ebed; padding: 48px 16px; }
+    .inner-container { max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 10px; padding: 40px; }
     .logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
     .header { text-align: center; background: #ffffff; margin-bottom: 28px; }
     .header h1 { margin: 0; font-size: 24px; font-weight: 600; color: #111; }
@@ -81,8 +81,8 @@ const buildReviewRequestEmail = (data: {
   </style>
 </head>
 <body>
-  <div class="wrapper">
   <div class="container">
+  <div class="inner-container">
     <div class="logo">MatePeak</div>
     <div class="header"><h1>Share Your Feedback</h1><div class="subtitle">Your session is complete and your feedback helps mentors improve.</div></div>
     <div class="content">

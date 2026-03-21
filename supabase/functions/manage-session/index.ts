@@ -66,8 +66,8 @@ const sendMentorCancellationEmail = async (payload: {
   <meta charset="utf-8" />
   <style>
     body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-    .wrapper { width: 100%; padding: 60px 0; display: flex; justify-content: center; }
-    .container { width: 520px; background: #ffffff; border-radius: 10px; padding: 40px; }
+    .container { width: 100%; background-color: #e9ebed; padding: 48px 16px; }
+    .inner-container { max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 10px; padding: 40px; }
     .logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
     .title { text-align: center; font-size: 24px; font-weight: 600; color: #111; margin-bottom: 28px; }
     .text { font-size: 14px; color: #555; margin-bottom: 18px; line-height: 1.6; }
@@ -80,8 +80,8 @@ const sendMentorCancellationEmail = async (payload: {
   </style>
 </head>
 <body>
-  <div class="wrapper">
-    <div class="container">
+  <div class="container">
+    <div class="inner-container">
       <div class="logo">MatePeak</div>
       <div class="title">Session Cancelled</div>
 

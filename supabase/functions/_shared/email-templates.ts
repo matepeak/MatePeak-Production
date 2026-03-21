@@ -48,6 +48,14 @@ const bookingRequiresScheduling = (data: any) => {
   return serviceType !== "digitalProducts" && serviceType !== "priorityDm";
 };
 
+const formatTime24 = (timeValue: string) => {
+  const parts = String(timeValue || "").split(":");
+  if (parts.length >= 2) {
+    return `${parts[0].padStart(2, "0")}:${parts[1].padStart(2, "0")}`;
+  }
+  return String(timeValue || "");
+};
+
 const getBookingEmailCopy = (data: any, recipient: BookingEmailRecipient) => {
   const serviceType = getBookingServiceType(data);
   const serviceName = getBookingServiceDisplayName(data);
@@ -57,16 +65,16 @@ const getBookingEmailCopy = (data: any, recipient: BookingEmailRecipient) => {
   if (serviceType === "digitalProducts") {
     if (recipient === "student") {
       return {
-        subject: `Digital Product Confirmed: ${serviceName} by ${mentorName}`,
-        header: "Digital Product Confirmed",
-        intro: `Your digital product from ${mentorName} is confirmed.`,
+        subject: `Digital Product Received: ${serviceName} by ${mentorName}`,
+        header: "Digital Product Received",
+        intro: `Your digital product from ${mentorName} is ready to access.`,
         detailsTitle: "Order Details",
       };
     }
 
     return {
-      subject: `New Digital Product Order: ${serviceName} from ${studentName}`,
-      header: "New Digital Product Order",
+      subject: `Digital Product Order Received: ${serviceName} from ${studentName}`,
+      header: "Digital Product Order Received",
       intro: `You received a new digital product order from ${studentName}.`,
       detailsTitle: "Order Details",
     };
@@ -75,17 +83,17 @@ const getBookingEmailCopy = (data: any, recipient: BookingEmailRecipient) => {
   if (serviceType === "priorityDm") {
     if (recipient === "student") {
       return {
-        subject: `Priority DM Confirmed: ${serviceName} with ${mentorName}`,
-        header: "Priority DM Confirmed",
-        intro: `Your priority DM request with ${mentorName} is confirmed.`,
+        subject: `Priority DM Received: ${serviceName} with ${mentorName}`,
+        header: "Priority DM Received",
+        intro: `Your priority DM request with ${mentorName} was received.`,
         detailsTitle: "Request Details",
       };
     }
 
     return {
-      subject: `New Priority DM Request: ${serviceName} from ${studentName}`,
-      header: "New Priority DM Request",
-      intro: `You have a new priority DM request from ${studentName}.`,
+      subject: `Priority DM Received: ${serviceName} from ${studentName}`,
+      header: "Priority DM Received",
+      intro: `You received a new priority DM request from ${studentName}.`,
       detailsTitle: "Request Details",
     };
   }
@@ -162,8 +170,8 @@ export const emailTemplates = {
           <span class="detail-value">${data.date}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Time:&nbsp;</span>
-          <span class="detail-value">${data.time} (${data.timezone})</span>
+          <span class="detail-label">Schedule:&nbsp;</span>
+          <span class="detail-value">${formatTime24(data.time)} (${data.timezone})</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Duration:&nbsp;</span>
@@ -179,33 +187,27 @@ export const emailTemplates = {
       </div>
       
       ${
-        data.meetingLink
+        bookingRequiresScheduling(data) && data.meetingLink
           ? `
       <div style="text-align: center; margin: 24px 0;">
-        <a href="${data.meetingLink}" class="button">Join Meeting</a>
+        <a href="${data.meetingLink}" class="button">Open Meeting Link</a>
       </div>
+      <p style="font-size: 13px; color: #555; margin-top: 8px; word-break: break-all;">Meeting link: <a href="${data.meetingLink}">${data.meetingLink}</a></p>
+      `
+          : ""
+      }
+
+      ${
+        getBookingServiceType(data) === "digitalProducts" && data.productLink
+          ? `
+      <div style="text-align: center; margin: 24px 0;">
+        <a href="${data.productLink}" class="button">Access Product</a>
+      </div>
+      <p style="font-size: 13px; color: #555; margin-top: 8px; word-break: break-all;">Product link: <a href="${data.productLink}">${data.productLink}</a></p>
       `
           : ""
       }
       
-      <p style="color: #6b7280; font-size: 14px;">
-        <strong>What to expect:</strong><br>
-        ${
-          bookingRequiresScheduling(data)
-            ? `
-        - You'll receive a reminder 24 hours before the session<br>
-        - Another reminder will be sent 1 hour before<br>
-        ${
-          data.meetingLink
-            ? "- Use the meeting link above to join at the scheduled time<br>"
-            : "- Meeting link will be available in your dashboard<br>"
-        }
-        `
-            : getBookingServiceType(data) === "digitalProducts"
-            ? "- Access details will be shared in your dashboard and email updates<br>"
-            : "- You will receive a response update in your dashboard and email<br>"
-        }
-      </p>
     </div>
     
     <div class="footer">
@@ -276,8 +278,8 @@ export const emailTemplates = {
           <span class="detail-value">${data.date}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Time:&nbsp;</span>
-          <span class="detail-value">${data.time} (${data.timezone})</span>
+          <span class="detail-label">Schedule:&nbsp;</span>
+          <span class="detail-value">${formatTime24(data.time)} (${data.timezone})</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Duration:&nbsp;</span>
@@ -296,7 +298,7 @@ export const emailTemplates = {
         data.purpose
           ? `
       <div class="message-box">
-        <strong>Session Purpose:</strong><br>
+        <strong>${getBookingServiceType(data) === "priorityDm" ? "Student Message" : "Student Goal"}:</strong><br>
         ${data.purpose}
       </div>
       `
@@ -307,28 +309,6 @@ export const emailTemplates = {
         <a href="${data.dashboardLink}" class="button">View in Dashboard</a>
       </div>
       
-      <p style="color: #6b7280; font-size: 14px;">
-        <strong>Next Steps:</strong><br>
-        ${
-          bookingRequiresScheduling(data)
-            ? `
-        - Review the session purpose above<br>
-        - Prepare any materials needed<br>
-        - Generate meeting link if not already created
-        `
-            : getBookingServiceType(data) === "digitalProducts"
-            ? `
-        - Review the order details above<br>
-        - Share access details with the student promptly<br>
-        - Follow up if the student needs support
-        `
-            : `
-        - Review the request details above<br>
-        - Respond promptly in your dashboard<br>
-        - Follow up with the student if clarifications are needed
-        `
-        }
-      </p>
     </div>
     
     <div class="footer">

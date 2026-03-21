@@ -62,6 +62,15 @@ const getLocalDateString = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+const formatTime24 = (timeValue?: string) => {
+  const source = String(timeValue || "");
+  const parts = source.split(":");
+  if (parts.length >= 2) {
+    return `${parts[0].padStart(2, "0")}:${parts[1].padStart(2, "0")}`;
+  }
+  return source;
+};
+
 const getBookingEmailCopy = (
   serviceType: SelectedService["type"],
   serviceName: string,
@@ -70,11 +79,11 @@ const getBookingEmailCopy = (
 ) => {
   if (serviceType === "digitalProducts") {
     return {
-      studentSubject: `Digital Product Confirmed: ${serviceName} by ${mentorName}`,
-      mentorSubject: `New Digital Product Order: ${serviceName} from ${studentName}`,
-      studentHeader: "Digital Product Confirmed",
-      mentorHeader: "New Digital Product Order",
-      studentIntro: `Your digital product from ${mentorName} is confirmed.`,
+      studentSubject: `Digital Product Received: ${serviceName} by ${mentorName}`,
+      mentorSubject: `Digital Product Order Received: ${serviceName} from ${studentName}`,
+      studentHeader: "Digital Product Received",
+      mentorHeader: "Digital Product Order Received",
+      studentIntro: `Your digital product from ${mentorName} is ready to access.`,
       mentorIntro: `You received a new digital product order from ${studentName}.`,
       detailsTitle: "Order Details",
     };
@@ -82,12 +91,12 @@ const getBookingEmailCopy = (
 
   if (serviceType === "priorityDm") {
     return {
-      studentSubject: `Priority DM Confirmed: ${serviceName} with ${mentorName}`,
-      mentorSubject: `New Priority DM Request: ${serviceName} from ${studentName}`,
-      studentHeader: "Priority DM Confirmed",
-      mentorHeader: "New Priority DM Request",
-      studentIntro: `Your priority DM request with ${mentorName} is confirmed.`,
-      mentorIntro: `You have a new priority DM request from ${studentName}.`,
+      studentSubject: `Priority DM Received: ${serviceName} with ${mentorName}`,
+      mentorSubject: `Priority DM Received: ${serviceName} from ${studentName}`,
+      studentHeader: "Priority DM Received",
+      mentorHeader: "Priority DM Received",
+      studentIntro: `Your priority DM request with ${mentorName} was received.`,
+      mentorIntro: `You received a new priority DM request from ${studentName}.`,
       detailsTitle: "Request Details",
     };
   }
@@ -352,8 +361,14 @@ const BookingPage = () => {
       const hasMeetingLink =
         bookingData.meeting_link && bookingData.meeting_link.trim() !== "";
       const meetingLink = bookingData.meeting_link || "#";
+      const digitalProductLink =
+        typeof bookingData.digital_product_link === "string" &&
+        bookingData.digital_product_link.trim().length > 0
+          ? bookingData.digital_product_link.trim()
+          : "";
       const meetingProvider =
         bookingData.meeting_provider || "your preferred platform";
+      const timezoneLabel = selectedDateTime?.timezone || mentorData?.timezone || "IST";
 
       // Email to Student
       const studentEmailHtml = `
@@ -362,9 +377,10 @@ const BookingPage = () => {
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
-    .container { max-width: 600px; margin: 0 auto; background-color: white; }
-    .header { background: #f9fafb; color: #111827; padding: 24px 32px; text-align: center; border-bottom: 1px solid #e5e7eb; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f6f7f9; }
+    .container { width: 100%; background-color: #e9ebed; padding: 48px 16px; }
+    .inner-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; }
+    .header { background: #ffffff; color: #111827; padding: 24px 32px; text-align: center; border-bottom: 1px solid #e5e7eb; }
     .content { padding: 32px; }
     .card { background-color: #f9fafb; border-radius: 12px; padding: 20px; margin: 20px 0; }
     .detail-row { padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
@@ -372,19 +388,15 @@ const BookingPage = () => {
     .detail-value { color: #111827; font-weight: 600; }
     .meeting-box { background: #f9fafb; color: #111827; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin: 20px 0; text-align: center; }
     .meeting-button { display: inline-block; background-color: #222222; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 12px 0; }
-    .footer { background-color: #f9fafb; padding: 24px; text-align: center; color: #6b7280; font-size: 14px; }
+    .footer { background-color: #ffffff; padding: 24px; text-align: center; color: #6b7280; font-size: 14px; }
   </style>
 </head>
 <body>
   <div class="container">
+    <div class="inner-container">
     <div class="header">
       <img src="https://wpltqdlvrzukghiwvxqd.supabase.co/storage/v1/object/public/avatars/lovable-uploads/MatePeak_logo_with_name.png" alt="MatePeak" style="height: 40px; margin-bottom: 16px;" />
       <h1 style="margin: 0; font-size: 28px;">${emailCopy.studentHeader}</h1>
-      <p style="margin: 8px 0 0 0; font-size: 16px; opacity: 0.9;">${
-        requiresScheduling
-          ? "Your session has been successfully confirmed"
-          : "Your request has been successfully confirmed"
-      }</p>
     </div>
     
     <div class="content">
@@ -409,10 +421,8 @@ const BookingPage = () => {
           <span class="detail-value">${formattedDate}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Time:&nbsp;</span>
-          <span class="detail-value">${bookingData.scheduled_time} ${
-        selectedDateTime?.timezone || mentorData?.timezone || ""
-      }</span>
+          <span class="detail-label">Schedule:&nbsp;</span>
+          <span class="detail-value">${formatTime24(bookingData.scheduled_time)} (${timezoneLabel})</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Duration:&nbsp;</span>
@@ -424,42 +434,41 @@ const BookingPage = () => {
       </div>
       
       ${
-        hasMeetingLink
+        requiresScheduling && hasMeetingLink
           ? `
       <div class="meeting-box">
         <h3 style="color: #111827; margin-top: 0;">Video Meeting Link</h3>
         <p style="opacity: 0.9; font-size: 14px; margin: 8px 0;">Join the session using ${meetingProvider}</p>
-        <a href="${meetingLink}" class="meeting-button">Join Meeting</a>
+        <a href="${meetingLink}" class="meeting-button">Open Meeting Link</a>
         <p style="opacity: 0.8; font-size: 12px; margin: 16px 0 0 0;">
           Click the button above when it's time for your session.
+        </p>
+        <p style="opacity: 0.9; font-size: 13px; margin: 12px 0 0 0; word-break: break-all;">
+          Meeting link: <a href="${meetingLink}">${meetingLink}</a>
         </p>
       </div>
       `
           : ""
       }
-      
-      <p style="color: #6b7280; font-size: 14px;">
-        <strong>What to expect:</strong><br>
-        ${
-          requiresScheduling
-            ? `
-        - You'll receive a reminder 24 hours before the session<br>
-        - Another reminder will be sent 1 hour before<br>
-        ${
-          hasMeetingLink
-            ? "- Use the meeting link above to join at the scheduled time<br>"
-            : "- Meeting link will be available in your dashboard<br>"
-        }
-        `
-            : isDigitalProduct
-            ? "- Access details will be shared in your dashboard and email updates<br>"
-            : "- You will receive a response update in your dashboard and email<br>"
-        }
-      </p>
+
+      ${
+        isDigitalProduct && digitalProductLink
+          ? `
+      <div class="meeting-box" style="text-align: left;">
+        <h3 style="color: #111827; margin-top: 0;">Access Your Product</h3>
+        <a href="${digitalProductLink}" class="meeting-button" style="display: inline-block;">Access Product</a>
+        <p style="opacity: 0.9; font-size: 13px; margin: 16px 0 0 0; word-break: break-all;">
+          Product link: <a href="${digitalProductLink}">${digitalProductLink}</a>
+        </p>
+      </div>
+      `
+          : ""
+      }
     </div>
     
     <div class="footer">
       <p>Need help? <a href="mailto:support@matepeak.com">Contact Support</a></p>
+    </div>
     </div>
   </div>
 </body>
@@ -488,19 +497,21 @@ const BookingPage = () => {
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
-    .container { max-width: 600px; margin: 0 auto; background-color: white; }
-    .header { background-color: #f9fafb; color: #111827; padding: 24px 32px; text-align: center; border-bottom: 1px solid #e5e7eb; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f6f7f9; }
+    .container { width: 100%; background-color: #e9ebed; padding: 48px 16px; }
+    .inner-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; }
+    .header { background-color: #ffffff; color: #111827; padding: 24px 32px; text-align: center; border-bottom: 1px solid #e5e7eb; }
     .content { padding: 32px; }
     .card { background-color: #f9fafb; border-radius: 12px; padding: 20px; margin: 20px 0; }
     .detail-row { padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
     .detail-label { color: #6b7280; font-weight: 600; display: inline-block; min-width: 110px; margin-right: 12px; }
     .detail-value { color: #111827; font-weight: 600; }
-    .footer { background-color: #f9fafb; padding: 24px; text-align: center; color: #6b7280; font-size: 14px; }
+    .footer { background-color: #ffffff; padding: 24px; text-align: center; color: #6b7280; font-size: 14px; }
   </style>
 </head>
 <body>
   <div class="container">
+    <div class="inner-container">
     <div class="header">
       <img src="https://wpltqdlvrzukghiwvxqd.supabase.co/storage/v1/object/public/avatars/lovable-uploads/MatePeak_logo_with_name.png" alt="MatePeak" style="height: 40px; margin-bottom: 16px;" />
       <h1 style="margin: 0; font-size: 28px;">${emailCopy.mentorHeader}</h1>
@@ -532,8 +543,8 @@ const BookingPage = () => {
           <span class="detail-value">${formattedDate}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Time:&nbsp;</span>
-          <span class="detail-value">${bookingData.scheduled_time}</span>
+          <span class="detail-label">Schedule:&nbsp;</span>
+          <span class="detail-value">${formatTime24(bookingData.scheduled_time)} (${timezoneLabel})</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">Duration:&nbsp;</span>
@@ -542,15 +553,22 @@ const BookingPage = () => {
         `
             : ""
         }
+        ${
+          studentDetails.purpose
+            ? `
+        <div class="detail-row">
+          <span class="detail-label">${serviceDetails.type === "priorityDm" ? "Student Message:" : "Student Goal:"}&nbsp;</span>
+          <span class="detail-value">${studentDetails.purpose}</span>
+        </div>
+        `
+            : ""
+        }
       </div>
-      
-      <p style="color: #6b7280; font-size: 14px;">
-        Please review and manage this booking in your dashboard.
-      </p>
     </div>
     
     <div class="footer">
       <p><a href="${window.location.origin}/mentor/dashboard">Go to Dashboard</a></p>
+    </div>
     </div>
   </div>
 </body>
@@ -572,6 +590,22 @@ const BookingPage = () => {
 
   const handleBookingSubmit = async (details: BookingDetails) => {
     if (!selectedService || !mentorData) return;
+
+    const asErrorMessage = (value: unknown, fallback: string) => {
+      if (typeof value === "string" && value.trim().length > 0) return value;
+      if (value && typeof value === "object") {
+        const maybeMessage = (value as any).message;
+        if (typeof maybeMessage === "string" && maybeMessage.trim().length > 0) {
+          return maybeMessage;
+        }
+        try {
+          return JSON.stringify(value);
+        } catch {
+          return fallback;
+        }
+      }
+      return fallback;
+    };
 
     try {
       setIsSubmitting(true);
@@ -621,7 +655,8 @@ const BookingPage = () => {
 
           const orderResult = await paymentService.createOrder(totalAmount, bookingId);
           if (!orderResult.success || !orderResult.order || !orderResult.razorpayKey) {
-            toast.error(orderResult.error || "Failed to initialize payment");
+            console.error("createOrder failed:", orderResult);
+            toast.error(asErrorMessage(orderResult.error, "Failed to initialize payment"));
             return;
           }
 
@@ -642,7 +677,8 @@ const BookingPage = () => {
             );
 
             if (!verifyResult.success) {
-              toast.error(verifyResult.error || "Payment verification failed");
+              console.error("verifyPayment failed:", verifyResult);
+              toast.error(asErrorMessage(verifyResult.error, "Payment verification failed"));
               return;
             }
 
@@ -651,12 +687,21 @@ const BookingPage = () => {
               return;
             }
 
+            if (verifyResult.data?.payment_success_email_status === "failed") {
+              const emailError =
+                verifyResult.data?.payment_success_email_result?.message ||
+                "Payment succeeded but confirmation email could not be sent.";
+              console.error("Payment success email failed:", verifyResult.data?.payment_success_email_result);
+              toast.warning(emailError);
+            }
+
             toast.success("Payment successful! Booking confirmed.");
             navigate(`/booking/confirmed/${bookingId}`);
             return;
           } catch (paymentError: any) {
+            console.error("Payment flow exception:", paymentError);
             await paymentService.markPaymentFailed(bookingId);
-            toast.error(paymentError?.message || "Payment cancelled or failed");
+            toast.error(asErrorMessage(paymentError, "Payment cancelled or failed"));
             return;
           }
         }
