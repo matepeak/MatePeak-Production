@@ -53,24 +53,29 @@ const buildStudentBookingConfirmationEmail = (data: {
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><style>
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 28px 14px; background-color: #f9fafb; color: #111827; }
-.container { max-width: 620px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; }
-.header { background-color: #ffffff; padding: 30px 32px 12px; text-align: left; }
-.title { margin: 0; font-size: 28px; line-height: 1.25; color: #111827; }
-.subtitle { margin: 10px 0 0; color: #4b5563; font-size: 15px; }
-.content { padding: 12px 32px 30px; }
-.details { background-color: #ffffff; border: 2px solid #111827; border-radius: 14px; padding: 18px 18px 10px; margin: 20px 0; }
-.details-heading { margin: 0 0 8px; font-size: 18px; color: #111827; }
-.detail-row { display: flex; justify-content: space-between; gap: 18px; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
+body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111; }
+.wrapper { width: 100%; padding: 60px 0; display: flex; justify-content: center; }
+.container { width: 520px; background: #ffffff; border-radius: 10px; padding: 40px; }
+.logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
+.header { text-align: center; background: #ffffff; margin-bottom: 28px; }
+.title { margin: 0; font-size: 24px; font-weight: 600; color: #111; }
+.subtitle { font-size: 14px; color: #555; margin-top: 12px; line-height: 1.6; }
+.content { background: #ffffff; }
+.content p { font-size: 14px; color: #555; margin-bottom: 18px; line-height: 1.6; }
+.details { background: #f4f5f7; border-radius: 8px; padding: 20px; margin: 30px 0; }
+.details-heading { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: #111; }
+.detail-row { font-size: 13px; color: #444; padding: 10px 0; border-bottom: 1px solid #e5e5e5; display: block; }
 .detail-row:last-child { border-bottom: none; }
-.detail-label { color: #6b7280; font-weight: 600; }
-.detail-value { color: #111827; font-weight: 700; text-align: right; }
-.cta-wrap { text-align: center; margin-top: 24px; }
-.cta { display: inline-block; background-color: #111827; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 700; }
-.footer { padding: 0 32px 26px; color: #6b7280; font-size: 13px; }
+.detail-label { font-weight: 600; color: #111; }
+.detail-value { color: #444; }
+.cta-wrap { text-align: center; margin: 36px 0; }
+.cta { background-color: #000; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; display: inline-block; }
+.footer { text-align: center; font-size: 12px; color: #888; margin-top: 12px; background: #ffffff; }
+.link { color: #000; text-decoration: none; font-weight: 500; }
 </style></head>
 <body>
-<div class="container">
+<div class="wrapper"><div class="container">
+<div class="logo">MatePeak</div>
 <div class="header"><h1 class="title">${data.serviceType === "digitalProducts" ? "Digital Product Confirmed" : "Booking Confirmed"}</h1><p class="subtitle">Your request has been successfully confirmed.</p></div>
 <div class="content">
 <p>Hi ${data.studentName},</p>
@@ -84,7 +89,7 @@ ${isScheduled ? `<div class="detail-row"><span class="detail-label">Duration</sp
 <div class="detail-row"><span class="detail-label">Amount Paid</span><span class="detail-value">INR ${data.amount}</span></div>
 </div>
 <div class="cta-wrap"><a class="cta" href="${primaryActionUrl}">${primaryActionLabel}</a></div>
-</div><div class="footer">Need help? Contact support@matepeak.com</div></div></body></html>
+</div><div class="footer">Need help? <a href="mailto:support@matepeak.com" class="link">Contact Support</a></div></div></div></body></html>
   `;
 
   return {
@@ -112,24 +117,29 @@ const buildMentorBookingConfirmationEmail = (data: {
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><style>
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 28px 14px; background-color: #f9fafb; color: #111827; }
-.container { max-width: 620px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; }
-.header { background-color: #ffffff; padding: 30px 32px 12px; text-align: left; }
-.title { margin: 0; font-size: 28px; line-height: 1.25; color: #111827; }
-.subtitle { margin: 10px 0 0; color: #4b5563; font-size: 15px; }
-.content { padding: 12px 32px 30px; }
-.details { background-color: #ffffff; border: 2px solid #111827; border-radius: 14px; padding: 18px 18px 10px; margin: 20px 0; }
-.details-heading { margin: 0 0 8px; font-size: 18px; color: #111827; }
-.detail-row { display: flex; justify-content: space-between; gap: 18px; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
+body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111; }
+.wrapper { width: 100%; padding: 60px 0; display: flex; justify-content: center; }
+.container { width: 520px; background: #ffffff; border-radius: 10px; padding: 40px; }
+.logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
+.header { text-align: center; background: #ffffff; margin-bottom: 28px; }
+.title { margin: 0; font-size: 24px; font-weight: 600; color: #111; }
+.subtitle { font-size: 14px; color: #555; margin-top: 12px; line-height: 1.6; }
+.content { background: #ffffff; }
+.content p { font-size: 14px; color: #555; margin-bottom: 18px; line-height: 1.6; }
+.details { background: #f4f5f7; border-radius: 8px; padding: 20px; margin: 30px 0; }
+.details-heading { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: #111; }
+.detail-row { font-size: 13px; color: #444; padding: 10px 0; border-bottom: 1px solid #e5e5e5; display: block; }
 .detail-row:last-child { border-bottom: none; }
-.detail-label { color: #6b7280; font-weight: 600; }
-.detail-value { color: #111827; font-weight: 700; text-align: right; }
-.cta-wrap { text-align: center; margin-top: 24px; }
-.cta { display: inline-block; background-color: #111827; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 700; }
-.footer { padding: 0 32px 26px; color: #6b7280; font-size: 13px; }
+.detail-label { font-weight: 600; color: #111; }
+.detail-value { color: #444; }
+.cta-wrap { text-align: center; margin: 36px 0; }
+.cta { background-color: #000; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; display: inline-block; }
+.footer { text-align: center; font-size: 12px; color: #888; margin-top: 12px; background: #ffffff; }
+.link { color: #000; text-decoration: none; font-weight: 500; }
 </style></head>
 <body>
-<div class="container">
+<div class="wrapper"><div class="container">
+<div class="logo">MatePeak</div>
 <div class="header"><h1 class="title">New Paid Booking</h1><p class="subtitle">A student has confirmed a booking with you.</p></div>
 <div class="content">
 <p>Hi ${data.mentorName},</p>
@@ -144,7 +154,7 @@ ${isScheduled ? `<div class="detail-row"><span class="detail-label">Duration</sp
 ${data.purpose ? `<div class="detail-row"><span class="detail-label">Student Goal</span><span class="detail-value">${data.purpose}</span></div>` : ""}
 </div>
 <div class="cta-wrap"><a class="cta" href="${data.dashboardLink}">Open Mentor Dashboard</a></div>
-</div><div class="footer">Need help? Contact support@matepeak.com</div></div></body></html>
+</div><div class="footer">Need help? <a href="mailto:support@matepeak.com" class="link">Contact Support</a></div></div></div></body></html>
   `;
 
   return {

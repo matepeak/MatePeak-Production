@@ -118,22 +118,27 @@ export const emailTemplates = {
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
-    .container { max-width: 600px; margin: 0 auto; background-color: white; }
-    .header { background-color: #f9fafb; color: #111827; padding: 24px 32px; text-align: center; border-bottom: 1px solid #e5e7eb; }
-    .content { padding: 32px; }
-    .card { background-color: #f9fafb; border-radius: 12px; padding: 20px; margin: 20px 0; }
-    .button { display: inline-block; background-color: #222222; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; }
-    .footer { background-color: #f9fafb; padding: 24px; text-align: center; color: #6b7280; font-size: 14px; }
-    h1 { margin: 0; font-size: 24px; }
-    h2 { color: #111827; font-size: 20px; margin-top: 0; }
-    .detail-row { padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
-    .detail-label { color: #6b7280; font-weight: 600; display: inline-block; min-width: 110px; margin-right: 12px; }
-    .detail-value { color: #111827; font-weight: 600; }
+    body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .wrapper { width: 100%; padding: 60px 0; display: flex; justify-content: center; }
+    .container { width: 520px; background: #ffffff; border-radius: 10px; padding: 40px; }
+    .logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
+    .header { text-align: center; margin-bottom: 28px; background: #ffffff; }
+    .content { background: #ffffff; }
+    h1 { text-align: center; font-size: 24px; font-weight: 600; color: #111; margin: 0; }
+    h2 { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: #111; margin-top: 0; }
+    p { font-size: 14px; color: #555; margin-bottom: 18px; line-height: 1.6; }
+    .card { background: #f4f5f7; border-radius: 8px; padding: 20px; margin: 30px 0; }
+    .button { background-color: #000; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; display: inline-block; }
+    .footer { text-align: center; font-size: 12px; color: #888; margin-top: 12px; }
+    .detail-row { font-size: 13px; color: #444; padding: 10px 0; border-bottom: 1px solid #e5e5e5; }
+    .detail-label { color: #111; font-weight: 600; display: inline-block; min-width: 110px; margin-right: 12px; }
+    .detail-value { color: #444; }
   </style>
 </head>
 <body>
+  <div class="wrapper">
   <div class="container">
+    <div class="logo">MatePeak</div>
     <div class="header">
       <img src="https://wpltqdlvrzukghiwvxqd.supabase.co/storage/v1/object/public/avatars/lovable-uploads/MatePeak_logo_with_name.png" alt="MatePeak" style="height: 40px; margin-bottom: 16px;" />
       <h1>${getBookingEmailCopy(data, "student").header}</h1>
@@ -208,6 +213,7 @@ export const emailTemplates = {
       <p>&copy; 2025 MatePeak - Be a Solopreneur. All rights reserved.</p>
     </div>
   </div>
+  </div>
 </body>
 </html>
       `,
@@ -221,23 +227,28 @@ export const emailTemplates = {
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
-    .container { max-width: 600px; margin: 0 auto; background-color: white; }
-    .header { background-color: #f9fafb; color: #111827; padding: 24px 32px; text-align: center; border-bottom: 1px solid #e5e7eb; }
-    .content { padding: 32px; }
-    .card { background-color: #f9fafb; border-radius: 12px; padding: 20px; margin: 20px 0; }
-    .button { display: inline-block; background-color: #222222; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; }
-    .footer { background-color: #f9fafb; padding: 24px; text-align: center; color: #6b7280; font-size: 14px; }
-    h1 { margin: 0; font-size: 24px; }
-    h2 { color: #111827; font-size: 20px; margin-top: 0; }
-    .detail-row { padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
-    .detail-label { color: #6b7280; font-weight: 600; display: inline-block; min-width: 110px; margin-right: 12px; }
-    .detail-value { color: #111827; font-weight: 600; }
-    .message-box { background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 16px 0; }
+    body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .wrapper { width: 100%; padding: 60px 0; display: flex; justify-content: center; }
+    .container { width: 520px; background: #ffffff; border-radius: 10px; padding: 40px; }
+    .logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
+    .header { text-align: center; margin-bottom: 28px; background: #ffffff; }
+    .content { background: #ffffff; }
+    h1 { text-align: center; font-size: 24px; font-weight: 600; color: #111; margin: 0; }
+    h2 { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: #111; margin-top: 0; }
+    p { font-size: 14px; color: #555; margin-bottom: 18px; line-height: 1.6; }
+    .card { background: #f4f5f7; border-radius: 8px; padding: 20px; margin: 30px 0; }
+    .button { background-color: #000; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; display: inline-block; }
+    .footer { text-align: center; font-size: 12px; color: #888; margin-top: 12px; }
+    .detail-row { font-size: 13px; color: #444; padding: 10px 0; border-bottom: 1px solid #e5e5e5; }
+    .detail-label { color: #111; font-weight: 600; display: inline-block; min-width: 110px; margin-right: 12px; }
+    .detail-value { color: #444; }
+    .message-box { background: #f4f5f7; border-radius: 8px; padding: 20px; margin: 20px 0; }
   </style>
 </head>
 <body>
+  <div class="wrapper">
   <div class="container">
+    <div class="logo">MatePeak</div>
     <div class="header">
       <img src="https://wpltqdlvrzukghiwvxqd.supabase.co/storage/v1/object/public/avatars/lovable-uploads/MatePeak_logo_with_name.png" alt="MatePeak" style="height: 40px; margin-bottom: 16px;" />
       <h1>${getBookingEmailCopy(data, "mentor").header}</h1>
@@ -325,6 +336,7 @@ export const emailTemplates = {
       <p>&copy; 2025 MatePeak - Be a Solopreneur. All rights reserved.</p>
     </div>
   </div>
+  </div>
 </body>
 </html>
       `,
@@ -341,19 +353,25 @@ export const emailTemplates = {
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
-    .container { max-width: 600px; margin: 0 auto; background-color: white; }
-    .header { background-color: #f9fafb; color: #111827; padding: 24px 32px; text-align: center; border-bottom: 1px solid #e5e7eb; }
-    .content { padding: 32px; }
-    .card { background-color: #f9fafb; border-radius: 12px; padding: 20px; margin: 20px 0; border: 1px solid #e5e7eb; }
-    .button { display: inline-block; background-color: #222222; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; }
-    .footer { background-color: #f9fafb; padding: 24px; text-align: center; color: #6b7280; font-size: 14px; }
-    h1 { margin: 0; font-size: 24px; }
-    .time-badge { display: inline-block; background-color: #f3f4f6; color: #374151; padding: 8px 16px; border-radius: 20px; font-weight: 600; margin: 16px 0; border: 1px solid #d1d5db; }
+    body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .wrapper { width: 100%; padding: 60px 0; display: flex; justify-content: center; }
+    .container { width: 520px; background: #ffffff; border-radius: 10px; padding: 40px; }
+    .logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
+    .header { text-align: center; margin-bottom: 28px; background: #ffffff; }
+    .content { background: #ffffff; }
+    h1 { text-align: center; font-size: 24px; font-weight: 600; color: #111; margin: 0; }
+    h2 { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: #111; margin-top: 0; }
+    p { font-size: 14px; color: #555; margin-bottom: 18px; line-height: 1.6; }
+    .card { background: #f4f5f7; border-radius: 8px; padding: 20px; margin: 30px 0; }
+    .button { background-color: #000; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; display: inline-block; }
+    .footer { text-align: center; font-size: 12px; color: #888; margin-top: 12px; }
+    .time-badge { display: inline-block; background: #ffffff; color: #444; border: 1px solid #e5e5e5; border-radius: 20px; padding: 8px 16px; font-weight: 600; margin: 16px 0; }
   </style>
 </head>
 <body>
+  <div class="wrapper">
   <div class="container">
+    <div class="logo">MatePeak</div>
     <div class="header">
       <img src="https://wpltqdlvrzukghiwvxqd.supabase.co/storage/v1/object/public/avatars/lovable-uploads/MatePeak_logo_with_name.png" alt="MatePeak" style="height: 40px; margin-bottom: 16px;" />
       <h1>${
@@ -420,6 +438,7 @@ export const emailTemplates = {
       <p>&copy; 2025 MatePeak - Be a Solopreneur. All rights reserved.</p>
     </div>
   </div>
+  </div>
 </body>
 </html>
     `,
@@ -433,19 +452,24 @@ export const emailTemplates = {
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
-    .container { max-width: 600px; margin: 0 auto; background-color: white; }
-    .header { background-color: #f9fafb; color: #111827; padding: 24px 32px; text-align: center; border-bottom: 1px solid #e5e7eb; }
-    .content { padding: 32px; }
-    .card { background-color: #f9fafb; border-radius: 12px; padding: 20px; margin: 20px 0; border: 1px solid #e5e7eb; }
-    .button { display: inline-block; background-color: #222222; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; }
-    .footer { background-color: #f9fafb; padding: 24px; text-align: center; color: #6b7280; font-size: 14px; }
-    h1 { margin: 0; font-size: 24px; }
+    body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .wrapper { width: 100%; padding: 60px 0; display: flex; justify-content: center; }
+    .container { width: 520px; background: #ffffff; border-radius: 10px; padding: 40px; }
+    .logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
+    .header { text-align: center; margin-bottom: 28px; background: #ffffff; }
+    .content { background: #ffffff; }
+    h1 { text-align: center; font-size: 24px; font-weight: 600; color: #111; margin: 0; }
+    p { font-size: 14px; color: #555; margin-bottom: 18px; line-height: 1.6; }
+    .card { background: #f4f5f7; border-radius: 8px; padding: 20px; margin: 30px 0; }
+    .button { background-color: #000; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; display: inline-block; }
+    .footer { text-align: center; font-size: 12px; color: #888; margin-top: 12px; }
     .star-rating { font-size: 24px; margin: 16px 0; }
   </style>
 </head>
 <body>
+  <div class="wrapper">
   <div class="container">
+    <div class="logo">MatePeak</div>
     <div class="header">
       <img src="https://wpltqdlvrzukghiwvxqd.supabase.co/storage/v1/object/public/avatars/lovable-uploads/MatePeak_logo_with_name.png" alt="MatePeak" style="height: 40px; margin-bottom: 16px;" />
       <h1>Session Completed</h1>
@@ -480,6 +504,7 @@ export const emailTemplates = {
       <p>&copy; 2025 MatePeak - Be a Solopreneur. All rights reserved.</p>
     </div>
   </div>
+  </div>
 </body>
 </html>
     `,
@@ -493,18 +518,23 @@ export const emailTemplates = {
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
-    .container { max-width: 600px; margin: 0 auto; background-color: white; }
-    .header { background-color: #f9fafb; color: #111827; padding: 24px 32px; text-align: center; border-bottom: 1px solid #e5e7eb; }
-    .content { padding: 32px; }
-    .card { background-color: #f9fafb; border-radius: 12px; padding: 20px; margin: 20px 0; border: 1px solid #e5e7eb; }
-    .button { display: inline-block; background-color: #222222; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; }
-    .footer { background-color: #f9fafb; padding: 24px; text-align: center; color: #6b7280; font-size: 14px; }
-    h1 { margin: 0; font-size: 24px; }
+    body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .wrapper { width: 100%; padding: 60px 0; display: flex; justify-content: center; }
+    .container { width: 520px; background: #ffffff; border-radius: 10px; padding: 40px; }
+    .logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
+    .header { text-align: center; margin-bottom: 28px; background: #ffffff; }
+    .content { background: #ffffff; }
+    h1 { text-align: center; font-size: 24px; font-weight: 600; color: #111; margin: 0; }
+    p { font-size: 14px; color: #555; margin-bottom: 18px; line-height: 1.6; }
+    .card { background: #f4f5f7; border-radius: 8px; padding: 20px; margin: 30px 0; }
+    .button { background-color: #000; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; display: inline-block; }
+    .footer { text-align: center; font-size: 12px; color: #888; margin-top: 12px; }
   </style>
 </head>
 <body>
+  <div class="wrapper">
   <div class="container">
+    <div class="logo">MatePeak</div>
     <div class="header">
       <img src="https://wpltqdlvrzukghiwvxqd.supabase.co/storage/v1/object/public/avatars/lovable-uploads/MatePeak_logo_with_name.png" alt="MatePeak" style="height: 40px; margin-bottom: 16px;" />
       <h1>Session Cancelled</h1>
@@ -550,6 +580,7 @@ export const emailTemplates = {
       <p>&copy; 2025 MatePeak - Be a Solopreneur. All rights reserved.</p>
     </div>
   </div>
+  </div>
 </body>
 </html>
     `,
@@ -563,20 +594,25 @@ export const emailTemplates = {
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
-    .container { max-width: 600px; margin: 0 auto; background-color: white; }
-    .header { background-color: #f9fafb; color: #111827; padding: 24px 32px; text-align: center; border-bottom: 1px solid #e5e7eb; }
-    .content { padding: 32px; }
-    .card { background-color: #f9fafb; border-radius: 12px; padding: 20px; margin: 20px 0; }
-    .button { display: inline-block; background-color: #222222; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; }
+    body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .wrapper { width: 100%; padding: 60px 0; display: flex; justify-content: center; }
+    .container { width: 520px; background: #ffffff; border-radius: 10px; padding: 40px; }
+    .logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
+    .header { text-align: center; margin-bottom: 28px; background: #ffffff; }
+    .content { background: #ffffff; }
+    h1 { text-align: center; font-size: 24px; font-weight: 600; color: #111; margin: 0; }
+    p { font-size: 14px; color: #555; margin-bottom: 18px; line-height: 1.6; }
+    .card { background: #f4f5f7; border-radius: 8px; padding: 20px; margin: 30px 0; }
+    .button { background-color: #000; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; display: inline-block; }
     .stars { font-size: 32px; margin: 20px 0; }
-    .footer { background-color: #f9fafb; padding: 24px; text-align: center; color: #6b7280; font-size: 14px; }
-    h1 { margin: 0; font-size: 24px; }
-    .highlight { background-color: #f9fafb; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb; }
+    .footer { text-align: center; font-size: 12px; color: #888; margin-top: 12px; }
+    .highlight { background: #f4f5f7; padding: 16px; border-radius: 8px; }
   </style>
 </head>
 <body>
+  <div class="wrapper">
   <div class="container">
+    <div class="logo">MatePeak</div>
     <div class="header">
       <img src="https://wpltqdlvrzukghiwvxqd.supabase.co/storage/v1/object/public/avatars/lovable-uploads/MatePeak_logo_with_name.png" alt="MatePeak" style="height: 40px; margin-bottom: 16px;" />
       <h1>Share Your Experience</h1>
@@ -621,6 +657,7 @@ export const emailTemplates = {
       <p>Questions? <a href="mailto:support@matepeak.com">Contact Support</a></p>
       <p>&copy; 2025 Spark Mentor Connect. All rights reserved.</p>
     </div>
+  </div>
   </div>
 </body>
 </html>

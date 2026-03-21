@@ -59,25 +59,31 @@ const buildReviewRequestEmail = (data: {
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 28px 14px; background-color: #f9fafb; color: #111827; }
-    .container { max-width: 620px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; }
-    .header { background-color: #ffffff; color: #111827; padding: 30px 32px 12px; text-align: left; }
-    .header h1 { margin: 0; font-size: 28px; line-height: 1.25; }
-    .subtitle { margin-top: 10px; color: #4b5563; font-size: 15px; }
-    .content { padding: 12px 32px 30px; }
-    .card { background-color: #ffffff; border: 2px solid #111827; border-radius: 14px; padding: 18px 18px 10px; margin: 20px 0; }
-    .detail-row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
+    body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111; }
+    .wrapper { width: 100%; padding: 60px 0; display: flex; justify-content: center; }
+    .container { width: 520px; background: #ffffff; border-radius: 10px; padding: 40px; }
+    .logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
+    .header { text-align: center; background: #ffffff; margin-bottom: 28px; }
+    .header h1 { margin: 0; font-size: 24px; font-weight: 600; color: #111; }
+    .subtitle { font-size: 14px; color: #555; margin-top: 12px; line-height: 1.6; }
+    .content { background: #ffffff; }
+    .content p { font-size: 14px; color: #555; margin-bottom: 18px; line-height: 1.6; }
+    .card { background: #f4f5f7; border-radius: 8px; padding: 20px; margin: 30px 0; }
+    .detail-row { font-size: 13px; color: #444; padding: 10px 0; border-bottom: 1px solid #e5e5e5; display: block; }
     .detail-row:last-child { border-bottom: none; }
-    .detail-label { color: #6b7280; font-weight: 600; }
-    .detail-value { color: #111827; font-weight: 700; text-align: right; }
-    .cta-wrap { text-align: center; margin-top: 22px; }
-    .button { display: inline-block; background-color: #111827; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 700; }
-    .note { margin-top: 14px; color: #4b5563; font-size: 14px; text-align: center; }
-    .footer { padding: 0 32px 26px; color: #6b7280; font-size: 13px; }
+    .detail-label { font-weight: 600; color: #111; }
+    .detail-value { color: #444; }
+    .cta-wrap { text-align: center; margin: 36px 0; }
+    .button { background-color: #000; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; display: inline-block; }
+    .note { font-size: 13px; color: #666; text-align: center; line-height: 1.6; margin-bottom: 32px; }
+    .footer { text-align: center; font-size: 12px; color: #888; margin-top: 12px; background: #ffffff; }
+    .link { color: #000; text-decoration: none; font-weight: 500; }
   </style>
 </head>
 <body>
+  <div class="wrapper">
   <div class="container">
+    <div class="logo">MatePeak</div>
     <div class="header"><h1>Share Your Feedback</h1><div class="subtitle">Your session is complete and your feedback helps mentors improve.</div></div>
     <div class="content">
       <p>Hi ${data.studentName},</p>
@@ -91,7 +97,8 @@ const buildReviewRequestEmail = (data: {
       <div class="cta-wrap"><a class="button" href="${data.reviewLink}">Write a Review</a></div>
       <p class="note">Want another session? Book again from your dashboard: ${data.bookAgainLink}</p>
     </div>
-    <div class="footer">Thanks for learning with MatePeak.</div>
+    <div class="footer">Need help? <a href="mailto:support@matepeak.com" class="link">Contact Support</a></div>
+  </div>
   </div>
 </body>
 </html>

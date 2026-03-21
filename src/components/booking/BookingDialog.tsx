@@ -239,26 +239,31 @@ export default function BookingDialog({
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 28px 14px; background-color: #f9fafb; color: #111827; }
-    .container { max-width: 620px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; }
-    .header { background-color: #ffffff; color: #111827; padding: 30px 32px 12px; text-align: left; }
-    .header h1 { margin: 0; font-size: 28px; line-height: 1.25; }
-    .subtitle { margin-top: 10px; font-size: 15px; color: #4b5563; }
-    .content { padding: 12px 32px 30px; }
-    .card { background-color: #ffffff; border: 2px solid #111827; border-radius: 14px; padding: 18px 18px 10px; margin: 20px 0; }
-    .card h2 { color: #111827; font-size: 19px; margin: 0 0 8px; }
-    .detail-row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
+    body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .wrapper { width: 100%; padding: 60px 0; display: flex; justify-content: center; }
+    .container { width: 520px; background: #ffffff; border-radius: 10px; padding: 40px; }
+    .logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
+    .header { text-align: center; background: #ffffff; margin-bottom: 28px; color: #111; }
+    .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+    .subtitle { font-size: 14px; color: #555; margin-top: 12px; line-height: 1.6; }
+    .content { background: #ffffff; }
+    .content p { font-size: 14px; color: #555; margin-bottom: 18px; line-height: 1.6; }
+    .card { background: #f4f5f7; border-radius: 8px; padding: 20px; margin: 30px 0; }
+    .card h2 { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: #111; margin-top: 0; }
+    .detail-row { font-size: 13px; color: #444; padding: 10px 0; border-bottom: 1px solid #e5e5e5; }
     .detail-row:last-child { border-bottom: none; }
-    .detail-label { color: #6b7280; font-weight: 600; }
-    .detail-value { color: #111827; font-weight: 700; text-align: right; }
-    .action-wrap { text-align: center; margin: 22px 0 10px; }
-    .action-button { display: inline-block; background-color: #111827; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 700; }
-    .note { color: #4b5563; font-size: 14px; margin-top: 14px; }
-    .footer { padding: 0 32px 26px; color: #6b7280; font-size: 13px; }
+    .detail-label { color: #111; font-weight: 600; display: inline-block; min-width: 110px; }
+    .detail-value { color: #444; }
+    .action-wrap { text-align: center; margin: 36px 0; }
+    .action-button { background-color: #000; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; display: inline-block; }
+    .note { font-size: 13px; color: #666; text-align: center; line-height: 1.6; margin-bottom: 32px; }
+    .footer { text-align: center; font-size: 12px; color: #888; margin-top: 12px; background: #ffffff; }
+    .link { color: #000; text-decoration: none; font-weight: 500; }
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="wrapper"><div class="container">
+    <div class="logo">MatePeak</div>
     <div class="header">
       <h1>${emailCopy.studentHeader}</h1>
       <div class="subtitle">Your request has been successfully confirmed.</div>
@@ -316,9 +321,9 @@ export default function BookingDialog({
     </div>
     
     <div class="footer">
-      Need help? Contact support@matepeak.com
+      Need help? <a href="mailto:support@matepeak.com" class="link">Contact Support</a>
     </div>
-  </div>
+  </div></div>
 </body>
 </html>
       `;
@@ -348,27 +353,32 @@ export default function BookingDialog({
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 28px 14px; background-color: #f9fafb; color: #111827; }
-    .container { max-width: 620px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; }
-    .header { background-color: #ffffff; color: #111827; padding: 30px 32px 12px; text-align: left; }
-    .header h1 { margin: 0; font-size: 28px; line-height: 1.25; }
-    .subtitle { margin-top: 10px; font-size: 15px; color: #4b5563; }
-    .content { padding: 12px 32px 30px; }
-    .card { background-color: #ffffff; border: 2px solid #111827; border-radius: 14px; padding: 18px 18px 10px; margin: 20px 0; }
-    .card h2 { color: #111827; font-size: 19px; margin: 0 0 8px; }
-    .detail-row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
+    body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .wrapper { width: 100%; padding: 60px 0; display: flex; justify-content: center; }
+    .container { width: 520px; background: #ffffff; border-radius: 10px; padding: 40px; }
+    .logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
+    .header { text-align: center; background: #ffffff; margin-bottom: 28px; color: #111; }
+    .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+    .subtitle { font-size: 14px; color: #555; margin-top: 12px; line-height: 1.6; }
+    .content { background: #ffffff; }
+    .content p { font-size: 14px; color: #555; margin-bottom: 18px; line-height: 1.6; }
+    .card { background: #f4f5f7; border-radius: 8px; padding: 20px; margin: 30px 0; }
+    .card h2 { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: #111; margin-top: 0; }
+    .detail-row { font-size: 13px; color: #444; padding: 10px 0; border-bottom: 1px solid #e5e5e5; }
     .detail-row:last-child { border-bottom: none; }
-    .detail-label { color: #6b7280; font-weight: 600; }
-    .detail-value { color: #111827; font-weight: 700; text-align: right; }
-    .message-box { background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin: 16px 0; color: #374151; }
-    .action-wrap { text-align: center; margin: 22px 0 10px; }
-    .action-button { display: inline-block; background-color: #111827; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 700; }
-    .note { color: #4b5563; font-size: 14px; margin-top: 14px; }
-    .footer { padding: 0 32px 26px; color: #6b7280; font-size: 13px; }
+    .detail-label { color: #111; font-weight: 600; display: inline-block; min-width: 110px; }
+    .detail-value { color: #444; }
+    .message-box { background: #f4f5f7; border-radius: 8px; padding: 20px; margin: 20px 0; color: #555; border: none; }
+    .action-wrap { text-align: center; margin: 36px 0; }
+    .action-button { background-color: #000; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; display: inline-block; }
+    .note { font-size: 13px; color: #666; text-align: center; line-height: 1.6; margin-bottom: 32px; }
+    .footer { text-align: center; font-size: 12px; color: #888; margin-top: 12px; background: #ffffff; }
+    .link { color: #000; text-decoration: none; font-weight: 500; }
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="wrapper"><div class="container">
+    <div class="logo">MatePeak</div>
     <div class="header">
       <h1>${emailCopy.mentorHeader}</h1>
       <div class="subtitle">A new booking has been confirmed on MatePeak.</div>
@@ -437,9 +447,9 @@ export default function BookingDialog({
     </div>
     
     <div class="footer">
-      Need help? Contact support@matepeak.com
+      Need help? <a href="mailto:support@matepeak.com" class="link">Contact Support</a>
     </div>
-  </div>
+  </div></div>
 </body>
 </html>
         `;
