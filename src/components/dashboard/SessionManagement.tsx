@@ -405,6 +405,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
         .from("bookings")
         .select("*")
         .eq("expert_id", mentorProfile.id)
+        .in("status", ["confirmed", "completed", "cancelled"])
         .order("scheduled_date", { ascending: false })
         .limit(100);
 
@@ -455,6 +456,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
         .from("bookings")
         .select("*")
         .eq("user_id", mentorProfile.id)
+        .in("status", ["confirmed", "completed", "cancelled"])
         .order("scheduled_date", { ascending: false })
         .limit(100);
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
@@ -68,6 +68,52 @@ export default function MentorPublicProfile() {
     totalSessions: 0,
     completedSessions: 0,
   });
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const tabOrder: ProfileTab[] = [
+    "overview",
+    "services",
+    "availability",
+    "experiences",
+    "reviews",
+  ];
+
+  const handleTabSwipeStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    const touch = event.changedTouches[0];
+    swipeStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+
+  const handleTabSwipeEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (window.innerWidth >= 1024 || !swipeStartRef.current) {
+      swipeStartRef.current = null;
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - swipeStartRef.current.x;
+    const deltaY = touch.clientY - swipeStartRef.current.y;
+    swipeStartRef.current = null;
+
+    const isHorizontalSwipe =
+      Math.abs(deltaX) >= 60 && Math.abs(deltaX) > Math.abs(deltaY);
+
+    if (!isHorizontalSwipe) {
+      return;
+    }
+
+    const currentIndex = tabOrder.indexOf(activeTab);
+    if (currentIndex === -1) {
+      return;
+    }
+
+    if (deltaX > 0 && currentIndex < tabOrder.length - 1) {
+      setActiveTab(tabOrder[currentIndex + 1]);
+      return;
+    }
+
+    if (deltaX < 0 && currentIndex > 0) {
+      setActiveTab(tabOrder[currentIndex - 1]);
+    }
+  };
 
   const profileTitle = mentor
     ? `${mentor.full_name} | Mentor at MatePeak`
@@ -284,6 +330,8 @@ export default function MentorPublicProfile() {
                   />
 
                   <div
+                    onTouchStart={handleTabSwipeStart}
+                    onTouchEnd={handleTabSwipeEnd}
                     className={
                       activeTab === "overview"
                         ? "grid grid-cols-1 lg:grid-cols-3 gap-6"

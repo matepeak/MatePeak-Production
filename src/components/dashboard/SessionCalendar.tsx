@@ -55,6 +55,7 @@ const SessionCalendar = ({ mentorProfile }: SessionCalendarProps) => {
         .from("bookings")
         .select("*")
         .eq("expert_id", mentorProfile.id)
+        .in("status", ["confirmed", "completed"])
         .gte("scheduled_date", firstDay.toISOString().split("T")[0])
         .lte("scheduled_date", lastDay.toISOString().split("T")[0])
         .order("scheduled_time", { ascending: true });

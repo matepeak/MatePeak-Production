@@ -26,6 +26,7 @@ export interface SelectedService {
   name: string;
   duration: number;
   price: number;
+  discountPrice?: number;
   hasFreeDemo?: boolean;
 }
 
@@ -157,6 +158,13 @@ const BookingPage = () => {
           return;
         }
 
+        // Prevent self-booking
+        if (mentorId && session.user.id === mentorId) {
+          toast.error("You cannot book your own services");
+          navigate("/mentor/dashboard");
+          return;
+        }
+
         // Validate mentorId
         if (!mentorId) {
           console.error("No mentor ID provided");
@@ -243,8 +251,9 @@ const BookingPage = () => {
               type: normalizedServiceType || "oneOnOneSession",
               serviceKey: preSelectedServiceId,
               name: serviceData.name || preSelectedServiceId,
-              duration: 60,
+              duration: serviceData.duration || (normalizedServiceType === "oneOnOneSession" ? 60 : 30),
               price: actualPrice,
+              discountPrice: serviceData.discount_price ?? undefined,
               hasFreeDemo: serviceData.hasFreeDemo || false,
             });
 
@@ -319,6 +328,7 @@ const BookingPage = () => {
   const handleDateTimeSelect = (dateTime: SelectedDateTime) => {
     setSelectedDateTime(dateTime);
     setStep(3);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleBack = () => {
@@ -611,7 +621,8 @@ const BookingPage = () => {
       setIsSubmitting(true);
 
       const recordingPrice = details.addRecording ? 500 : 0;
-      const totalAmount = selectedService.price + recordingPrice;
+      const baseServicePrice = selectedService.discountPrice ?? selectedService.price;
+      const totalAmount = baseServicePrice + recordingPrice;
 
       let scheduledDate = null;
       let scheduledTime = null;
@@ -696,7 +707,10 @@ const BookingPage = () => {
             }
 
             toast.success("Payment successful! Booking confirmed.");
-            navigate(`/booking/confirmed/${bookingId}`);
+            navigate(`/booking/confirmed/${bookingId}`, {
+              state: { accessToken: btoa(`${bookingId}:${Date.now()}`) },
+              replace: true,
+            });
             return;
           } catch (paymentError: any) {
             console.error("Payment flow exception:", paymentError);
@@ -728,7 +742,10 @@ const BookingPage = () => {
         }
 
         // Redirect to confirmation page
-        navigate(`/booking/confirmed/${result.data.id}`);
+        navigate(`/booking/confirmed/${result.data.id}`, {
+          state: { accessToken: btoa(`${result.data.id}:${Date.now()}`) },
+          replace: true,
+        });
       } else {
         toast.error(result.error || "Failed to create booking");
       }
@@ -868,7 +885,7 @@ const BookingPage = () => {
 
                     {/* Progress Line */}
                     <div
-                      className="absolute top-5 left-8 h-0.5 bg-gray-900 transition-all duration-300"
+                      className="absolute top-5 left-8 h-0.5 bg-green-600 transition-all duration-300"
                       style={{
                         width: `calc(${((step - 1) / 2) * 100}% - ${
                           ((step - 1) / 2) * 64
@@ -887,7 +904,7 @@ const BookingPage = () => {
                         <div
                           className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all ${
                             stepNumber < step
-                              ? "bg-gray-900 text-white"
+                              ? "bg-green-600 text-white"
                               : stepNumber === step
                               ? "bg-gray-900 text-white ring-4 ring-gray-200"
                               : "bg-white border-2 border-gray-300 text-gray-400"
@@ -901,7 +918,9 @@ const BookingPage = () => {
                         </div>
                         <span
                           className={`mt-3 text-xs font-medium whitespace-nowrap ${
-                            stepNumber <= step
+                            stepNumber < step
+                              ? "text-green-600"
+                              : stepNumber === step
                               ? "text-gray-900"
                               : "text-gray-400"
                           }`}

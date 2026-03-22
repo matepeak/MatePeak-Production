@@ -20,9 +20,11 @@ import {
   Settings,
   Eye,
   PackageOpen,
+  CreditCard,
+  HandCoins,
   Wallet,
+  CalendarPlus,
 } from "lucide-react";
-import ClockPlus from "lucide-react/dist/esm/icons/clock-plus";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -47,6 +49,8 @@ type DashboardView =
   | "students"
   | "requests"
   | "services"
+  | "payments"
+  | "payouts"
   | "earnings";
 
 interface DashboardLayoutProps {
@@ -101,7 +105,7 @@ const DashboardLayout = ({
         {
           id: "requests" as DashboardView,
           label: "Time Requests",
-          icon: ClockPlus,
+          icon: CalendarPlus,
           badge: null, // Can add pending count here
         },
       ],
@@ -153,6 +157,23 @@ const DashboardLayout = ({
           id: "services" as DashboardView,
           label: "Services",
           icon: PackageOpen,
+          badge: null,
+        },
+      ],
+    },
+    {
+      label: "Finance",
+      items: [
+        {
+          id: "payments" as DashboardView,
+          label: "Payments",
+          icon: CreditCard,
+          badge: null,
+        },
+        {
+          id: "payouts" as DashboardView,
+          label: "Payouts",
+          icon: HandCoins,
           badge: null,
         },
       ],

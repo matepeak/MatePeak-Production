@@ -142,7 +142,7 @@ export const emailTemplates = {
     .detail-label { color: #111; font-weight: 600; display: inline-block; min-width: 110px; margin-right: 12px; }
     .detail-value { color: #444; }
   </style>
-</head>
+ </head>
 <body>
   <div class="wrapper">
   <div class="container">
@@ -204,6 +204,19 @@ export const emailTemplates = {
         <a href="${data.productLink}" class="button">Access Product</a>
       </div>
       <p style="font-size: 13px; color: #555; margin-top: 8px; word-break: break-all;">Product link: <a href="${data.productLink}">${data.productLink}</a></p>
+      `
+          : ""
+      }
+
+      ${
+        data.digitalProductLink
+          ? `
+      <div style="text-align: center; margin: 24px 0;">
+        <a href="${data.digitalProductLink}" class="button">Access Digital Product</a>
+      </div>
+      <p style="color: #6b7280; font-size: 13px; word-break: break-all;">
+        Product Link: <a href="${data.digitalProductLink}">${data.digitalProductLink}</a>
+      </p>
       `
           : ""
       }
@@ -305,6 +318,30 @@ export const emailTemplates = {
           : ""
       }
       
+      ${
+        data.meetingLink
+          ? `
+      <div style="text-align: center; margin: 24px 0;">
+        <a href="${data.meetingLink}" class="button">Join Meeting</a>
+      </div>
+      <p style="color: #6b7280; font-size: 13px; word-break: break-all;">
+        Meeting Link: <a href="${data.meetingLink}">${data.meetingLink}</a>
+      </p>
+      `
+          : ""
+      }
+
+      ${
+        data.digitalProductLink
+          ? `
+      <div class="message-box">
+        <strong>Digital Product Link Shared:</strong><br>
+        <a href="${data.digitalProductLink}">${data.digitalProductLink}</a>
+      </div>
+      `
+          : ""
+      }
+
       <div style="text-align: center; margin: 24px 0;">
         <a href="${data.dashboardLink}" class="button">View in Dashboard</a>
       </div>
