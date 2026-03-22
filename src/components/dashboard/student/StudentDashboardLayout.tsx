@@ -17,6 +17,7 @@ import {
   Settings,
   GraduationCap,
   Clock,
+  CalendarPlus,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -26,6 +27,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -75,7 +77,7 @@ const StudentDashboardLayout = ({
         {
           id: "time-request" as StudentView,
           label: "Time Request",
-          icon: Clock,
+          icon: CalendarPlus,
           badge: null,
         },
         {
@@ -172,9 +174,13 @@ const StudentDashboardLayout = ({
 
             {/* Right side */}
             <div className="flex items-center gap-3">
+              <NotificationBell
+                recipientId={studentProfile.id}
+                onNavigateToView={(view) => onViewChange(view as StudentView)}
+              />
               
               {/* User Menu */}
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-2 px-3 h-11 rounded-xl hover:bg-gray-100 transition-all border-2 border-transparent data-[state=open]:border-black focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 group">
                     <div className="relative">

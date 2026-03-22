@@ -14,6 +14,7 @@ import CustomTimeRequests from "@/components/dashboard/CustomTimeRequests";
 import ServicesManagement from "@/components/dashboard/ServicesManagement";
 import MentorPaymentsSetup from "@/components/dashboard/MentorPaymentsSetup";
 import MentorPayoutsDashboard from "@/components/dashboard/MentorPayoutsDashboard";
+import MentorEarnings from "@/components/dashboard/MentorEarnings";
 import { useToast } from "@/hooks/use-toast";
 
 type DashboardView =
@@ -27,7 +28,8 @@ type DashboardView =
   | "requests"
   | "services"
   | "payments"
-  | "payouts";
+  | "payouts"
+  | "earnings";
 
 const MentorDashboard = () => {
   const navigate = useNavigate();
@@ -103,7 +105,7 @@ const MentorDashboard = () => {
         .from("profiles")
         .select("email")
         .eq("id", session.user.id)
-        .single();
+        .maybeSingle();
 
       // Flatten the email from profiles
       const profileWithEmail = {
@@ -211,6 +213,9 @@ const MentorDashboard = () => {
         <MentorPaymentsSetup mentorProfile={mentorProfile} />
       )}
       {activeView === "payouts" && <MentorPayoutsDashboard />}
+      {activeView === "earnings" && (
+        <MentorEarnings mentorProfile={mentorProfile} />
+      )}
     </DashboardLayout>
   );
 };

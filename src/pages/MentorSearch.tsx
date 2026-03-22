@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
@@ -10,6 +10,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import SEO from "@/components/SEO";
+import { useMentorPresenceMap } from "@/hooks/useMentorPresence";
+import PresenceDot from "@/components/PresenceDot";
 
 const MentorSearch = () => {
   const location = useLocation();
@@ -30,6 +32,7 @@ const MentorSearch = () => {
     priceRange: [0, 2000],
     aiResults: initialAIResults,
   });
+  const filteredMentorsPresenceMap = useMentorPresenceMap(filteredMentors);
 
   // Fetch mentors from database
   useEffect(() => {
@@ -114,6 +117,12 @@ const MentorSearch = () => {
     return filtered;
   };
 
+  const filteredDbMentors = useMemo(
+    () => getFilteredDbMentors(),
+    [dbMentors, searchFilters]
+  );
+  const filteredDbMentorsPresenceMap = useMentorPresenceMap(filteredDbMentors);
+
   useEffect(() => {
     console.log("=== MentorSearch URL params ===");
     console.log("initialSearchTerm:", initialSearchTerm);
@@ -177,7 +186,6 @@ const MentorSearch = () => {
 
         <div className="container mx-auto px-4 py-12">
           {(() => {
-            const filteredDbMentors = getFilteredDbMentors();
             const totalResults =
               filteredDbMentors.length + filteredMentors.length;
 
@@ -213,18 +221,24 @@ const MentorSearch = () => {
                           <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
                             <CardContent className="p-6">
                               <div className="flex flex-col items-center text-center">
-                                <Avatar className="h-20 w-20 mb-4">
-                                  <AvatarImage
-                                    src={mentor.profiles?.avatar_url}
-                                    alt={mentor.full_name}
-                                  />
-                                  <AvatarFallback className="bg-matepeak-primary text-white text-lg">
-                                    {mentor.full_name
-                                      .split(" ")
-                                      .map((n: string) => n[0])
-                                      .join("")}
-                                  </AvatarFallback>
-                                </Avatar>
+                                <div className="relative mb-4">
+                                  <Avatar className="h-20 w-20">
+                                    <AvatarImage
+                                      src={mentor.profiles?.avatar_url}
+                                      alt={mentor.full_name}
+                                    />
+                                    <AvatarFallback className="bg-matepeak-primary text-white text-lg">
+                                      {mentor.full_name
+                                        .split(" ")
+                                        .map((n: string) => n[0])
+                                        .join("")}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  {mentor.is_profile_live &&
+                                    filteredDbMentorsPresenceMap[mentor.id] && (
+                                      <PresenceDot className="absolute -top-0.5 -right-0.5" />
+                                    )}
+                                </div>
                                 <h3 className="font-bold text-lg mb-1">
                                   {mentor.full_name}
                                 </h3>
@@ -274,6 +288,9 @@ const MentorSearch = () => {
                           key={mentor.id}
                           mentor={mentor}
                           isNew={idx < 8}
+                          isOnlineOverride={
+                            filteredMentorsPresenceMap[mentor.id] ?? false
+                          }
                         />
                       ))}
                     </div>

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { SERVICE_CONFIG } from "@/config/serviceConfig";
 import {
   ArrowLeft,
+  Clock,
   IndianRupee,
   Loader2,
   Star,
@@ -40,6 +41,7 @@ export default function MentorServiceDetail() {
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState<ServiceReview[]>([]);
   const [resolvedServiceKey, setResolvedServiceKey] = useState<string | null>(null);
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
 
   const isServiceEnabled = (enabled: unknown) =>
     enabled === true || enabled === "true" || enabled === 1;
@@ -71,6 +73,12 @@ export default function MentorServiceDetail() {
       }
 
       setMentor(profileData as MentorData);
+
+      // Check if the viewer is the mentor themselves
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && user.id === profileData.id) {
+        setIsOwnProfile(true);
+      }
 
       const pricing = (profileData.service_pricing || {}) as Record<string, any>;
       const candidates = [
@@ -151,6 +159,7 @@ export default function MentorServiceDetail() {
       description: raw.description || config?.description || "No description provided.",
       price: raw.price ?? 0,
       discountPrice: raw.discount_price,
+      duration: raw.duration as number | undefined,
       enabled: isServiceEnabled(raw.enabled),
       hasFreeDemo: isTruthyFlag(raw.hasFreeDemo),
       typeLabel: config?.typeLabel || "Mentoring Service",
@@ -233,6 +242,12 @@ export default function MentorServiceDetail() {
                   <div className="space-y-4 md:space-y-5">
                     <div className="flex items-center gap-2.5 flex-wrap">
                       <Badge variant="outline">{serviceData.typeLabel}</Badge>
+                      {serviceData.duration && (
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" />
+                          {serviceData.duration} min
+                        </Badge>
+                      )}
                       {!serviceData.enabled && <Badge variant="secondary">Disabled</Badge>}
                       {serviceData.hasFreeDemo && (
                         <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Free Demo</Badge>
@@ -268,17 +283,21 @@ export default function MentorServiceDetail() {
                       )}
                     </div>
 
-                    <Link
-                      className="w-full sm:w-auto"
-                      to={`/booking?mentorId=${mentor.id}&serviceId=${encodeURIComponent(
-                        serviceData.normalizedKey
-                      )}`}
-                    >
-                      <Button size="lg" className="w-full sm:w-auto bg-gray-900 hover:bg-gray-800">
-                        <Calendar className="h-4 w-4 mr-2" />
-                        {serviceActionLabel}
-                      </Button>
-                    </Link>
+                    {isOwnProfile ? (
+                      <p className="text-sm text-gray-500 italic">This is your own service</p>
+                    ) : (
+                      <Link
+                        className="w-full sm:w-auto"
+                        to={`/booking?mentorId=${mentor.id}&serviceId=${encodeURIComponent(
+                          serviceData.normalizedKey
+                        )}`}
+                      >
+                        <Button size="lg" className="w-full sm:w-auto bg-gray-900 hover:bg-gray-800">
+                          <Calendar className="h-4 w-4 mr-2" />
+                          {serviceActionLabel}
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                 </CardContent>
               </Card>

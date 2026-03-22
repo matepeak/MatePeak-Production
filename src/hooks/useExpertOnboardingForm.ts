@@ -74,6 +74,7 @@ const pricingSchema = z.object({
         enabled: z.boolean().optional(),
         price: z.number().min(50, "Price must be at least ₹50").max(20000, "Price cannot exceed ₹20,000").optional(),
         hasFreeDemo: z.boolean().optional(),
+        duration: z.number().optional(),
       })
       .optional(),
     priorityDm: z
@@ -287,7 +288,7 @@ export function useExpertOnboardingForm() {
       availableHours: {},
       timezone: "Asia/Kolkata",
       servicePricing: {
-        oneOnOneSession: { enabled: false, price: 0, hasFreeDemo: false },
+        oneOnOneSession: { enabled: false, price: 0, hasFreeDemo: false, duration: 60 },
         priorityDm: { enabled: false, price: 0, hasFreeDemo: false },
         digitalProducts: { enabled: false, price: 0, productLink: "" },
       },

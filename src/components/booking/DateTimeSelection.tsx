@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Calendar,
+  Calendar as CalendarIcon,
   Clock,
   ChevronLeft,
   ChevronRight,
@@ -20,11 +20,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getAvailableTimeSlots, TimeSlot } from "@/services/bookingService";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface DateTimeSelectionProps {
   selectedService: SelectedService;
@@ -68,6 +73,7 @@ export default function DateTimeSelection({
 
   // Request Custom Time states
   const [showCustomTimeRequest, setShowCustomTimeRequest] = useState(false);
+  const [requestedDate, setRequestedDate] = useState("");
   const [requestedStartTime, setRequestedStartTime] = useState("");
   const [requestedEndTime, setRequestedEndTime] = useState("");
   const [requestMessage, setRequestMessage] = useState("");
@@ -237,12 +243,26 @@ export default function DateTimeSelection({
   };
 
   const handleCustomTimeRequest = async () => {
-    if (!selectedDate) {
-      toast.error("Please select a date first");
+    if (!requestedDate) {
+      toast.error("Please select a preferred date");
       return;
     }
     if (!requestedStartTime || !requestedEndTime) {
       toast.error("Please enter both start and end times");
+      return;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const requestedDateObject = new Date(`${requestedDate}T00:00:00`);
+
+    if (Number.isNaN(requestedDateObject.getTime())) {
+      toast.error("Please select a valid date");
+      return;
+    }
+
+    if (requestedDateObject < today) {
+      toast.error("Past dates are not allowed for custom time requests");
       return;
     }
 
@@ -266,7 +286,7 @@ export default function DateTimeSelection({
       }
 
       // Check mentor's availability and block status for the requested date
-      const dateStr = format(selectedDate, "yyyy-MM-dd");
+      const dateStr = requestedDate;
       // 1. Check if date is blocked
       const { data: blockedDates, error: blockedError } = await supabase
         .from("blocked_dates")
@@ -279,26 +299,7 @@ export default function DateTimeSelection({
         return;
       }
 
-      // 2. Check if mentor has any available slots on this date
-      const { data: availSlots, error: availError } = await supabase
-        .from("availability_slots")
-        .select("id")
-        .eq("expert_id", mentorId)
-        .or(`(is_recurring.eq.true,day_of_week.eq.${selectedDate.getDay()})`, {
-          foreignTable: "availability_slots",
-        })
-        .or(`(is_recurring.eq.false,specific_date.eq.${dateStr})`, {
-          foreignTable: "availability_slots",
-        });
-      if (availError) throw availError;
-      if (availSlots && availSlots.length > 0) {
-        toast.error(
-          "You can only request time for days when the mentor is not available."
-        );
-        return;
-      }
-
-      // 3. Check if mentor has any confirmed bookings on this date
+      // 2. Check if mentor has any confirmed bookings on this date
       const { data: bookings, error: bookingsError } = await supabase
         .from("bookings")
         .select("id")
@@ -332,6 +333,7 @@ export default function DateTimeSelection({
 
       // Reset form
       setShowCustomTimeRequest(false);
+      setRequestedDate("");
       setRequestedStartTime("");
       setRequestedEndTime("");
       setRequestMessage("");
@@ -409,10 +411,21 @@ export default function DateTimeSelection({
               Video Call
             </p>
           </div>
-          <div className="bg-white rounded-xl px-4 py-2 shadow-sm">
-            <div className="text-2xl font-bold text-gray-900">
-              ₹{selectedService.price.toLocaleString("en-IN")}
-            </div>
+          <div className="bg-white rounded-xl px-4 py-2 shadow-sm text-right">
+            {selectedService.discountPrice ? (
+              <>
+                <div className="text-2xl font-bold text-green-600">
+                  ₹{selectedService.discountPrice.toLocaleString("en-IN")}
+                </div>
+                <div className="text-sm text-gray-400 line-through">
+                  ₹{selectedService.price.toLocaleString("en-IN")}
+                </div>
+              </>
+            ) : (
+              <div className="text-2xl font-bold text-gray-900">
+                ₹{selectedService.price.toLocaleString("en-IN")}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -727,8 +740,7 @@ export default function DateTimeSelection({
           )}
 
           {/* Request Custom Time Section */}
-          {selectedDate && (
-            <div className="bg-gray-100 rounded-2xl p-5 border-0 shadow-sm">
+          <div className="bg-gray-100 rounded-2xl p-5 border-0 shadow-sm">
               {!showCustomTimeRequest ? (
                 <div className="text-center">
                   <div className="mb-3">
@@ -761,6 +773,7 @@ export default function DateTimeSelection({
                       size="sm"
                       onClick={() => {
                         setShowCustomTimeRequest(false);
+                        setRequestedDate("");
                         setRequestedStartTime("");
                         setRequestedEndTime("");
                         setRequestMessage("");
@@ -771,11 +784,52 @@ export default function DateTimeSelection({
                     </Button>
                   </div>
 
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-                    <p className="text-xs text-blue-900">
-                      <strong>Selected Date:</strong>{" "}
-                      {format(selectedDate, "EEEE, MMMM d, yyyy")}
-                    </p>
+                  <div className="space-y-2">
+                    <Label
+                      className="text-sm font-semibold text-gray-700"
+                    >
+                      Preferred Date <span className="text-red-500">*</span>
+                    </Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal h-11 border-gray-300 rounded-xl bg-white",
+                            !requestedDate && "text-gray-500"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {requestedDate ? (
+                            format(
+                              new Date(`${requestedDate}T00:00:00`),
+                              "PPP"
+                            )
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={
+                            requestedDate
+                              ? new Date(`${requestedDate}T00:00:00`)
+                              : undefined
+                          }
+                          onSelect={(date) => {
+                            if (date) {
+                              setRequestedDate(format(date, "yyyy-MM-dd"));
+                            }
+                          }}
+                          disabled={(date) =>
+                            date < new Date(new Date().setHours(0, 0, 0, 0))
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
 
                   <div className="flex flex-col md:flex-row gap-4">
@@ -905,7 +959,6 @@ export default function DateTimeSelection({
                 </div>
               )}
             </div>
-          )}
         </>
       )}
     </div>

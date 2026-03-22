@@ -64,21 +64,42 @@ const sendMentorCancellationEmail = async (payload: {
 <html>
 <head>
   <meta charset="utf-8" />
+  <style>
+    body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .container { width: 100%; background-color: #e9ebed; padding: 48px 16px; }
+    .inner-container { max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 10px; padding: 40px; }
+    .logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
+    .title { text-align: center; font-size: 24px; font-weight: 600; color: #111; margin-bottom: 28px; }
+    .text { font-size: 14px; color: #555; margin-bottom: 18px; line-height: 1.6; }
+    .details-box { background: #f4f5f7; border-radius: 8px; padding: 20px; margin: 30px 0; }
+    .details-title { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: #111; }
+    .detail-row { font-size: 13px; color: #444; padding: 10px 0; border-bottom: 1px solid #e5e5e5; }
+    .detail-row:last-child { border-bottom: none; }
+    .footer { text-align: center; font-size: 12px; color: #888; margin-top: 12px; }
+    .link { color: #000; text-decoration: none; font-weight: 500; }
+  </style>
 </head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#111827;">
-  <div style="max-width:600px;margin:0 auto;background:#ffffff;">
-    <div style="background:#111827;color:#ffffff;padding:24px 28px;">
-      <h2 style="margin:0;font-size:22px;">Session Cancelled</h2>
-    </div>
-    <div style="padding:24px 28px;line-height:1.6;">
-      <p style="margin-top:0;">Hi ${payload.studentName},</p>
-      <p>${payload.mentorName} has cancelled your upcoming ${serviceName}.</p>
-      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin:16px 0;">
-        <p style="margin:0 0 6px 0;"><strong>Date:</strong> ${date}</p>
-        <p style="margin:0 0 6px 0;"><strong>Time:</strong> ${time}</p>
-        <p style="margin:0;"><strong>Reason:</strong> ${payload.cancellationReason}</p>
+<body>
+  <div class="container">
+    <div class="inner-container">
+      <div class="logo">MatePeak</div>
+      <div class="title">Session Cancelled</div>
+
+      <div class="text">Hi ${payload.studentName},</div>
+      <div class="text">${payload.mentorName} has cancelled your upcoming ${serviceName}.</div>
+
+      <div class="details-box">
+        <div class="details-title">Cancellation Details</div>
+        <div class="detail-row"><strong>Date:</strong> ${date}</div>
+        <div class="detail-row"><strong>Time:</strong> ${time}</div>
+        <div class="detail-row"><strong>Reason:</strong> ${payload.cancellationReason}</div>
       </div>
-      <p style="margin-bottom:0;color:#4b5563;">If you need help rebooking, please contact support@matepeak.com.</p>
+
+      <div class="text" style="margin-bottom: 0;">You can rebook from your dashboard and receive updated confirmation details by email.</div>
+
+      <div class="footer">
+        Need help? <a href="mailto:support@matepeak.com" class="link">Contact Support</a>
+      </div>
     </div>
   </div>
 </body>

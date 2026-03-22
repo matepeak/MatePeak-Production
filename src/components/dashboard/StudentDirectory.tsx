@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -11,7 +12,6 @@ import {
   Search,
   Calendar,
   MessageSquare,
-  Tag,
   ChevronDown,
   Loader2,
   Save,
@@ -23,12 +23,11 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { formatDistanceToNow } from "date-fns";
 
 interface Student {
   student_id: string;
   student_name: string;
-  student_email: string;
+  student_avatar_url?: string;
   first_session: string;
   last_session: string;
   total_sessions: number;
@@ -60,40 +59,85 @@ const StudentDirectory = ({ mentorProfile }: StudentDirectoryProps) => {
     try {
       setLoading(true);
 
+      if (!mentorProfile?.id) {
+        setStudents([]);
+        return;
+      }
+
+      const mentorIds = Array.from(
+        new Set([
+          mentorProfile.id,
+          mentorProfile.user_id,
+          mentorProfile.profile_id,
+        ].filter(Boolean))
+      );
+
+      if (mentorIds.length === 0) {
+        setStudents([]);
+        return;
+      }
+
       // Fetch all bookings for this mentor
       const { data: bookings, error } = await supabase
         .from("bookings")
-        .select("*")
-        .eq("expert_id", mentorProfile.id)
+        .select(
+          "id, user_id, student_name, student_email, status, scheduled_date, scheduled_time, created_at"
+        )
+        .in("expert_id", mentorIds)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      // Get unique user_ids from bookings
-      const userIds = bookings
-        ?.map((b) => b.user_id)
-        .filter((id, idx, arr) => id && arr.indexOf(id) === idx) || [];
+      if (!bookings || bookings.length === 0) {
+        setStudents([]);
+        return;
+      }
 
-      // Fetch student profiles for these user_ids
-      const { data: studentsData } = await supabase
-        .from("profiles")
-        .select("id, full_name, email")
-        .in("id", userIds);
+      const uniqueUserIds = Array.from(
+        new Set(bookings.map((b) => b.user_id).filter(Boolean))
+      );
+
+      // Best effort profile enrichment by user id only.
+      // Do not fail the whole directory if profiles access is restricted.
+      const { data: profilesByIdData } =
+        uniqueUserIds.length > 0
+          ? await supabase
+              .from("profiles")
+              .select("id, full_name, avatar_url")
+              .in("id", uniqueUserIds)
+          : { data: [] };
+
+      const profileById = new Map(
+        (profilesByIdData || []).map((profile) => [profile.id, profile])
+      );
 
       // Group bookings by student
       const studentMap = new Map<string, Student>();
 
       bookings?.forEach((booking) => {
-        const studentId = booking.user_id || booking.student_email;
-        const studentProfile = studentsData?.find((s) => s.id === booking.user_id);
+        const studentProfile = booking.user_id
+          ? profileById.get(booking.user_id)
+          : undefined;
+        const studentName =
+          studentProfile?.full_name ||
+          booking.student_name ||
+          (booking.student_email
+            ? String(booking.student_email)
+                .split("@")[0]
+                .replace(/[._-]/g, " ")
+                .trim()
+            : "Student");
+        const normalizedName = studentName.toLowerCase();
+        const studentId = booking.user_id || `name:${normalizedName}`;
+        const scheduledDate = booking.scheduled_date || booking.created_at;
         
         if (!studentMap.has(studentId)) {
           studentMap.set(studentId, {
             student_id: studentId,
-            student_name: studentProfile?.full_name || booking.student_name || "Anonymous",
-            student_email: studentProfile?.email || booking.student_email || "",
-            first_session: booking.scheduled_date,
-            last_session: booking.scheduled_date,
+            student_name: studentName,
+            student_avatar_url: studentProfile?.avatar_url || undefined,
+            first_session: scheduledDate,
+            last_session: scheduledDate,
             total_sessions: 0,
             completed_sessions: 0,
             upcoming_sessions: 0,
@@ -104,12 +148,20 @@ const StudentDirectory = ({ mentorProfile }: StudentDirectoryProps) => {
 
         const student = studentMap.get(studentId)!;
         student.total_sessions++;
+        if (!student.student_avatar_url && studentProfile?.avatar_url) {
+          student.student_avatar_url = studentProfile.avatar_url;
+        }
+        if (student.student_name === "Student" && studentName) {
+          student.student_name = studentName;
+        }
 
         if (booking.status === "completed") {
           student.completed_sessions++;
         }
 
-        const sessionDate = new Date(`${booking.scheduled_date}T${booking.scheduled_time}`);
+        const sessionDate = new Date(
+          `${booking.scheduled_date}T${booking.scheduled_time || "00:00"}`
+        );
         const now = new Date();
 
         if (sessionDate > now && booking.status === "confirmed") {
@@ -117,11 +169,11 @@ const StudentDirectory = ({ mentorProfile }: StudentDirectoryProps) => {
         }
 
         // Update first and last session dates
-        if (booking.scheduled_date < student.first_session) {
-          student.first_session = booking.scheduled_date;
+        if (scheduledDate < student.first_session) {
+          student.first_session = scheduledDate;
         }
-        if (booking.scheduled_date > student.last_session) {
-          student.last_session = booking.scheduled_date;
+        if (scheduledDate > student.last_session) {
+          student.last_session = scheduledDate;
         }
       });
 
@@ -139,7 +191,12 @@ const StudentDirectory = ({ mentorProfile }: StudentDirectoryProps) => {
         }
       });
 
-      setStudents(Array.from(studentMap.values()));
+      const sortedStudents = Array.from(studentMap.values()).sort(
+        (a, b) =>
+          new Date(b.last_session).getTime() - new Date(a.last_session).getTime()
+      );
+
+      setStudents(sortedStudents);
     } catch (error: any) {
       console.error("Error fetching students:", error);
       toast({
@@ -189,10 +246,7 @@ const StudentDirectory = ({ mentorProfile }: StudentDirectoryProps) => {
   const filteredStudents = students.filter((student) => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
-    return (
-      student.student_name.toLowerCase().includes(query) ||
-      student.student_email.toLowerCase().includes(query)
-    );
+    return student.student_name.toLowerCase().includes(query);
   });
 
   const getStudentInitials = (name: string) => {
@@ -205,40 +259,42 @@ const StudentDirectory = ({ mentorProfile }: StudentDirectoryProps) => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Student Directory</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-2xl font-bold text-gray-900">Student Directory</h1>
+          <p className="text-sm text-gray-600 mt-1">
             Manage your students and track their progress
           </p>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-gray-100 border-0 rounded-2xl shadow-none">
-          <CardContent className="p-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="bg-white border border-gray-200 rounded-2xl shadow-sm">
+          <CardContent className="p-5">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-4xl font-bold text-gray-900 mb-2">
+                <p className="text-3xl font-bold text-gray-900 mb-1.5">
                   {students.length}
                 </p>
                 <p className="text-sm font-medium text-gray-600">
                   Total Students
                 </p>
               </div>
-              <Users className="h-6 w-6 text-rose-400" />
+              <div className="h-9 w-9 rounded-lg bg-gray-100 flex items-center justify-center">
+                <Users className="h-5 w-5 text-gray-700" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gray-100 border-0 rounded-2xl shadow-none">
-          <CardContent className="p-6">
+        <Card className="bg-white border border-gray-200 rounded-2xl shadow-sm">
+          <CardContent className="p-5">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-4xl font-bold text-gray-900 mb-2">
+                <p className="text-3xl font-bold text-gray-900 mb-1.5">
                   {students.filter((s) => s.upcoming_sessions > 0).length}
                 </p>
                 <div>
@@ -248,23 +304,27 @@ const StudentDirectory = ({ mentorProfile }: StudentDirectoryProps) => {
                   <p className="text-xs text-gray-500 mt-1">With upcoming sessions</p>
                 </div>
               </div>
-              <Activity className="h-6 w-6 text-rose-400" />
+              <div className="h-9 w-9 rounded-lg bg-gray-100 flex items-center justify-center">
+                <Activity className="h-5 w-5 text-gray-700" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gray-100 border-0 rounded-2xl shadow-none">
-          <CardContent className="p-6">
+        <Card className="bg-white border border-gray-200 rounded-2xl shadow-sm">
+          <CardContent className="p-5">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-4xl font-bold text-gray-900 mb-2">
+                <p className="text-3xl font-bold text-gray-900 mb-1.5">
                   {students.reduce((sum, s) => sum + s.total_sessions, 0)}
                 </p>
                 <p className="text-sm font-medium text-gray-600">
                   Total Sessions
                 </p>
               </div>
-              <Calendar className="h-6 w-6 text-rose-400" />
+              <div className="h-9 w-9 rounded-lg bg-gray-100 flex items-center justify-center">
+                <Calendar className="h-5 w-5 text-gray-700" />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -274,10 +334,10 @@ const StudentDirectory = ({ mentorProfile }: StudentDirectoryProps) => {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 z-10" />
         <Input
-          placeholder="Search students by name or email..."
+          placeholder="Search students by name..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 bg-white border border-gray-200 rounded-2xl"
+          className="pl-10 bg-white border border-gray-200 rounded-xl h-11"
         />
       </div>
 
@@ -285,7 +345,7 @@ const StudentDirectory = ({ mentorProfile }: StudentDirectoryProps) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="bg-gray-100 border-0 rounded-2xl">
+            <Card key={i} className="bg-white border border-gray-200 rounded-2xl shadow-sm">
               <CardContent className="p-6">
                 <Skeleton className="h-24 w-full" />
               </CardContent>
@@ -300,27 +360,28 @@ const StudentDirectory = ({ mentorProfile }: StudentDirectoryProps) => {
                 setExpandedStudent(open ? student.student_id : null)
               }
             >
-              <Card className="bg-gray-100 border-0 rounded-2xl hover:shadow-md transition-shadow group">
+              <Card className="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md hover:border-gray-300 transition-all group">
                 <CollapsibleTrigger className="w-full">
                   <CardContent className="p-6">
                     <div className="space-y-3">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3 flex-1">
                           {/* Avatar */}
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center flex-shrink-0">
-                            <span className="text-sm font-bold text-white">
+                          <Avatar className="h-12 w-12 border border-gray-200">
+                            <AvatarImage
+                              src={student.student_avatar_url || ""}
+                              alt={student.student_name}
+                            />
+                            <AvatarFallback className="bg-gray-100 text-gray-700 font-semibold">
                               {getStudentInitials(student.student_name)}
-                            </span>
-                          </div>
+                            </AvatarFallback>
+                          </Avatar>
 
                           {/* Info */}
                           <div className="text-left min-w-0 flex-1">
                             <h3 className="font-semibold text-gray-900 truncate">
                               {student.student_name}
                             </h3>
-                            <p className="text-sm text-gray-600 truncate">
-                              {student.student_email}
-                            </p>
                           </div>
                         </div>
 
@@ -335,17 +396,17 @@ const StudentDirectory = ({ mentorProfile }: StudentDirectoryProps) => {
                       </div>
 
                       {/* Stats Row */}
-                      <div className="flex items-center gap-2 pt-1">
-                        <span className="text-xs font-medium text-gray-600 bg-white rounded-md px-2.5 py-1">
+                      <div className="flex items-center gap-2 pt-1 flex-wrap">
+                        <span className="text-xs font-medium text-gray-700 bg-gray-100 rounded-md px-2.5 py-1">
                           {student.total_sessions} session{student.total_sessions !== 1 ? "s" : ""}
                         </span>
-                        <span className="text-xs font-medium text-gray-600 bg-white rounded-md px-2.5 py-1">
+                        <span className="text-xs font-medium text-gray-700 bg-gray-100 rounded-md px-2.5 py-1">
                           {student.completed_sessions} completed
                         </span>
                         {student.upcoming_sessions > 0 && (
-                          <span className="text-xs font-medium text-green-700 bg-green-50 rounded-md px-2.5 py-1">
+                          <Badge className="text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-md">
                             {student.upcoming_sessions} upcoming
-                          </span>
+                          </Badge>
                         )}
                       </div>
                     </div>
@@ -353,7 +414,7 @@ const StudentDirectory = ({ mentorProfile }: StudentDirectoryProps) => {
                 </CollapsibleTrigger>
 
                 <CollapsibleContent>
-                  <div className="border-t border-gray-200 p-6 space-y-4 bg-gray-50">
+                  <div className="border-t border-gray-200 p-6 space-y-4 bg-gray-50/70">
                     {/* Session Stats */}
                     <div className="grid grid-cols-3 gap-3">
                       <div className="text-center p-3 bg-white rounded-lg border border-gray-200">
@@ -469,7 +530,7 @@ const StudentDirectory = ({ mentorProfile }: StudentDirectoryProps) => {
             </Collapsible>
           ))
         ) : (
-          <Card className="bg-gray-100 border-0 rounded-2xl md:col-span-2">
+          <Card className="bg-white border border-gray-200 rounded-2xl shadow-sm md:col-span-2">
             <CardContent className="p-12 text-center">
               <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-sm font-medium text-gray-900">

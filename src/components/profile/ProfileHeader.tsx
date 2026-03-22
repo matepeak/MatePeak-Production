@@ -19,7 +19,6 @@ import {
   Star,
   MapPin,
   Calendar,
-  MessageCircle,
   Linkedin,
   Twitter,
   Globe,
@@ -35,6 +34,8 @@ import {
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useMentorLiveStatus } from "@/hooks/useMentorPresence";
+import PresenceDot from "@/components/PresenceDot";
 
 interface ProfileHeaderProps {
   mentor: any;
@@ -57,6 +58,10 @@ export default function ProfileHeader({
   const navigate = useNavigate();
   const [isCheckingAuth, setIsCheckingAuth] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
+  const { isOnline: isMentorOnline } = useMentorLiveStatus(
+    mentor?.id,
+    mentor?.last_seen
+  );
 
   const handleBookingClick = async () => {
     setIsCheckingAuth(true);
@@ -170,8 +175,10 @@ export default function ProfileHeader({
                   {getInitials(mentor.full_name)}
                 </AvatarFallback>
               </Avatar>
-              {/* Online indicator */}
-              <div className="absolute bottom-1 right-1 h-3.5 w-3.5 bg-green-500 rounded-full border-2 border-white"></div>
+              {/* Live indicator */}
+              {mentor.is_profile_live && isMentorOnline && (
+                <PresenceDot className="absolute bottom-1 right-1" />
+              )}
             </div>
           </div>
 
@@ -210,28 +217,15 @@ export default function ProfileHeader({
                 </Button>
               </Link>
             ) : (
-              // Show booking and message buttons for other mentors
-              <>
-                <Button
-                  onClick={handleBookingClick}
-                  disabled={isCheckingAuth}
-                  className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium text-sm disabled:opacity-50"
-                >
-                  {isCheckingAuth
-                    ? "Checking..."
-                    : `Book ${mentor.full_name.split(" ")[0]}`}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 font-medium text-sm"
-                >
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  Message{" "}
-                  <span className="text-xs text-gray-400 ml-1">
-                    (Under Development)
-                  </span>
-                </Button>
-              </>
+              <Button
+                onClick={handleBookingClick}
+                disabled={isCheckingAuth}
+                className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium text-sm disabled:opacity-50"
+              >
+                {isCheckingAuth
+                  ? "Checking..."
+                  : `Book ${mentor.full_name.split(" ")[0]}`}
+              </Button>
             )}
           </div>
 

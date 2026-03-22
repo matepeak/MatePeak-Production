@@ -66,6 +66,28 @@ const jsonResponse = (status: number, body: Record<string, unknown>) =>
 
 const normalizeStatus = (status?: string | null) => (status ?? "").trim().toLowerCase();
 
+const getErrorMessage = (error: unknown, fallback = "Unknown error"): string => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "string" && error.trim().length > 0) {
+    return error;
+  }
+
+  if (error && typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    if (typeof record.message === "string" && record.message.trim().length > 0) {
+      return record.message;
+    }
+    if (typeof record.error === "string" && record.error.trim().length > 0) {
+      return record.error;
+    }
+  }
+
+  return fallback;
+};
+
 const formatDate = (dateStr: string) => {
   const date = new Date(dateStr);
   return date.toLocaleDateString("en-US", {
@@ -343,7 +365,7 @@ const updateBookingStatusWithFallback = async (
   let lastError: unknown = null;
 
   for (const paymentStatus of paymentStatusCandidates) {
-    const payloadWithTimestamp = {
+    let payload = {
       ...updateData,
       payment_status: paymentStatus,
       updated_at: new Date().toISOString(),
@@ -357,14 +379,37 @@ const updateBookingStatusWithFallback = async (
         .select("*")
         .single();
 
-    let { data, error } = await attempt(payloadWithTimestamp);
+    let data: unknown = null;
+    let error: any = null;
+    for (let retry = 0; retry < 5; retry += 1) {
+      const result = await attempt(payload);
+      data = result.data;
+      error = result.error;
+      if (!error) break;
 
-    // Backward compatibility: some production schemas may not have bookings.updated_at.
-    if (error && String(error.message || "").toLowerCase().includes("updated_at")) {
-      const fallbackPayload = { ...updateData, payment_status: paymentStatus };
-      const fallbackAttempt = await attempt(fallbackPayload);
-      data = fallbackAttempt.data;
-      error = fallbackAttempt.error;
+      const message = String(error.message || "");
+      const lower = message.toLowerCase();
+
+      // Backward compatibility for deployments that don't have bookings.updated_at.
+      if (lower.includes("updated_at") && "updated_at" in payload) {
+        const next = { ...payload };
+        delete (next as Record<string, unknown>).updated_at;
+        payload = next;
+        continue;
+      }
+
+      // Generic compatibility: remove unknown bookings columns and retry.
+      const schemaCacheMissing = message.match(/could not find the '([^']+)' column of 'bookings' in the schema cache/i);
+      const sqlMissing = message.match(/column\s+"([^"]+)"\s+of relation\s+"bookings"\s+does not exist/i);
+      const missingColumn = schemaCacheMissing?.[1] || sqlMissing?.[1] || null;
+      if (missingColumn && Object.prototype.hasOwnProperty.call(payload, missingColumn)) {
+        const next = { ...payload };
+        delete (next as Record<string, unknown>)[missingColumn];
+        payload = next;
+        continue;
+      }
+
+      break;
     }
 
     if (!error) {
@@ -482,29 +527,77 @@ Deno.serve(async (req: Request) => {
       );
 
       if (confirmError) {
-        throw confirmError;
+        const rpcErrorMessage = String(confirmError.message || "");
+        const canUseLegacyFallback =
+          /confirm_booking_after_payment|function .* does not exist|PGRST202|42883/i.test(
+            rpcErrorMessage,
+          );
+
+        const isKnownAtomicRpcQueryBug =
+          /column reference\s+"message"\s+is ambiguous|42702/i.test(rpcErrorMessage);
+
+        if (!canUseLegacyFallback && !isKnownAtomicRpcQueryBug) {
+          throw new Error(getErrorMessage(confirmError, "Failed to confirm booking atomically"));
+        }
+
+        const legacyUpdateData: Record<string, unknown> = {
+          status: "confirmed",
+        };
+
+        if (paymentId) legacyUpdateData.payment_id = paymentId;
+        if (orderId) {
+          const existingMessage = String(booking.message || "");
+          legacyUpdateData.message = existingMessage.includes("Order ID:")
+            ? existingMessage
+            : `${existingMessage}${existingMessage ? "\n\n" : ""}Order ID: ${orderId}`;
+        }
+
+        const legacyResult = await updateBookingStatusWithFallback(
+          supabase,
+          bookingId,
+          legacyUpdateData,
+          ["completed", "paid"],
+        );
+
+        updatedBooking = legacyResult.data;
+        usedPaymentStatus = legacyResult.usedPaymentStatus;
+        emailsTriggered = true;
+
+        const { data: refreshedLegacyBooking, error: refreshLegacyError } = await supabase
+          .from("bookings")
+          .select("*")
+          .eq("id", bookingId)
+          .single();
+
+        if (refreshLegacyError) {
+          throw new Error(
+            getErrorMessage(refreshLegacyError, "Failed to refresh booking after fallback confirmation"),
+          );
+        }
+
+        updatedBooking = refreshedLegacyBooking as BookingRecord;
+      } else {
+        const confirmResult = Array.isArray(confirmData) ? confirmData[0] : confirmData;
+        if (!confirmResult?.success && confirmResult?.code !== "slot_conflict") {
+          throw new Error(confirmResult?.message || "Failed to confirm booking atomically");
+        }
+
+        confirmationConflict = confirmResult?.code === "slot_conflict";
+
+        const { data: refreshedBooking, error: refreshError } = await supabase
+          .from("bookings")
+          .select("*")
+          .eq("id", bookingId)
+          .single();
+
+        if (refreshError) {
+          throw new Error(getErrorMessage(refreshError, "Failed to refresh booking after confirmation"));
+        }
+
+        updatedBooking = refreshedBooking as BookingRecord;
+        usedPaymentStatus = updatedBooking.payment_status;
+        emailsTriggered = true;
       }
-
-      const confirmResult = Array.isArray(confirmData) ? confirmData[0] : confirmData;
-      if (!confirmResult?.success && confirmResult?.code !== "slot_conflict") {
-        throw new Error(confirmResult?.message || "Failed to confirm booking atomically");
-      }
-
-      confirmationConflict = confirmResult?.code === "slot_conflict";
-
-      const { data: refreshedBooking, error: refreshError } = await supabase
-        .from("bookings")
-        .select("*")
-        .eq("id", bookingId)
-        .single();
-
-      if (refreshError) {
-        throw refreshError;
-      }
-
-      updatedBooking = refreshedBooking as BookingRecord;
-      usedPaymentStatus = updatedBooking.payment_status;
-      emailsTriggered = true;
 
       try {
         const { data: earningData, error: earningError } = await supabase.rpc(
@@ -646,7 +739,7 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(500, {
       success: false,
       message: "Internal server error",
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: getErrorMessage(error),
     });
   }
 });

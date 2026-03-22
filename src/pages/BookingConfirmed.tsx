@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import {
@@ -52,12 +52,33 @@ interface BookingDetails {
 const BookingConfirmed = () => {
   const { bookingId } = useParams<{ bookingId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [booking, setBooking] = useState<BookingDetails | null>(null);
   const [userRole, setUserRole] = useState<"student" | "mentor" | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [checkComplete, setCheckComplete] = useState(false);
+
+  // Validate the navigation state access token.
+  // Token format (base64): "<bookingId>:<issuedAtMs>"
+  // Valid if: present, matches bookingId, and issued within 10 minutes.
+  // Mentors viewing from dashboard won't have the token — they are validated by
+  // being the expert_id on the booking (checked after DB fetch).
+  const validateAccessToken = (token: unknown, id: string): boolean => {
+    if (typeof token !== "string") return false;
+    try {
+      const decoded = atob(token);
+      const [tokenBookingId, tsStr] = decoded.split(":");
+      if (tokenBookingId !== id) return false;
+      const age = Date.now() - parseInt(tsStr, 10);
+      return age >= 0 && age <= 10 * 60 * 1000; // 10 minutes
+    } catch {
+      return false;
+    }
+  };
+
+  const accessToken = (location.state as any)?.accessToken;
 
   // Fetch booking details
   useEffect(() => {
@@ -134,17 +155,40 @@ const BookingConfirmed = () => {
 
         // Verify user has access to this booking
         const userId = session.user.id;
-        if (
-          bookingData.user_id !== userId &&
-          bookingData.expert_id !== userId
-        ) {
+        const isStudent = bookingData.user_id === userId;
+        const isMentor = bookingData.expert_id === userId;
+
+        if (!isStudent && !isMentor) {
           setError("You don't have permission to view this booking.");
           setLoading(false);
           return;
         }
 
+        // Security gate: students must arrive via the post-payment redirect
+        // (verified by a short-lived access token in router state).
+        // Mentors are exempt — they access from the dashboard.
+        if (isStudent && !isMentor) {
+          const tokenValid = validateAccessToken(accessToken, bookingData.id);
+          if (!tokenValid) {
+            setError("Access denied. Please complete payment to view this confirmation.");
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Reject bookings that have not been paid/confirmed
+        if (bookingData.status !== "confirmed" && bookingData.status !== "completed") {
+          setError(
+            bookingData.status === "pending"
+              ? "Payment not completed. Please finish payment to confirm your booking."
+              : "This booking is no longer active."
+          );
+          setLoading(false);
+          return;
+        }
+
         // Determine user role
-        setUserRole(bookingData.user_id === userId ? "student" : "mentor");
+        setUserRole(isStudent ? "student" : "mentor");
 
         // Fetch mentor data from expert_profiles table
         let mentorName = "Unknown Mentor";

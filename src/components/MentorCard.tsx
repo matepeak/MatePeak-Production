@@ -1,10 +1,18 @@
-import { Star, Phone, Users, MessageCircle, Heart } from "lucide-react";
+import { Star, Phone, Users, MessageCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { useState, useEffect } from "react";
+import { useMentorLiveStatus } from "@/hooks/useMentorPresence";
+import PresenceDot from "@/components/PresenceDot";
+import { SERVICE_CONFIG, normalizeServiceType } from "@/config/serviceConfig";
+
+export interface MentorServiceOption {
+  name: string;
+  serviceKey?: string;
+  serviceType?: string;
+}
 
 // Update the MentorProfile type to include connectionOptions
 export interface MentorProfile {
@@ -18,54 +26,81 @@ export interface MentorProfile {
   price: number;
   bio: string;
   connectionOptions: string[];
+  connectionOptionDetails?: MentorServiceOption[];
   username?: string; // Optional username for new profile route
   expertise_tags?: string[];
   tagline?: string; // Generated tagline like "Senior @ IIT Delhi | Computer Science"
   mentor_tier?: 'basic' | 'verified' | 'top'; // Mentor tier badge
+  is_profile_live?: boolean;
+  last_seen?: string | null;
 }
 
 interface MentorCardProps {
   mentor: MentorProfile;
   isNew?: boolean;
-  isFavorite?: boolean;
-  onToggleFavorite?: (mentorId: string) => void;
+  isOnlineOverride?: boolean;
 }
 
 const MentorCard = ({
   mentor,
   isNew,
-  isFavorite = false,
-  onToggleFavorite,
+  isOnlineOverride,
 }: MentorCardProps) => {
+  const { isOnline: isMentorOnlineFromHook } = useMentorLiveStatus(
+    isOnlineOverride === undefined ? mentor.id : undefined,
+    mentor.last_seen ?? null
+  );
+  const isMentorOnline =
+    isOnlineOverride === undefined ? isMentorOnlineFromHook : isOnlineOverride;
+  const isMentorLive = Boolean(mentor.is_profile_live) && isMentorOnline;
+
   const nameParts = mentor.name.split(" ");
   const initials =
     nameParts.length > 1
       ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`
       : mentor.name[0];
 
-  const handleFavoriteClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (onToggleFavorite) {
-      onToggleFavorite(mentor.id);
-    }
-  };
+  const getConnectionIcon = (option: MentorServiceOption) => {
+    const normalizedType =
+      (option.serviceType && normalizeServiceType(option.serviceType)) ||
+      (option.serviceKey && normalizeServiceType(option.serviceKey)) ||
+      null;
 
-  const getConnectionIcon = (option: string) => {
-    const lowerOption = option.toLowerCase();
+    if (normalizedType) {
+      const Icon = SERVICE_CONFIG[normalizedType].icon;
+      return <Icon className="h-3.5 w-3.5" />;
+    }
+
+    const lowerOption = option.name.toLowerCase();
     if (lowerOption.includes("call") || lowerOption.includes("1:1")) {
       return <Phone className="h-3.5 w-3.5" />;
     } else if (lowerOption.includes("group")) {
       return <Users className="h-3.5 w-3.5" />;
+    } else if (
+      lowerOption.includes("resume") ||
+      lowerOption.includes("linkedin") ||
+      lowerOption.includes("digital") ||
+      lowerOption.includes("resource") ||
+      lowerOption.includes("document")
+    ) {
+      const Icon = SERVICE_CONFIG.digitalProducts.icon;
+      return <Icon className="h-3.5 w-3.5" />;
     } else if (lowerOption.includes("chat") || lowerOption.includes("doubt")) {
       return <MessageCircle className="h-3.5 w-3.5" />;
     }
     return <Phone className="h-3.5 w-3.5" />;
   };
 
+  const visibleExpertise = mentor.categories.slice(0, 2);
+  const serviceOptions: MentorServiceOption[] =
+    mentor.connectionOptionDetails && mentor.connectionOptionDetails.length > 0
+      ? mentor.connectionOptionDetails
+      : mentor.connectionOptions.map((name) => ({ name }));
+  const visibleServices = serviceOptions.slice(0, 3);
+
   return (
     <Card className="overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 h-full w-full max-w-[340px] mx-auto border border-gray-200 bg-white rounded-2xl">
-      <CardContent className="p-6 relative">
+      <CardContent className="p-6 relative h-full flex flex-col">
         {isNew && (
           <div className="absolute top-2 right-2 z-10">
             <div className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
@@ -74,37 +109,23 @@ const MentorCard = ({
           </div>
         )}
 
-        {/* Favorite Button */}
-        {onToggleFavorite && (
-          <button
-            onClick={handleFavoriteClick}
-            className="absolute top-3 right-3 z-20 p-1 rounded-full bg-white/90 hover:bg-white shadow-sm hover:shadow-md transition-all backdrop-blur-sm"
-            aria-label={
-              isFavorite ? "Remove from favorites" : "Add to favorites"
-            }
-          >
-            <Heart
-              className={`h-4 w-4 transition-all ${
-                isFavorite
-                  ? "fill-red-500 text-red-500"
-                  : "text-gray-400 hover:text-red-500"
-              }`}
-            />
-          </button>
-        )}
-
         {/* Header: Avatar, Name, Tagline, Rating */}
         <div className="flex items-start gap-4 mb-4 pr-10">
-          <Avatar className="h-16 w-16 flex-shrink-0 border-2 border-gray-100">
-            <AvatarImage
-              src={mentor.image}
-              alt={mentor.name}
-              className="object-cover"
-            />
-            <AvatarFallback className="bg-matepeak-primary text-white font-semibold text-lg">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative flex-shrink-0">
+            <Avatar className="h-16 w-16 border-2 border-gray-100">
+              <AvatarImage
+                src={mentor.image}
+                alt={mentor.name}
+                className="object-cover"
+              />
+              <AvatarFallback className="bg-matepeak-primary text-white font-semibold text-lg">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            {isMentorLive && (
+              <PresenceDot className="absolute -top-0.5 -right-0.5" />
+            )}
+          </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-0.5">
@@ -147,18 +168,18 @@ const MentorCard = ({
         )}
 
         {/* Expertise Section */}
-        <div className="mb-4">
+        <div className="mb-4 h-[92px] flex flex-col">
           <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-2.5">
             EXPERTISE
           </h4>
-          <div className="flex flex-wrap gap-2">
-            {mentor.categories.slice(0, 3).map((category, index) => (
+          <div className="flex flex-wrap gap-2 overflow-hidden">
+            {visibleExpertise.map((category, index) => (
               <Badge
                 key={index}
                 variant="outline"
-                className="bg-white text-gray-700 border-gray-300 text-xs font-medium px-3 py-1 rounded-md hover:bg-gray-50 transition-colors"
+                className="max-w-full bg-white text-gray-700 border-gray-300 text-xs font-medium px-3 py-1 rounded-md hover:bg-gray-50 transition-colors"
               >
-                {category}
+                <span className="truncate">{category}</span>
               </Badge>
             ))}
           </div>
@@ -169,16 +190,16 @@ const MentorCard = ({
           <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wide mb-2.5">
             AVAILABLE SERVICES
           </h4>
-          <div className="flex flex-wrap gap-2">
-            {mentor.connectionOptions.slice(0, 3).map((option, index) => (
+          <div className="space-y-2">
+            {visibleServices.map((option, index) => (
               <Badge
                 key={index}
                 variant="outline"
-                className="bg-white text-gray-700 border-gray-300 text-xs font-medium px-3 py-1 rounded-md hover:bg-gray-50 transition-colors"
+                className="w-full justify-start bg-white text-gray-700 border-gray-300 text-xs font-medium px-3 py-1 rounded-md hover:bg-gray-50 transition-colors"
               >
-                <span className="flex items-center gap-1.5">
+                <span className="flex items-center gap-1.5 min-w-0">
                   {getConnectionIcon(option)}
-                  {option}
+                  <span className="truncate">{option.name}</span>
                 </span>
               </Badge>
             ))}
@@ -186,15 +207,10 @@ const MentorCard = ({
         </div>
 
         {/* Footer: Price and CTA */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+        <div className="mt-auto flex items-center justify-between pt-4 border-t border-gray-200">
           <div>
             <p className="text-xs text-gray-500 mb-0.5">Starting from</p>
-            <p className="text-xl font-bold text-gray-900">
-              ₹{mentor.price}
-              <span className="text-xs text-gray-500 font-normal ml-1">
-                /session
-              </span>
-            </p>
+            <p className="text-xl font-bold text-gray-900">₹{mentor.price}</p>
           </div>
           <Link
             to={

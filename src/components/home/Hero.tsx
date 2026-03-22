@@ -369,9 +369,6 @@ const Hero = () => {
                 className="relative w-full max-w-lg mb-4"
               >
                 <div className="relative">
-                  <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 z-10">
-                    <Search className="h-5 w-5 text-gray-400" />
-                  </div>
                   <input
                     type="text"
                     value={searchQuery}
@@ -389,7 +386,7 @@ const Hero = () => {
                         ? "What mentor are you interested in?"
                         : "What type of mentor are you interested in?"
                     }
-                    className="hero-search-input w-full h-12 sm:h-14 pl-12 sm:pl-14 pr-12 sm:pr-14 rounded-full bg-[#f2f2f2] text-sm sm:text-base text-gray-700 placeholder:text-xs sm:placeholder:text-sm placeholder:text-gray-700 placeholder:font-normal border-0 appearance-none outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 transition-colors"
+                    className="hero-search-input w-full h-12 sm:h-14 pl-5 sm:pl-6 pr-12 sm:pr-14 rounded-full bg-[#f2f2f2] text-sm sm:text-base text-gray-700 placeholder:text-xs sm:placeholder:text-sm placeholder:text-gray-700 placeholder:font-normal border-0 appearance-none outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 transition-colors"
                     style={{ WebkitTapHighlightColor: "transparent" }}
                   />
                   <button

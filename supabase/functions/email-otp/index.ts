@@ -58,18 +58,23 @@ const sendOtpEmail = async (to: string, otp: string): Promise<void> => {
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6; }
-    .container { max-width: 560px; margin: 0 auto; background-color: #ffffff; }
-    .header { background-color: #111827; color: #ffffff; padding: 24px; text-align: center; }
-    .content { padding: 24px; color: #111827; }
-    .otp-box { margin: 20px 0; padding: 18px; border-radius: 12px; background-color: #f9fafb; border: 1px solid #e5e7eb; text-align: center; }
+    body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .container { width: 100%; background-color: #e9ebed; padding: 48px 16px; }
+    .inner-container { max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 10px; padding: 40px; }
+    .logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
+    .header { text-align: center; background: #ffffff; margin-bottom: 28px; }
+    .content { color: #111827; background-color: #ffffff; }
+    .content p { font-size: 14px; color: #555; margin-bottom: 18px; line-height: 1.6; }
+    .otp-box { margin: 30px 0; padding: 20px; border-radius: 8px; background: #f4f5f7; text-align: center; }
     .otp-code { letter-spacing: 6px; font-size: 30px; font-weight: 700; }
     .warning { color: #b91c1c; font-weight: 600; }
-    .footer { padding: 18px 24px; background-color: #f9fafb; color: #6b7280; font-size: 13px; }
+    .footer { text-align: center; font-size: 12px; color: #888; margin-top: 12px; background: #ffffff; }
+    .link { color: #000; text-decoration: none; font-weight: 500; }
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="container"><div class="inner-container">
+    <div class="logo">MatePeak</div>
     <div class="header">
       <h2 style="margin:0;">MatePeak Email Verification</h2>
     </div>
@@ -82,9 +87,9 @@ const sendOtpEmail = async (to: string, otp: string): Promise<void> => {
       <p>If you did not request this code, please ignore this email.</p>
     </div>
     <div class="footer">
-      <p style="margin:0;">MatePeak Support</p>
+      <p style="margin:0;">Need help? <a href="mailto:support@matepeak.com" class="link">Contact Support</a></p>
     </div>
-  </div>
+  </div></div>
 </body>
 </html>
   `;

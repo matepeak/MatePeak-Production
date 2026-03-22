@@ -23,7 +23,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import ProfileCompletionCard from "@/components/dashboard/ProfileCompletionCard";
 
 type TimePeriod = "today" | "week" | "month" | "all";
 
@@ -142,13 +141,15 @@ const DashboardOverview = ({
       let mentorQuery = supabase
         .from("bookings")
         .select("*")
-        .eq("expert_id", mentorProfile.id);
+        .eq("expert_id", mentorProfile.id)
+        .in("status", ["confirmed", "completed", "cancelled"]);
 
       // Fetch sessions where user is the student
       let studentQuery = supabase
         .from("bookings")
         .select("*")
-        .eq("user_id", mentorProfile.id);
+        .eq("user_id", mentorProfile.id)
+        .in("status", ["confirmed", "completed", "cancelled"]);
 
       if (startDateString && endDateString) {
         mentorQuery = mentorQuery
@@ -166,6 +167,7 @@ const DashboardOverview = ({
         ...(mentorSessions || []),
         ...(studentSessions || []),
       ];
+      const filteredMentorSessions = mentorSessions || [];
 
       // Calculate stats
       const upcoming =
@@ -252,11 +254,11 @@ const DashboardOverview = ({
             .from("profiles")
             .select("full_name, email")
             .eq("id", request.mentee_id)
-            .single();
+            .maybeSingle();
 
           return {
             ...request,
-            profiles: profileData || { full_name: "Unknown", email: "" },
+            profiles: profileData || { full_name: "Deleted User", email: "" },
           };
         })
       );
@@ -282,7 +284,14 @@ const DashboardOverview = ({
     });
   };
 
-  const statCards = [
+  const statCards: Array<{
+    title: string;
+    value: number | string;
+    icon: any;
+    iconColor: string;
+    suffix?: string;
+    isComingSoon?: boolean;
+  }> = [
     {
       title: "Total Sessions",
       value: stats.totalSessions,
@@ -341,12 +350,6 @@ const DashboardOverview = ({
           </p>
         </div>
       </div>
-
-      {/* Profile Completion Card */}
-      <ProfileCompletionCard 
-        profileData={mentorProfile} 
-        username={mentorProfile.username} 
-      />
 
       {/* Time Period Filters - Improved Design */}
       <div className="flex items-center gap-2 pb-2">
@@ -640,7 +643,7 @@ const DashboardOverview = ({
                 </p>
               </div>
               {timeRequests.length > 0 && (
-                <Badge className="bg-amber-500 text-white px-2.5 py-0.5 text-xs font-semibold">
+                <Badge className="bg-amber-500 text-white px-2.5 py-0.5 text-xs font-semibold hover:bg-amber-500 hover:text-white">
                   {timeRequests.length} Pending
                 </Badge>
               )}
@@ -689,7 +692,7 @@ const DashboardOverview = ({
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900 truncate">
-                          {request.profiles?.full_name || "Unknown Student"}
+                          {request.profiles?.full_name || "Deleted User"}
                         </p>
                         <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
                           <Calendar className="h-3 w-3" />

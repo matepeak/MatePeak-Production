@@ -212,17 +212,21 @@ export default function SimilarMentors({ currentMentorId, categories, expertiseT
                     <h3 className="font-semibold text-gray-900 text-sm truncate">
                       {mentor.full_name}
                     </h3>
-                    {mentor.averageRating > 0 && (
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                        <span className="text-xs font-medium text-gray-700">
-                          {mentor.averageRating.toFixed(1)}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          ({mentor.reviewCount})
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <Star
+                        className={`h-3.5 w-3.5 ${
+                          mentor.averageRating > 0
+                            ? "fill-yellow-400 text-yellow-400"
+                            : "text-gray-300"
+                        }`}
+                      />
+                      <span className="text-xs font-medium text-gray-700">
+                        {mentor.averageRating > 0 ? mentor.averageRating.toFixed(1) : "New"}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        ({mentor.reviewCount})
+                      </span>
+                    </div>
                   </div>
 
                   {/* Expertise badges without label */}

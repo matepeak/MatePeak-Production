@@ -43,6 +43,7 @@ import AdminLogin from "./pages/AdminLogin";
 import PayoutRequestTest from "./pages/PayoutRequestTest";
 import { AdminAuthProvider } from "./contexts/AdminAuthContext";
 import { ProtectedAdminRoute } from "./components/ProtectedAdminRoute";
+import GlobalMentorPresence from "./components/GlobalMentorPresence";
 
 const App = () => {
   // Create QueryClient instance per App mount for proper isolation between users/tabs
@@ -68,6 +69,7 @@ const App = () => {
             <Sonner />
             <BrowserRouter>
               <ScrollToTop />
+              <GlobalMentorPresence />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/mentors" element={<MentorSearch />} />
