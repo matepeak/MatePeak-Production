@@ -31,6 +31,7 @@ import ExpertOnboardingPhase2 from "./pages/ExpertOnboardingPhase2";
 import ExpertDashboard from "./pages/ExpertDashboard";
 import MentorDashboard from "./pages/MentorDashboard";
 import StudentDashboard from "./pages/StudentDashboard";
+import StudentSupport from "./pages/StudentSupport";
 import MigrateAvailability from "./pages/MigrateAvailability";
 import AuthCallback from "./pages/AuthCallback";
 import ResetPassword from "./pages/ResetPassword";
@@ -89,6 +90,7 @@ const App = () => {
               <Route path="/booking-success" element={<BookingSuccess />} />
               <Route path="/dashboard" element={<StudentDashboard />} />
               <Route path="/student/dashboard" element={<StudentDashboard />} />
+              <Route path="/student/support" element={<StudentSupport />} />
               <Route path="/how-it-works" element={<HowItWorks />} />
               <Route path="/about-us" element={<AboutUs />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />

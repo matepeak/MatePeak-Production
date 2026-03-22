@@ -4,6 +4,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -12,8 +13,6 @@ import {
   Clock,
   IndianRupee,
   User,
-  Mail,
-  Phone,
   MessageSquare,
   Video,
   Loader2,
@@ -73,6 +72,13 @@ const SessionDetailsModal = ({
     !!onCancelSession &&
     ["pending", "confirmed"].includes((session.status || "").toLowerCase()) &&
     sessionStart > now;
+  const statusLabel =
+    (session.status || "").toLowerCase() === "cancelled"
+      ? "Cancelled"
+      : ["pending", "confirmed"].includes((session.status || "").toLowerCase()) &&
+        sessionStart > now
+      ? "Pending"
+      : "Completed";
 
   const isMentorSideSession = session.user_role === "expert";
   const participantSectionTitle = isMentorSideSession
@@ -82,29 +88,25 @@ const SessionDetailsModal = ({
   const participantName =
     normalizeParticipantField(
       isMentorSideSession
-        ? session.student?.full_name || session.student_name || session.display_name
+        ?
+            session.student?.full_name ||
+            session.user_name ||
+            session.student_name ||
+            session.display_name
         : session.mentor_profile?.full_name || session.display_name
-    ) || "Not Provided";
+    ) || (isMentorSideSession ? "Student" : "Mentor");
 
-  const participantEmail =
-    normalizeParticipantField(
-      isMentorSideSession
-        ? session.student?.email || session.student_email || session.display_email
-        : session.mentor_profile?.email || session.display_email
-    ) || "Not Provided";
-
-  const participantPhone = normalizeParticipantField(
-    isMentorSideSession
-      ? session.student?.phone || session.display_phone
-      : session.mentor_profile?.phone || session.display_phone
-  );
+  const participantImageUrl =
+    (isMentorSideSession
+      ? session.student?.avatar_url || session.student?.profile_picture_url
+      : session.mentor_profile?.avatar_url || session.mentor_profile?.profile_picture_url) ||
+    "";
 
   const formatDate = (date: string, time: string) => {
     try {
       const dateTime = new Date(`${date}T${time}`);
       return new Intl.DateTimeFormat("en-US", {
-        weekday: "long",
-        month: "long",
+        month: "short",
         day: "numeric",
         year: "numeric",
         hour: "2-digit",
@@ -115,49 +117,36 @@ const SessionDetailsModal = ({
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case "confirmed":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "completed":
-        return "bg-blue-100 text-blue-800 border-blue-200";
-      case "cancelled":
-        return "bg-red-100 text-red-800 border-red-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
-    }
+  const getDisplayMessage = (value: unknown) => {
+    const raw = typeof value === "string" ? value : "";
+    if (!raw.trim()) return "";
+
+    // Order ID metadata is appended by backend for paid booking traceability.
+    // Hide it in UI so mentors only see the student-written message content.
+    const cleaned = raw
+      .split("\n")
+      .filter((line) => !/^\s*Order ID:\s*/i.test(line))
+      .join("\n")
+      .trim();
+
+    return cleaned;
   };
+
+  const displayMessage = getDisplayMessage(session.message);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-gray-900">
-            Session Details
-          </DialogTitle>
+        <DialogHeader className="space-y-0">
+          <div className="flex items-center justify-between pr-8">
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              Session Details
+            </DialogTitle>
+            <p className="text-sm font-medium text-gray-600">{statusLabel}</p>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-6 mt-4">
-          {/* Status Badge */}
-          <div className="flex items-center justify-between">
-            <Badge
-              variant="outline"
-              className={`px-3 py-1 text-sm font-medium border ${getStatusColor(
-                session.status
-              )}`}
-            >
-              {session.status?.toUpperCase() || "UNKNOWN"}
-            </Badge>
-            <p className="text-sm text-gray-600">
-              Created{" "}
-              {formatDistanceToNow(new Date(session.created_at), {
-                addSuffix: true,
-              })}
-            </p>
-          </div>
-
+        <div className="space-y-6 mt-2">
           <Separator />
 
           {/* Session Information */}
@@ -176,7 +165,7 @@ const SessionDetailsModal = ({
                   <p className="text-xs font-medium text-gray-600 uppercase">
                     Date & Time
                   </p>
-                  <p className="text-sm text-gray-900 mt-1 font-medium">
+                  <p className="text-sm text-gray-900 mt-1 font-medium whitespace-nowrap">
                     {formatDate(session.scheduled_date, session.scheduled_time)}
                   </p>
                 </div>
@@ -234,6 +223,27 @@ const SessionDetailsModal = ({
 
           <Separator />
 
+          {/* Meeting Link */}
+          {session.meeting_link && (
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Meeting Link
+              </h3>
+              <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                <a
+                  href={session.meeting_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium break-all"
+                >
+                  {session.meeting_link}
+                </a>
+              </div>
+            </div>
+          )}
+
+          {session.meeting_link && <Separator />}
+
           {/* Participant Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900">
@@ -243,7 +253,15 @@ const SessionDetailsModal = ({
             <div className="space-y-3">
               {/* Participant Name */}
               <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
-                <User className="h-5 w-5 text-gray-600" />
+                <Avatar className="h-10 w-10 border border-gray-200">
+                  <AvatarImage
+                    src={participantImageUrl}
+                    alt={participantName}
+                  />
+                  <AvatarFallback className="bg-white text-gray-600">
+                    <User className="h-4 w-4" />
+                  </AvatarFallback>
+                </Avatar>
                 <div>
                   <p className="text-xs font-medium text-gray-600">Full Name</p>
                   <p className="text-sm text-gray-900 font-medium">
@@ -251,35 +269,11 @@ const SessionDetailsModal = ({
                   </p>
                 </div>
               </div>
-
-              {/* Participant Email */}
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
-                <Mail className="h-5 w-5 text-gray-600" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-gray-600">Email</p>
-                  <p className="text-sm text-gray-900 font-medium break-all">
-                    {participantEmail}
-                  </p>
-                </div>
-              </div>
-
-              {/* Participant Phone */}
-              {participantPhone && (
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
-                  <Phone className="h-5 w-5 text-gray-600" />
-                  <div>
-                    <p className="text-xs font-medium text-gray-600">Phone</p>
-                    <p className="text-sm text-gray-900 font-medium">
-                      {participantPhone}
-                    </p>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
           {/* Notes/Message */}
-          {session.message && (
+          {displayMessage && (
             <>
               <Separator />
               <div className="space-y-3">
@@ -289,30 +283,8 @@ const SessionDetailsModal = ({
                 </h3>
                 <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
                   <p className="text-sm text-gray-900 whitespace-pre-wrap">
-                    {session.message}
+                    {displayMessage}
                   </p>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Meeting Link */}
-          {session.meeting_link && (
-            <>
-              <Separator />
-              <div className="space-y-3">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Meeting Link
-                </h3>
-                <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-                  <a
-                    href={session.meeting_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:text-blue-800 font-medium break-all"
-                  >
-                    {session.meeting_link}
-                  </a>
                 </div>
               </div>
             </>

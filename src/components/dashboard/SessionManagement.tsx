@@ -9,6 +9,7 @@ import {
   Calendar,
   Clock,
   Eye,
+  Trash2,
   Search,
   ArrowUpDown,
   Download,
@@ -82,6 +83,13 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
   });
   const [cancelNoteError, setCancelNoteError] = useState("");
   const [detailsModal, setDetailsModal] = useState<{
+    open: boolean;
+    session: any;
+  }>({
+    open: false,
+    session: null,
+  });
+  const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
     session: any;
   }>({
@@ -287,6 +295,8 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
     }
   };
 
+  const visibleSessions = sessions;
+
   // Calculate statistics using useMemo for performance - respecting date range filter
   const statistics = useMemo(() => {
     const now = new Date();
@@ -299,14 +309,14 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
     // Filter sessions by current date range first (for display in the list)
-    const dateFilteredSessions = sessions.filter((s) =>
+    const dateFilteredSessions = visibleSessions.filter((s) =>
       isWithinDateRange(s.scheduled_date, s.scheduled_time, dateRange)
     );
 
     const pending = dateFilteredSessions.filter(
       (s) => s.status === "pending"
     ).length;
-    const thisWeek = sessions.filter((s) => {
+    const thisWeek = visibleSessions.filter((s) => {
       try {
         const sessionDate = new Date(`${s.scheduled_date}T${s.scheduled_time}`);
         return sessionDate >= weekStart && sessionDate < weekEnd;
@@ -315,7 +325,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
       }
     }).length;
 
-    const thisMonth = sessions.filter((s) => {
+    const thisMonth = visibleSessions.filter((s) => {
       try {
         const sessionDate = new Date(`${s.scheduled_date}T${s.scheduled_time}`);
         return sessionDate >= monthStart && sessionDate <= monthEnd;
@@ -324,7 +334,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
       }
     }).length;
 
-    const upcoming = sessions.filter((s) => {
+    const upcoming = visibleSessions.filter((s) => {
       try {
         const sessionDate = new Date(`${s.scheduled_date}T${s.scheduled_time}`);
         return sessionDate > now && s.status === "confirmed";
@@ -334,17 +344,17 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
     }).length;
 
     return {
-      total: sessions.length, // Total should always be ALL sessions
+      total: visibleSessions.length,
       pending,
       thisWeek,
       thisMonth,
       upcoming,
     };
-  }, [sessions, dateRange]);
+  }, [visibleSessions, dateRange]);
 
   // Get status counts for tab badges - respecting date range filter
   const statusCounts = useMemo(() => {
-    const dateFilteredSessions = sessions.filter((s) =>
+    const dateFilteredSessions = visibleSessions.filter((s) =>
       isWithinDateRange(s.scheduled_date, s.scheduled_time, dateRange)
     );
 
@@ -363,12 +373,12 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
         (s) => getEffectiveStatus(s) === "cancelled"
       ).length,
     };
-  }, [sessions, dateRange]);
+  }, [visibleSessions, dateRange]);
 
   // Get upcoming sessions (next 3) - respecting date range filter
   const upcomingSessions = useMemo(() => {
     const now = new Date();
-    return sessions
+    return visibleSessions
       .filter((s) => {
         try {
           const sessionDate = new Date(
@@ -390,7 +400,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
         return dateA.getTime() - dateB.getTime();
       })
       .slice(0, 3);
-  }, [sessions, dateRange]);
+  }, [visibleSessions, dateRange]);
 
   const fetchSessions = async () => {
     try {
@@ -405,6 +415,8 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
         .from("bookings")
         .select("*")
         .eq("expert_id", mentorProfile.id)
+        .eq("is_deleted", false)
+        .in("session_type", ["oneOnOneSession", "one-on-one", "oneonesession"])
         .in("status", ["confirmed", "completed", "cancelled"])
         .order("scheduled_date", { ascending: false })
         .limit(100);
@@ -430,7 +442,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
         const userIds = expertSessions.map((s) => s.user_id).filter(Boolean);
         const { data: studentsData } = await supabase
           .from("profiles")
-          .select("id, full_name, email, phone")
+          .select("id, full_name, email, avatar_url")
           .in("id", userIds);
 
         // Merge student data with sessions
@@ -439,6 +451,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
           student: studentsData?.find((s) => s.id === session.user_id),
           display_name:
             studentsData?.find((s) => s.id === session.user_id)?.full_name ||
+            session.user_name ||
             session.student_name ||
             "Student",
           display_email:
@@ -446,7 +459,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
             session.student_email ||
             "",
           display_phone:
-            studentsData?.find((s) => s.id === session.user_id)?.phone || "",
+            session.user_phone || "",
           user_role: "expert" as const,
         }));
       }
@@ -456,6 +469,8 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
         .from("bookings")
         .select("*")
         .eq("user_id", mentorProfile.id)
+        .eq("is_deleted", false)
+        .in("session_type", ["oneOnOneSession", "one-on-one", "oneonesession"])
         .in("status", ["confirmed", "completed", "cancelled"])
         .order("scheduled_date", { ascending: false })
         .limit(100);
@@ -481,7 +496,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
           .filter(Boolean);
         const { data: mentorsData } = await supabase
           .from("expert_profiles")
-          .select("id, full_name, email, phone")
+          .select("id, full_name, profile_picture_url")
           .in("id", expertIds);
 
         // Merge mentor data with sessions
@@ -492,9 +507,9 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
             mentorsData?.find((m) => m.id === session.expert_id)?.full_name ||
             "Mentor",
           display_email:
-            mentorsData?.find((m) => m.id === session.expert_id)?.email || "",
+            session.expert_email || "",
           display_phone:
-            mentorsData?.find((m) => m.id === session.expert_id)?.phone || "",
+            "",
           user_role: "student" as const,
         }));
       }
@@ -537,7 +552,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
   };
 
   // Filter, search, and sort sessions
-  const filteredAndSortedSessions = sessions
+  const filteredAndSortedSessions = visibleSessions
     .filter((session) => {
       const effectiveStatus = getEffectiveStatus(session);
 
@@ -756,13 +771,66 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
   const participantSessionCounts = useMemo(() => {
     const counts = new Map<string, number>();
 
-    sessions.forEach((session) => {
+    visibleSessions.forEach((session) => {
       const key = String(getParticipantKey(session) || "unknown");
       counts.set(key, (counts.get(key) || 0) + 1);
     });
 
     return counts;
-  }, [sessions]);
+  }, [visibleSessions]);
+
+  const canDeleteSession = (session: any) => {
+    const effectiveStatus = getEffectiveStatus(session);
+    return ["completed", "cancelled"].includes(effectiveStatus);
+  };
+
+  const handleDeleteSession = async (session: any) => {
+    if (!session?.id) return;
+
+    if (!canDeleteSession(session)) {
+      toast({
+        title: "Only completed or cancelled sessions can be deleted",
+        variant: "destructive",
+      });
+      setDeleteDialog({ open: false, session: null });
+      return;
+    }
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const { error } = await supabase
+        .from("bookings")
+        .update({
+          is_deleted: true,
+          deleted_at: new Date().toISOString(),
+          deleted_by: user?.id || null,
+        })
+        .eq("id", session.id);
+
+      if (error) throw error;
+
+      setSessions((prev) => prev.filter((item) => item.id !== session.id));
+
+      setDetailsModal((prev) =>
+        prev.session?.id === session.id ? { open: false, session: null } : prev
+      );
+
+      toast({
+        title: "Session deleted",
+      });
+
+      setDeleteDialog({ open: false, session: null });
+    } catch (error: any) {
+      toast({
+        title: "Unable to delete session",
+        description: error?.message || "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const getRiskIndicator = (session: any, effectiveStatus: string) => {
     if (!isUpcoming(session.scheduled_date, session.scheduled_time)) {
@@ -1267,7 +1335,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
             <span className="font-medium text-gray-900">
               {filteredAndSortedSessions.length}
             </span>{" "}
-            of {sessions.length} session{sessions.length !== 1 ? "s" : ""}
+            of {visibleSessions.length} session{visibleSessions.length !== 1 ? "s" : ""}
             {searchQuery && (
               <span className="ml-1">
                 matching{" "}
@@ -1415,6 +1483,18 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
                         <Eye className="h-3.5 w-3.5" />
                         <span>View</span>
                       </Button>
+
+                      {canDeleteSession(session) && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setDeleteDialog({ open: true, session })}
+                          className="h-9 px-3 text-xs font-medium text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                          <span>Delete</span>
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1528,6 +1608,45 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
               disabled={cancelLoading || !cancelDialog.note.trim()}
             >
               {cancelLoading ? "Cancelling..." : "Cancel and Notify Student"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => {
+          if (cancelLoading) return;
+          setDeleteDialog((prev) => ({
+            open,
+            session: open ? prev.session : null,
+          }));
+        }}
+      >
+        <DialogContent className="sm:max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle>Delete Session</DialogTitle>
+            <DialogDescription>
+              Delete this session from your dashboard?
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteDialog({ open: false, session: null })}
+              disabled={cancelLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => handleDeleteSession(deleteDialog.session)}
+              disabled={cancelLoading}
+            >
+              Delete Session
             </Button>
           </DialogFooter>
         </DialogContent>
