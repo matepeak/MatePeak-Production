@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { SERVICE_CONFIG } from "@/config/serviceConfig";
 import {
   ArrowLeft,
+  Clock,
   IndianRupee,
   Loader2,
   Star,
@@ -151,6 +152,7 @@ export default function MentorServiceDetail() {
       description: raw.description || config?.description || "No description provided.",
       price: raw.price ?? 0,
       discountPrice: raw.discount_price,
+      duration: raw.duration as number | undefined,
       enabled: isServiceEnabled(raw.enabled),
       hasFreeDemo: isTruthyFlag(raw.hasFreeDemo),
       typeLabel: config?.typeLabel || "Mentoring Service",
@@ -233,6 +235,12 @@ export default function MentorServiceDetail() {
                   <div className="space-y-4 md:space-y-5">
                     <div className="flex items-center gap-2.5 flex-wrap">
                       <Badge variant="outline">{serviceData.typeLabel}</Badge>
+                      {serviceData.duration && (
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" />
+                          {serviceData.duration} min
+                        </Badge>
+                      )}
                       {!serviceData.enabled && <Badge variant="secondary">Disabled</Badge>}
                       {serviceData.hasFreeDemo && (
                         <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Free Demo</Badge>

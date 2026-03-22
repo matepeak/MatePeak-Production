@@ -74,14 +74,15 @@ export default function ServiceSelection({
     rawType: string | undefined,
     serviceName: string,
     servicePrice: number,
-    hasFreeDemo: boolean
+    hasFreeDemo: boolean,
+    serviceDuration?: number
   ) => {
     const normalizedServiceType = resolveServiceType(serviceKey, rawType);
     const config = SERVICE_CONFIG[normalizedServiceType] || SERVICE_CONFIG.oneOnOneSession;
-    // Store a valid, non-zero duration for non-scheduled services to satisfy DB constraints.
+    // Use the mentor's configured duration, falling back to 60 min for sessions.
     const duration =
       normalizedServiceType === "oneOnOneSession"
-        ? selectedDurations[serviceKey] || 30
+        ? serviceDuration || selectedDurations[serviceKey] || 60
         : 30;
 
     const isFreeDemo = freeDemoEnabled[serviceKey] && hasFreeDemo;
@@ -274,6 +275,13 @@ export default function ServiceSelection({
                     <Calendar className="w-4 h-4 flex-shrink-0 text-gray-600" />
                     <span className="font-medium">{config.typeLabel}</span>
                   </div>
+                  {/* Session Duration */}
+                  {service.duration && (
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <Clock3 className="w-4 h-4 flex-shrink-0 text-gray-600" />
+                      <span className="font-medium">{service.duration} min session</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Pricing & CTA */}
@@ -309,7 +317,8 @@ export default function ServiceSelection({
                         service.type,
                         service.name,
                         service.price,
-                        service.hasFreeDemo
+                        service.hasFreeDemo,
+                        service.duration
                       );
                     }}
                     className={cn(
