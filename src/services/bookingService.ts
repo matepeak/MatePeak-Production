@@ -529,16 +529,12 @@ async function checkBookingConflict(
   duration: number
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { data: existingBookings, error } = await supabase
-      .from("bookings")
-      .select("scheduled_time, duration")
-      .eq("expert_id", expertId)
-      .eq("scheduled_date", date)
-      .eq("status", "confirmed"); // Only confirmed bookings block slots
-
-    if (error) {
+    const bookedSlotsResult = await getConfirmedBookedSlots(expertId, date);
+    if (!bookedSlotsResult.success) {
       return { success: false, error: "Failed to check availability" };
     }
+
+    const existingBookings = bookedSlotsResult.data;
 
     if (!existingBookings || existingBookings.length === 0) {
       return { success: true };
@@ -645,19 +641,7 @@ export async function getMentorAvailability(
  */
 export async function getBookedSlots(mentorId: string, date: string) {
   try {
-    const { data: bookings, error } = await supabase
-      .from("bookings")
-      .select("scheduled_time, duration")
-      .eq("expert_id", mentorId)
-      .eq("scheduled_date", date)
-      .eq("status", "confirmed"); // Only confirmed bookings block slots
-
-    if (error) throw error;
-
-    return {
-      success: true,
-      data: bookings || [],
-    };
+    return await getConfirmedBookedSlots(mentorId, date);
   } catch (error: any) {
     console.error("Error fetching booked slots:", error);
     return {
@@ -851,6 +835,56 @@ function isTimeBooked(
     // Check if there's any overlap
     return slotStart < bookedEnd && slotEnd > bookedStart;
   });
+}
+
+async function getConfirmedBookedSlots(
+  mentorId: string,
+  date: string
+): Promise<{
+  success: boolean;
+  data: Array<{ scheduled_time: string; duration: number }>;
+  error?: string;
+}> {
+  // Prefer RPC so slot visibility is not limited by bookings SELECT RLS.
+  const { data, error } = await supabase.rpc("get_confirmed_booked_slots", {
+    p_expert_id: mentorId,
+    p_scheduled_date: date,
+  });
+
+  if (!error) {
+    return {
+      success: true,
+      data: Array.isArray(data) ? data : [],
+    };
+  }
+
+  // Keep local/dev compatibility if migration has not been applied yet.
+  console.warn("get_confirmed_booked_slots RPC unavailable, falling back to direct query", {
+    mentorId,
+    date,
+    error: error.message,
+  });
+
+  const { data: fallbackData, error: fallbackError } = await supabase
+    .from("bookings")
+    .select("scheduled_time, duration")
+    .eq("expert_id", mentorId)
+    .eq("scheduled_date", date)
+    .eq("status", "confirmed")
+    .eq("session_type", "oneOnOneSession");
+
+  if (fallbackError) {
+    return {
+      success: false,
+      data: [],
+      error: fallbackError.message || "Failed to fetch booked slots",
+    };
+  }
+
+  return {
+    success: true,
+    data: fallbackData || [],
+  };
 }
 
 /**

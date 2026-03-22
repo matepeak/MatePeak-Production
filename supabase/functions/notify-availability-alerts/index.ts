@@ -200,17 +200,29 @@ const buildEmailHtml = (
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      body { margin: 0; padding: 0; background-color: #f6f7f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+      .container { width: 100%; background-color: #e9ebed; padding: 48px 16px; }
+      .inner-container { max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 10px; padding: 40px; }
+      .logo { text-align: center; font-size: 22px; font-weight: 600; color: #000; margin-bottom: 28px; }
+      .title { text-align: center; font-size: 24px; font-weight: 600; color: #111; margin-bottom: 28px; }
+      .text { font-size: 14px; color: #555; margin-bottom: 18px; line-height: 1.6; }
+      .details-box { background: #f4f5f7; border-radius: 8px; padding: 20px; margin: 30px 0; }
+      .button-container { text-align: center; margin: 36px 0; }
+      .button { background-color: #000; color: #fff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 14px; font-weight: 500; display: inline-block; }
+      .footer { text-align: center; font-size: 12px; color: #888; margin-top: 12px; }
+      .link { color: #000; text-decoration: none; font-weight: 500; }
+    </style>
   </head>
-  <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Inter,sans-serif;background:#f2f2f2;margin:0;padding:24px 16px;color:#1d1d1f;">
-    <div style="max-width:620px;margin:0 auto;background:#ffffff;border-radius:22px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.05);">
-      <div style="padding:20px 24px 16px;background:#ffffff;text-align:center;">
-        <img src="${brandIconLogoUrl}" alt="MatePeak" style="height:36px;width:36px;display:block;margin:0 auto 10px;border-radius:10px;" />
-        <div style="font-size:15px;font-weight:600;color:#111827;letter-spacing:0.2px;">MatePeak</div>
-        <div style="font-size:12px;color:#6e6e73;margin-top:2px;">Availability Alert</div>
-      </div>
+  <body>
+    <div class="container">
+      <div class="inner-container">
+        <div class="logo">MatePeak</div>
+        <div class="title">Availability Alert</div>
+        <div class="text" style="text-align:center;">${safeMentorName} added new slots that match your preferences.</div>
 
-      <div style="padding:22px 24px 20px;">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;background:#ffffff;border-radius:14px;padding:10px 12px;">
+        <div class="details-box">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
           ${mentorAvatarBlock}
           <div>
             <p style="margin:0;font-size:12px;color:#6e6e73;letter-spacing:0.2px;">Mentor update</p>
@@ -218,28 +230,28 @@ const buildEmailHtml = (
           </div>
         </div>
 
-        <h2 style="margin:0 0 12px;font-size:23px;line-height:1.25;font-weight:700;color:#111827;">New slots matching your preferences</h2>
-        <p style="margin:0 0 16px;font-size:15px;line-height:1.55;color:#4b5563;">
+        <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#555;">
           ${safeMentorName} just added availability that fits your selected date preferences.
         </p>
 
-        <div style="background:#f2f2f2;border-radius:16px;padding:14px 16px;margin:0 0 20px;">
+        <div style="background:#ffffff;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
           <ul style="margin:0;padding:0 0 0 18px;line-height:1.6;">
             ${slotItems}
           </ul>
         </div>
 
-        <div style="margin-bottom:14px;">
-          <a href="${safeMentorPath}" style="display:inline-block;background:#ffffff;color:#111111;text-decoration:none;padding:12px 18px;border-radius:9999px;font-weight:700;font-size:14px;box-shadow:0 1px 0 rgba(0,0,0,0.08);">View Mentor Availability →</a>
-        </div>
-
         <p style="margin:0;font-size:12px;line-height:1.5;color:#6e6e73;">
           You’re receiving this because you enabled availability alerts for this mentor.
         </p>
-      </div>
+        </div>
 
-      <div style="padding:14px 24px 18px;background:#ffffff;">
-        <p style="margin:0;font-size:12px;color:#8a8a8e;">Need help? Contact <a href="mailto:support@matepeak.com" style="color:#1d1d1f;text-decoration:none;">support@matepeak.com</a></p>
+        <div class="button-container">
+          <a href="${safeMentorPath}" class="button">View Mentor Availability</a>
+        </div>
+
+        <div class="footer">
+          Need help? <a href="mailto:support@matepeak.com" class="link">Contact Support</a>
+        </div>
       </div>
     </div>
   </body>

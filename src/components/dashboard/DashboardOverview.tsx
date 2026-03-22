@@ -256,7 +256,7 @@ const DashboardOverview = ({
 
           return {
             ...request,
-            profiles: profileData || { full_name: "Unknown", email: "" },
+            profiles: profileData || { full_name: "Deleted User", email: "" },
           };
         })
       );
@@ -690,7 +690,7 @@ const DashboardOverview = ({
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900 truncate">
-                          {request.profiles?.full_name || "Unknown Student"}
+                          {request.profiles?.full_name || "Deleted User"}
                         </p>
                         <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
                           <Calendar className="h-3 w-3" />

@@ -29,6 +29,26 @@ type EdgeCallResult<T> = {
   error?: string;
 };
 
+const toErrorMessage = (value: unknown, fallback: string): string => {
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value;
+  }
+
+  if (value && typeof value === "object") {
+    const asAny = value as Record<string, unknown>;
+    if (typeof asAny.message === "string" && asAny.message.trim().length > 0) {
+      return asAny.message;
+    }
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return fallback;
+    }
+  }
+
+  return fallback;
+};
+
 declare global {
   interface Window {
     Razorpay?: new (options: Record<string, unknown>) => {
@@ -106,10 +126,10 @@ const callEdgeFunction = async <T>(
     return {
       ok: false,
       status: response.status,
-      error:
-        body?.error ||
-        body?.message ||
-        `Edge function ${functionName} failed with status ${response.status}`,
+      error: toErrorMessage(
+        body?.error ?? body?.message,
+        `Edge function ${functionName} failed with status ${response.status}`
+      ),
     };
   }
 
