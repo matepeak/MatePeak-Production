@@ -304,6 +304,43 @@ const resolveEmailViaAuthAdmin = async (
   }
 };
 
+const ensureMeetingLink = async (
+  supabase: ReturnType<typeof createClient>,
+  booking: any,
+) => {
+  const current = String(booking?.meeting_link || "").trim();
+  if (current) return current;
+
+  if (booking?.session_type !== "oneOnOneSession") return "";
+
+  const roomId = `matepeak-${String(booking.id || "").replace(/[^a-zA-Z0-9-]/g, "")}`;
+  const fallbackLink = `https://meet.jit.si/${roomId}`;
+
+  // Best effort persistence so dashboard/other notifications use same link.
+  const { error } = await supabase
+    .from("bookings")
+    .update({
+      meeting_link: fallbackLink,
+      meeting_provider: booking?.meeting_provider || "jitsi",
+      meeting_id: booking?.meeting_id || roomId,
+    })
+    .eq("id", booking.id);
+
+  if (error) {
+    console.warn("[payment-success-emails] Failed to persist fallback meeting link", {
+      booking_id: booking?.id,
+      error: error.message,
+    });
+  }
+
+  return fallbackLink;
+};
+
+const resolveDigitalProductLink = (booking: any): string => {
+  if (booking?.session_type !== "digitalProducts") return "";
+  return String(booking?.digital_product_link || "").trim();
+};
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -465,6 +502,8 @@ Deno.serve(async (req: Request) => {
     const studentTimezone = booking.user_timezone || "IST";
     const mentorTimezone = booking.mentor_timezone || "IST";
     const amount = Number(booking.total_amount || 0);
+    const meetingLink = await ensureMeetingLink(supabase, booking);
+    const digitalProductLink = resolveDigitalProductLink(booking);
 
     const studentTemplate = buildStudentBookingConfirmationEmail({
       studentName,
@@ -491,6 +530,8 @@ Deno.serve(async (req: Request) => {
       duration: booking.duration,
       earnings: amount,
       purpose: booking.message,
+      meetingLink,
+      digitalProductLink,
       dashboardLink: `${siteUrl}/mentor/dashboard`,
     });
 

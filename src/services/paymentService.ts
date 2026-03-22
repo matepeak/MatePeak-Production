@@ -190,7 +190,12 @@ export const paymentService = {
         prefill: {
           name: params.customerName,
           email: params.customerEmail,
-          contact: params.customerPhone,
+        },
+        hidden: {
+          contact: true,
+        },
+        readonly: {
+          contact: true,
         },
         notes: {
           booking_id: params.bookingId,
