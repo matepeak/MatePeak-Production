@@ -21,8 +21,8 @@ import {
   Eye,
   PackageOpen,
   Wallet,
+  CalendarPlus,
 } from "lucide-react";
-import ClockPlus from "lucide-react/dist/esm/icons/clock-plus";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -101,7 +101,7 @@ const DashboardLayout = ({
         {
           id: "requests" as DashboardView,
           label: "Time Requests",
-          icon: ClockPlus,
+          icon: CalendarPlus,
           badge: null, // Can add pending count here
         },
       ],

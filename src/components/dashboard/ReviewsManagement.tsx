@@ -59,22 +59,54 @@ const ReviewsManagement = ({ mentorProfile }: ReviewsManagementProps) => {
   const fetchReviews = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from("reviews")
-        .select(
-          `
-          *,
-          profiles:user_id (
-            full_name,
-            avatar_url
-          )
-        `
-        )
+        .select("id, rating, comment, created_at, mentor_reply, replied_at, user_id")
         .eq("expert_id", mentorProfile.id)
         .order("created_at", { ascending: false });
 
+      const errorMessage = (error?.message || "").toLowerCase();
+      const hasOptionalReplyColumnError =
+        errorMessage.includes("mentor_reply") ||
+        errorMessage.includes("replied_at") ||
+        errorMessage.includes("column");
+
+      if (error && hasOptionalReplyColumnError) {
+        const fallbackResult = await supabase
+          .from("reviews")
+          .select("id, rating, comment, created_at, user_id")
+          .eq("expert_id", mentorProfile.id)
+          .order("created_at", { ascending: false });
+
+        data = fallbackResult.data as any;
+        error = fallbackResult.error as any;
+      }
+
       if (error) throw error;
-      setReviews(data || []);
+
+      if (!data || data.length === 0) {
+        setReviews([]);
+        return;
+      }
+
+      const reviewsWithProfiles = await Promise.all(
+        data.map(async (review) => {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name, avatar_url")
+            .eq("id", review.user_id)
+            .maybeSingle();
+
+          return {
+            ...review,
+            mentor_reply: (review as any).mentor_reply || null,
+            replied_at: (review as any).replied_at || null,
+            profiles: profile || { full_name: "Anonymous", avatar_url: undefined },
+          };
+        })
+      );
+
+      setReviews(reviewsWithProfiles as Review[]);
     } catch (error: any) {
       console.error("Error fetching reviews:", error);
       toast({

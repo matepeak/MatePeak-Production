@@ -9,6 +9,7 @@ import {
   Plus,
   Trash2,
   Check,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -129,6 +130,8 @@ export default function ServicesAndPricingStep({
     price: 0,
   });
   const [showAddService, setShowAddService] = useState(false);
+  // Track which services are in "custom duration" input mode
+  const [customDurationKeys, setCustomDurationKeys] = useState<Set<string>>(new Set());
 
   // Generate AI-suggested services on mount
   useEffect(() => {
@@ -160,6 +163,7 @@ export default function ServicesAndPricingStep({
           price: service.suggestedPrice,
           type: "custom",
           hasFreeDemo: false,
+          duration: 60,
         });
       }
     });
@@ -196,6 +200,7 @@ export default function ServicesAndPricingStep({
       price: service.suggestedPrice,
       type: "custom",
       hasFreeDemo: false,
+      duration: 60,
     });
 
     // Reset form
@@ -331,6 +336,92 @@ export default function ServicesAndPricingStep({
                       </FormItem>
                     )}
                   />
+
+                  {/* Session Duration - for 1-on-1 and custom services */}
+                  {(service.key === "oneOnOneSession" || isCustom) && (
+                    <FormField
+                      control={form.control}
+                      name={`servicePricing.${service.key}.duration`}
+                      render={({ field }) => {
+                        const presets = [15, 30, 60];
+                        const isCustomDuration = customDurationKeys.has(service.key) || (field.value && !presets.includes(field.value));
+                        return (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                              <Clock className="w-4 h-4 text-gray-500" />
+                              Session Duration
+                            </FormLabel>
+                            <FormControl>
+                              <div className="space-y-2">
+                                <div className="flex gap-2 flex-wrap">
+                                  {presets.map((mins) => (
+                                    <button
+                                      key={mins}
+                                      type="button"
+                                      onClick={() => {
+                                        field.onChange(mins);
+                                        setCustomDurationKeys((prev) => {
+                                          const next = new Set(prev);
+                                          next.delete(service.key);
+                                          return next;
+                                        });
+                                      }}
+                                      className={cn(
+                                        "px-4 py-2 rounded-lg text-sm font-medium border transition-colors",
+                                        !isCustomDuration && (field.value || 60) === mins
+                                          ? "bg-gray-900 text-white border-gray-900"
+                                          : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"
+                                      )}
+                                    >
+                                      {mins} min
+                                    </button>
+                                  ))}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setCustomDurationKeys((prev) => {
+                                        const next = new Set(prev);
+                                        next.add(service.key);
+                                        return next;
+                                      })
+                                    }
+                                    className={cn(
+                                      "px-4 py-2 rounded-lg text-sm font-medium border transition-colors",
+                                      isCustomDuration
+                                        ? "bg-gray-900 text-white border-gray-900"
+                                        : "bg-white text-gray-700 border-gray-200 hover:border-gray-400"
+                                    )}
+                                  >
+                                    Custom
+                                  </button>
+                                </div>
+                                {isCustomDuration && (
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      type="number"
+                                      min={5}
+                                      max={480}
+                                      step={5}
+                                      placeholder="e.g. 45"
+                                      value={field.value && !presets.includes(field.value) ? field.value : ""}
+                                      onChange={(e) => {
+                                        const v = e.target.valueAsNumber;
+                                        if (!isNaN(v) && v > 0) field.onChange(v);
+                                      }}
+                                      className="w-28 h-9 border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 rounded-lg"
+                                    />
+                                    <span className="text-sm text-gray-500">minutes</span>
+                                  </div>
+                                )}
+                              </div>
+                            </FormControl>
+                            <p className="text-xs text-gray-500 mt-1">Duration shown to students during booking</p>
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
+                    />
+                  )}
 
                   {/* Free Demo Option */}
                   <FormField

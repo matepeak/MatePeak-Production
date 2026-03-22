@@ -141,13 +141,15 @@ const DashboardOverview = ({
       let mentorQuery = supabase
         .from("bookings")
         .select("*")
-        .eq("expert_id", mentorProfile.id);
+        .eq("expert_id", mentorProfile.id)
+        .in("status", ["confirmed", "completed", "cancelled"]);
 
       // Fetch sessions where user is the student
       let studentQuery = supabase
         .from("bookings")
         .select("*")
-        .eq("user_id", mentorProfile.id);
+        .eq("user_id", mentorProfile.id)
+        .in("status", ["confirmed", "completed", "cancelled"]);
 
       if (startDateString && endDateString) {
         mentorQuery = mentorQuery
@@ -252,7 +254,7 @@ const DashboardOverview = ({
             .from("profiles")
             .select("full_name, email")
             .eq("id", request.mentee_id)
-            .single();
+            .maybeSingle();
 
           return {
             ...request,

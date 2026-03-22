@@ -411,10 +411,21 @@ export default function DateTimeSelection({
               Video Call
             </p>
           </div>
-          <div className="bg-white rounded-xl px-4 py-2 shadow-sm">
-            <div className="text-2xl font-bold text-gray-900">
-              ₹{selectedService.price.toLocaleString("en-IN")}
-            </div>
+          <div className="bg-white rounded-xl px-4 py-2 shadow-sm text-right">
+            {selectedService.discountPrice ? (
+              <>
+                <div className="text-2xl font-bold text-green-600">
+                  ₹{selectedService.discountPrice.toLocaleString("en-IN")}
+                </div>
+                <div className="text-sm text-gray-400 line-through">
+                  ₹{selectedService.price.toLocaleString("en-IN")}
+                </div>
+              </>
+            ) : (
+              <div className="text-2xl font-bold text-gray-900">
+                ₹{selectedService.price.toLocaleString("en-IN")}
+              </div>
+            )}
           </div>
         </div>
       </div>

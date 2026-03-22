@@ -42,6 +42,7 @@ export interface SelectedService {
   name: string;
   duration: number; // in minutes
   price: number;
+  discountPrice?: number;
   hasFreeDemo?: boolean;
 }
 
@@ -480,7 +481,8 @@ export default function BookingDialog({
 
     try {
       const recordingPrice = details.addRecording ? 300 : 0;
-      const totalAmount = selectedService.price + recordingPrice;
+      const baseServicePrice = selectedService.discountPrice ?? selectedService.price;
+      const totalAmount = baseServicePrice + recordingPrice;
 
       // For services without date/time, use immediate/null values
       let scheduledDate = null;

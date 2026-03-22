@@ -40,12 +40,15 @@ import {
   GripVertical,
   ArrowUp,
   ArrowDown,
+  ArrowRight,
   Sparkles,
   CheckCircle,
   XCircle,
   Video,
   FileStack,
   Wrench,
+  Clock,
+  IndianRupee,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -92,6 +95,7 @@ interface Service {
   serviceType: string;
   hasFreeDemo?: boolean;
   productLink?: string;
+  duration?: number;
 }
 
 interface ServicePricing {
@@ -131,6 +135,71 @@ const serviceTypeLabels: Record<string, string> = {
 };
 
 // Service Templates
+// Suggested service names grouped by type
+const SERVICE_NAME_OPTIONS: { group: string; names: string[] }[] = [
+  {
+    group: "1-on-1 Sessions",
+    names: [
+      "Resume Review & Feedback",
+      "Mock Interview Session",
+      "Career Roadmap Planning",
+      "LinkedIn Profile Optimization",
+      "Salary Negotiation Coaching",
+      "Job Search Strategy Session",
+      "Career Change Consultation",
+      "Technical Interview Prep",
+      "Portfolio Review",
+      "Startup Idea Validation",
+      "Product Strategy Session",
+      "Leadership Coaching",
+      "Personal Branding Session",
+      "Goal Setting & Accountability",
+      "UPSC / Competitive Exam Guidance",
+    ],
+  },
+  {
+    group: "Priority DM / Async Advice",
+    names: [
+      "Career Clarity – Ask Anything",
+      "Quick Resume Feedback",
+      "LinkedIn Quick Review",
+      "Job Application Review",
+      "Interview Tip Sheet",
+      "Code Review & Feedback",
+      "Project Feedback",
+      "Business Idea Feedback",
+    ],
+  },
+  {
+    group: "Digital Products",
+    names: [
+      "Resume & LinkedIn Starter Pack",
+      "Interview Question Bank",
+      "Career Transition Playbook",
+      "Cold Email Templates",
+      "Freelance Starter Kit",
+      "Tech Interview Cheat Sheet",
+      "Personal Finance Basics Guide",
+      "Study Plan Template",
+    ],
+  },
+];
+
+const ALL_SERVICE_NAMES = SERVICE_NAME_OPTIONS.flatMap((g) => g.names);
+
+// Map each service name to its type based on which group it belongs to
+const SERVICE_TYPE_MAP: Record<string, string> = {
+  ...Object.fromEntries(
+    SERVICE_NAME_OPTIONS[0].names.map((n) => [n, "oneOnOneSession"])
+  ),
+  ...Object.fromEntries(
+    SERVICE_NAME_OPTIONS[1].names.map((n) => [n, "priorityDm"])
+  ),
+  ...Object.fromEntries(
+    SERVICE_NAME_OPTIONS[2].names.map((n) => [n, "digitalProducts"])
+  ),
+};
+
 const serviceTemplates = [
   {
     name: "Resume Review & Feedback",
@@ -204,7 +273,16 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
     serviceType: "oneOnOneSession",
     hasFreeDemo: false,
     productLink: "",
+    duration: 60,
   });
+
+  // Custom duration input mode per-dialog: "new" or "edit"
+  const [newCustomDuration, setNewCustomDuration] = useState(false);
+  const [editCustomDuration, setEditCustomDuration] = useState(false);
+
+  // Custom name input mode per-dialog
+  const [newCustomName, setNewCustomName] = useState(false);
+  const [editCustomName, setEditCustomName] = useState(false);
 
   // Edit form state
   const [editForm, setEditForm] = useState<Partial<Service>>({});
@@ -249,6 +327,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
             productLink:
               value.productLink || value.product_url || value.product_link || "",
             order: value.order ?? index,
+            duration: value.duration,
           });
         }
       });
@@ -322,6 +401,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
               : null,
           type: service.serviceType,
           order: updatedService.order,
+          duration: updatedService.duration,
         },
       };
 
@@ -389,6 +469,8 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
 
       // If enabling a service, automatically open edit mode
       if (updatedEnabled) {
+        const presets = [15, 30, 60];
+        setEditCustomDuration(!!service.duration && !presets.includes(service.duration));
         setEditingService(serviceId);
         setEditForm({
           name: service.name,
@@ -398,6 +480,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
           enabled: updatedEnabled,
           hasFreeDemo: service.hasFreeDemo || false,
           productLink: service.productLink || "",
+          duration: service.duration ?? 60,
         });
         toast.success("Service enabled! You can update details in the edit modal.");
       } else {
@@ -495,6 +578,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
         serviceType: newService.serviceType || "oneOnOneSession",
         hasFreeDemo: newService.hasFreeDemo ?? false,
         productLink: newService.productLink || "",
+        duration: newService.duration,
       };
 
       // Add to service_pricing (unified structure)
@@ -512,6 +596,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
               ? service.productLink || null
               : null,
           type: service.serviceType,
+          duration: service.duration,
         },
       };
 
@@ -548,7 +633,10 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       serviceType: service.serviceType || "oneOnOneSession",
       hasFreeDemo: service.hasFreeDemo || false,
       productLink: service.productLink || "",
+      duration: service.duration ?? 60,
     });
+    const presets = [15, 30, 60];
+    setNewCustomDuration(!!service.duration && !presets.includes(service.duration));
     setAddingNew(true);
     toast.info("Service duplicated. Edit and save the new service.");
   };
@@ -672,6 +760,9 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
 
   const startEdit = (service: Service) => {
     setEditingService(service.id);
+    const presets = [15, 30, 60];
+    setEditCustomDuration(!!service.duration && !presets.includes(service.duration));
+    setEditCustomName(!ALL_SERVICE_NAMES.includes(service.name));
     setEditForm({
       name: service.name,
       description: service.description,
@@ -679,12 +770,15 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       enabled: service.enabled,
       hasFreeDemo: service.hasFreeDemo,
       productLink: service.productLink || "",
+      duration: service.duration ?? 60,
     });
   };
 
   const cancelEdit = () => {
     setEditingService(null);
     setEditForm({});
+    setEditCustomDuration(false);
+    setEditCustomName(false);
   };
 
   const resetNewServiceForm = () => {
@@ -697,7 +791,10 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       serviceType: "oneOnOneSession",
       hasFreeDemo: false,
       productLink: "",
+      duration: 60,
     });
+    setNewCustomDuration(false);
+    setNewCustomName(false);
   };
 
   const isValidHttpsUrl = (value?: string) => {
@@ -1034,219 +1131,370 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
         open={addingNew}
         onOpenChange={(open) => {
           setAddingNew(open);
-          if (!open) {
-            resetNewServiceForm();
-          }
+          if (!open) resetNewServiceForm();
         }}
       >
-        <DialogContent className="flex w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] flex-col overflow-hidden p-0 sm:rounded-xl">
-          <DialogHeader className="border-b px-6 py-5 pr-12">
-            <DialogTitle>Add New Service</DialogTitle>
-            <DialogDescription>Create a service offering</DialogDescription>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto px-6 py-5">
+        <DialogContent className="flex w-[calc(100vw-2rem)] max-w-4xl max-h-[92vh] flex-col overflow-hidden p-0 rounded-2xl gap-0">
+          {/* Header */}
+          <div className="px-6 pt-5 pb-4 border-b border-gray-100 flex-shrink-0">
+            <DialogTitle className="text-lg font-semibold text-gray-900 tracking-tight">New Service</DialogTitle>
+            <DialogDescription className="text-sm text-gray-500 mt-0.5">
+              Create a service offering for your students.
+            </DialogDescription>
+          </div>
+
+          {/* Two-column body */}
+          <div className="flex flex-1 overflow-hidden min-h-0">
+
+            {/* Left: Scrollable form + footer */}
+            <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+
+            {/* — Basics — */}
             <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="new-name">Service Name *</Label>
-                <Input
-                  id="new-name"
-                  value={newService.name}
-                  onChange={(e) =>
-                    setNewService({ ...newService, name: e.target.value })
-                  }
-                  placeholder="e.g., Resume Review Package"
-                  maxLength={100}
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Basics</p>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium text-gray-700">Service Name</Label>
+                {!newCustomName ? (
+                  <Select
+                    value={newService.name || ""}
+                    onValueChange={(val) => {
+                      if (val === "__custom__") {
+                        setNewCustomName(true);
+                        setNewService({ ...newService, name: "" });
+                      } else {
+                        const detectedType = SERVICE_TYPE_MAP[val] ?? newService.serviceType ?? "oneOnOneSession";
+                        const is1on1 = detectedType === "oneOnOneSession";
+                        setNewService({
+                          ...newService,
+                          name: val,
+                          serviceType: detectedType,
+                          duration: is1on1 ? (newService.duration ?? 60) : undefined,
+                          hasFreeDemo: detectedType === "digitalProducts" ? false : newService.hasFreeDemo,
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-10 rounded-xl border-gray-200 bg-gray-50 focus:border-gray-400 focus:ring-1 focus:ring-gray-300">
+                      <SelectValue placeholder="Choose a service name…" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {SERVICE_NAME_OPTIONS.map((group) => (
+                        <>
+                          <div key={group.group} className="px-2 pt-2 pb-1">
+                            <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{group.group}</p>
+                          </div>
+                          {group.names.map((name) => (
+                            <SelectItem key={name} value={name}>{name}</SelectItem>
+                          ))}
+                        </>
+                      ))}
+                      <div className="border-t border-gray-100 mt-1 pt-1">
+                        <SelectItem value="__custom__" className="font-medium text-blue-600">✏️  Custom name…</SelectItem>
+                      </div>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      autoFocus
+                      value={newService.name}
+                      onChange={(e) => setNewService({ ...newService, name: e.target.value })}
+                      placeholder="Enter your service name"
+                      maxLength={100}
+                      className="h-10 rounded-xl border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-300 bg-gray-50 flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { setNewCustomName(false); setNewService({ ...newService, name: "" }); }}
+                      className="text-xs text-gray-400 hover:text-gray-700 px-2 whitespace-nowrap"
+                    >
+                      Use list
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-medium text-gray-700">Service Type</Label>
+                  {!newCustomName && newService.name && SERVICE_TYPE_MAP[newService.name] && (
+                    <span className="text-[10px] font-medium text-gray-400 bg-gray-100 rounded-full px-2 py-0.5">Auto-selected</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-3 gap-1.5 p-1 bg-gray-100 rounded-xl">
+                  {[
+                    { value: "oneOnOneSession", label: "1-on-1", icon: Video },
+                    { value: "priorityDm", label: "Priority DM", icon: MessageSquare },
+                    { value: "digitalProducts", label: "Digital", icon: Package },
+                  ].map(({ value, label, icon: Icon }) => {
+                    const lockedType = !newCustomName && newService.name ? SERVICE_TYPE_MAP[newService.name] : null;
+                    const isActive = (newService.serviceType ?? "oneOnOneSession") === value;
+                    const isDisabled = !!lockedType && lockedType !== value;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        disabled={isDisabled}
+                        onClick={() => !isDisabled && setNewService({
+                          ...newService,
+                          serviceType: value,
+                          hasFreeDemo: value === "digitalProducts" ? false : newService.hasFreeDemo,
+                          duration: value === "oneOnOneSession" ? (newService.duration ?? 60) : undefined,
+                        })}
+                        className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                          isActive
+                            ? "bg-white text-gray-900 shadow-sm"
+                            : isDisabled
+                            ? "text-gray-300 cursor-not-allowed"
+                            : "text-gray-500 hover:text-gray-700"
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* — Session Duration (1-on-1 only) — */}
+              {(newService.serviceType ?? "oneOnOneSession") === "oneOnOneSession" && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium text-gray-700">Session Duration</Label>
+                  <div className="grid grid-cols-4 gap-1.5 p-1 bg-gray-100 rounded-xl">
+                    {[15, 30, 60].map((mins) => (
+                      <button
+                        key={mins}
+                        type="button"
+                        onClick={() => { setNewService({ ...newService, duration: mins }); setNewCustomDuration(false); }}
+                        className={`py-2 rounded-lg text-sm font-medium transition-all ${
+                          !newCustomDuration && (newService.duration ?? 60) === mins
+                            ? "bg-white text-gray-900 shadow-sm"
+                            : "text-gray-500 hover:text-gray-700"
+                        }`}
+                      >
+                        {mins} min
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setNewCustomDuration(true)}
+                      className={`py-2 rounded-lg text-sm font-medium transition-all ${
+                        newCustomDuration ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      Custom
+                    </button>
+                  </div>
+                  {newCustomDuration && (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number" min={5} max={480} step={5} placeholder="45"
+                        value={newService.duration && ![15, 30, 60].includes(newService.duration) ? newService.duration : ""}
+                        onChange={(e) => { const v = e.target.valueAsNumber; if (!isNaN(v) && v > 0) setNewService({ ...newService, duration: v }); }}
+                        className="w-24 h-9 rounded-xl border-gray-200 focus:border-gray-400 bg-gray-50"
+                      />
+                      <span className="text-sm text-gray-500">minutes</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label htmlFor="new-description" className="text-sm font-medium text-gray-700">Description</Label>
+                <Textarea
+                  id="new-description"
+                  value={newService.description}
+                  onChange={(e) => setNewService({ ...newService, description: e.target.value })}
+                  placeholder="What will students get from this service?"
+                  className="resize-none rounded-xl border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-300 bg-gray-50 text-sm leading-relaxed min-h-[88px]"
+                  maxLength={500}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-service-type">Service Type *</Label>
-                <Select
-                  value={newService.serviceType || "oneOnOneSession"}
-                  onValueChange={(serviceType) =>
-                    setNewService({
-                      ...newService,
-                      serviceType,
-                      hasFreeDemo:
-                        serviceType === "digitalProducts"
-                          ? false
-                          : newService.hasFreeDemo,
-                    })
-                  }
-                >
-                  <SelectTrigger id="new-service-type">
-                    <SelectValue placeholder="Select a service type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="oneOnOneSession">1-on-1 Session</SelectItem>
-                    <SelectItem value="priorityDm">Priority DM</SelectItem>
-                    <SelectItem value="digitalProducts">Digital Products</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-price">Price (₹) *</Label>
-                <Input
-                  id="new-price"
-                  type="number"
-                  min="0"
-                  value={newService.price}
-                  onChange={(e) =>
-                    setNewService({
-                      ...newService,
-                      price: parseFloat(e.target.value) || 0,
-                    })
-                  }
-                  placeholder="499"
-                />
+                <p className="text-xs text-gray-400 text-right">{newService.description?.length ?? 0} / 500</p>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="new-discount-price">
-                Discounted Price (₹) - Optional
-              </Label>
-              <Input
-                id="new-discount-price"
-                type="number"
-                min="0"
-                value={newService.discount_price || ""}
-                onChange={(e) =>
-                  setNewService({
-                    ...newService,
-                    discount_price: e.target.value
-                      ? parseFloat(e.target.value)
-                      : undefined,
-                  })
-                }
-                placeholder="399"
-              />
-              <p className="text-xs text-gray-500">
-                Leave empty for no discount. If set, original price will show as
-                strikethrough.
-              </p>
+            {/* — Pricing — */}
+            <div className="space-y-4 border-t border-gray-100 pt-5">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Pricing</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-price" className="text-sm font-medium text-gray-700">Price <span className="text-gray-400 font-normal">(₹)</span></Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
+                    <Input
+                      id="new-price"
+                      type="number"
+                      min="0"
+                      value={newService.price || ""}
+                      onChange={(e) => setNewService({ ...newService, price: parseFloat(e.target.value) || 0 })}
+                      placeholder="0"
+                      className="pl-7 h-10 rounded-xl border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-300 bg-gray-50"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-discount-price" className="text-sm font-medium text-gray-700">Sale Price <span className="text-gray-400 font-normal">(optional)</span></Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
+                    <Input
+                      id="new-discount-price"
+                      type="number"
+                      min="0"
+                      value={newService.discount_price || ""}
+                      onChange={(e) => setNewService({ ...newService, discount_price: e.target.value ? parseFloat(e.target.value) : undefined })}
+                      placeholder="—"
+                      className="pl-7 h-10 rounded-xl border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-300 bg-gray-50"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="new-description">Description *</Label>
-              <Textarea
-                id="new-description"
-                value={newService.description}
-                onChange={(e) =>
-                  setNewService({ ...newService, description: e.target.value })
-                }
-                placeholder="Describe what's included in this service..."
-                rows={3}
-                className="h-32 resize-none overflow-y-auto"
-                maxLength={500}
-              />
-              <p className="text-xs text-gray-500">
-                {newService.description?.length || 0}/500 characters
-              </p>
-            </div>
-
+            {/* — Product Link (digital only) — */}
             {newService.serviceType === "digitalProducts" && (
-              <div className="space-y-2">
-                <Label htmlFor="new-product-link">Digital Product Link *</Label>
-                <Input
-                  id="new-product-link"
-                  type="url"
-                  value={newService.productLink || ""}
-                  onChange={(e) =>
-                    setNewService({
-                      ...newService,
-                      productLink: e.target.value,
-                    })
-                  }
-                  placeholder="https://example.com/your-product"
-                />
-                <p className="text-xs text-gray-500">
-                  This access link will be shared with students after purchase.
-                </p>
+              <div className="space-y-3 border-t border-gray-100 pt-5">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Product Access</p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-product-link" className="text-sm font-medium text-gray-700">Digital Product Link</Label>
+                  <Input
+                    id="new-product-link"
+                    type="url"
+                    value={newService.productLink || ""}
+                    onChange={(e) => setNewService({ ...newService, productLink: e.target.value })}
+                    placeholder="https://example.com/product"
+                    className="h-10 rounded-xl border-gray-200 focus:border-gray-400 bg-gray-50"
+                  />
+                  <p className="text-xs text-gray-400">Shared with students after purchase.</p>
+                </div>
               </div>
             )}
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  </div>
+            {/* — Options — */}
+            <div className="space-y-0 border-t border-gray-100 pt-5">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-3">Options</p>
+              <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3.5 bg-white">
                   <div>
-                    <p className="font-medium text-sm">Enable Service</p>
-                    <p className="text-xs text-gray-500">
-                      Make this service available to students
+                    <p className="text-sm font-medium text-gray-900">Active</p>
+                    <p className="text-xs text-gray-500">Make this service visible to students</p>
+                  </div>
+                  <Switch
+                    checked={!!newService.enabled}
+                    onCheckedChange={(enabled) => setNewService({ ...newService, enabled })}
+                  />
+                </div>
+                {newService.serviceType !== "digitalProducts" && (
+                  <div className="flex items-center justify-between px-4 py-3.5 bg-white">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Free Demo</p>
+                      <p className="text-xs text-gray-500">Offer a free introductory session</p>
+                    </div>
+                    <Switch
+                      checked={!!newService.hasFreeDemo}
+                      onCheckedChange={(hasFreeDemo) => setNewService({ ...newService, hasFreeDemo })}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+
+          {/* Footer */}
+          <div className="border-t border-gray-100 px-6 py-4 flex items-center justify-between gap-3 bg-white flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => { setAddingNew(false); resetNewServiceForm(); }}
+              className="text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
+            >
+              Cancel
+            </button>
+            <Button
+              onClick={handleAddService}
+              disabled={saving || !newService.name || !newService.description || (newService.serviceType === "digitalProducts" && !isValidHttpsUrl(newService.productLink))}
+              className="h-9 px-5 rounded-xl bg-gray-900 hover:bg-gray-700 text-white text-sm font-semibold"
+            >
+              {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Adding…</> : "Add Service"}
+            </Button>
+          </div>
+            </div>{/* end left column */}
+
+            {/* Right: Live Preview panel */}
+            {(() => {
+              const previewType = newService.serviceType ?? "oneOnOneSession";
+              const PreviewIcon = serviceTypeIcons[previewType] || Briefcase;
+              const previewTypeLabel = SERVICE_CONFIG[previewType]?.typeLabel
+                ?? serviceTypeLabels[previewType]
+                ?? "Mentoring Service";
+              return (
+                <div className="hidden md:flex w-80 flex-col border-l border-gray-100 bg-gray-50/60 flex-shrink-0">
+                  <div className="px-5 py-3 border-b border-gray-100 flex-shrink-0 flex items-center gap-2">
+                    <Eye className="h-3.5 w-3.5 text-gray-400" />
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Student View</p>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-3">
+                    <Card className="shadow-none border border-gray-200 rounded-2xl">
+                      <CardContent className="p-5 flex flex-col gap-4">
+                        {/* Icon + Name + Badges */}
+                        <div className="flex items-start gap-3">
+                          <div className="h-10 w-10 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
+                            <PreviewIcon className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-gray-900 leading-snug line-clamp-2 min-h-[44px]">
+                              {newService.name || <span className="text-gray-300 italic font-normal">Service name…</span>}
+                            </h3>
+                            <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                              <Badge variant="outline" className="text-xs">{previewTypeLabel}</Badge>
+                              {newService.duration && previewType === "oneOnOneSession" && (
+                                <Badge variant="outline" className="text-xs flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />{newService.duration} min
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        {/* Description */}
+                        <p className="text-sm text-gray-600 line-clamp-3 min-h-[40px]">
+                          {newService.description || <span className="text-gray-300 italic">Description will appear here…</span>}
+                        </p>
+                        {/* Free Demo Badge */}
+                        {newService.hasFreeDemo && previewType !== "digitalProducts" && (
+                          <div className="flex items-center gap-1.5 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                            <Sparkles className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
+                            <span className="text-xs font-medium text-green-700">Free Demo Available</span>
+                          </div>
+                        )}
+                        {/* Price + CTA */}
+                        <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
+                          {newService.discount_price ? (
+                            <div className="flex items-end gap-2">
+                              <div className="flex items-center text-green-600 font-semibold text-xl">
+                                <IndianRupee className="h-4 w-4" />{newService.discount_price}
+                              </div>
+                              <span className="text-sm text-gray-400 line-through">₹{newService.price || 0}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center text-gray-900 font-semibold text-xl">
+                              <IndianRupee className="h-4 w-4" />{newService.price || <span className="text-gray-300 text-base font-normal">0</span>}
+                            </div>
+                          )}
+                          <Button variant="outline" size="sm" disabled className="pointer-events-none text-xs gap-1 opacity-70">
+                            View Details <ArrowRight className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <p className="text-[11px] text-gray-400 text-center leading-relaxed px-2">
+                      Live preview — updates as you type
                     </p>
                   </div>
                 </div>
-                <Switch
-                  checked={newService.enabled}
-                  onCheckedChange={(enabled) =>
-                    setNewService({ ...newService, enabled })
-                  }
-                />
-              </div>
+              );
+            })()}
 
-              {newService.serviceType !== "digitalProducts" && (
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                      <AlertCircle className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">Free Demo Available</p>
-                      <p className="text-xs text-gray-500">
-                        Offer a free trial or demo session
-                      </p>
-                    </div>
-                  </div>
-                  <Switch
-                    checked={newService.hasFreeDemo}
-                    onCheckedChange={(hasFreeDemo) =>
-                      setNewService({ ...newService, hasFreeDemo })
-                    }
-                  />
-                </div>
-              )}
-            </div>
-            </div>
-          </div>
-
-          <div className="border-t bg-background px-6 py-4">
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setAddingNew(false);
-                  resetNewServiceForm();
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleAddService}
-                disabled={
-                  saving ||
-                  !newService.name ||
-                  !newService.description ||
-                  (newService.serviceType === "digitalProducts" &&
-                    !isValidHttpsUrl(newService.productLink))
-                }
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Adding...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Add Service
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
+          </div>{/* end two-column body */}
         </DialogContent>
       </Dialog>
 
@@ -1319,6 +1567,12 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                                 {isPredefined && (
                                   <Badge variant="outline" className="text-xs">
                                     {serviceTypeLabels[service.serviceType]}
+                                  </Badge>
+                                )}
+                                {service.duration && (
+                                  <Badge variant="outline" className="text-xs flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {service.duration} min
                                   </Badge>
                                 )}
                                 {service.hasFreeDemo && (
@@ -1478,159 +1732,320 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       {/* Edit Service Modal */}
       <Dialog
         open={!!editingService}
-        onOpenChange={(open) => {
-          if (!open) {
-            cancelEdit();
-          }
-        }}
+        onOpenChange={(open) => { if (!open) cancelEdit(); }}
       >
-        <DialogContent className="flex w-[calc(100vw-2rem)] max-w-2xl max-h-[90vh] flex-col overflow-hidden p-0 sm:rounded-xl">
-          <DialogHeader className="border-b px-6 py-5 pr-12">
-            <DialogTitle>Edit Service</DialogTitle>
-            <DialogDescription>
-              Update the service details and save your changes.
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="flex w-[calc(100vw-2rem)] max-w-4xl max-h-[92vh] flex-col overflow-hidden p-0 rounded-2xl gap-0">
+          {/* Header */}
+          <div className="px-6 pt-5 pb-4 border-b border-gray-100 flex-shrink-0">
+            <DialogTitle className="text-lg font-semibold text-gray-900 tracking-tight">Edit Service</DialogTitle>
+            {editingServiceData && (
+              <span className="text-sm text-gray-400">
+                {serviceTypeLabels[editingServiceData.serviceType] ?? editingServiceData.serviceType}
+              </span>
+            )}
+          </div>
 
           {editingServiceData && (
-            <>
-              <div className="flex-1 overflow-y-auto px-6 py-5">
+            <div className="flex flex-1 overflow-hidden min-h-0">
+
+              {/* Left: Scrollable form + footer */}
+              <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+
+                {/* — Basics — */}
                 <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="modal-edit-name">Service Name *</Label>
-                  <Input
-                    id="modal-edit-name"
-                    value={editForm.name}
-                    onChange={(e) =>
-                      setEditForm({ ...editForm, name: e.target.value })
-                    }
-                    maxLength={100}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="modal-edit-price">Price (₹) *</Label>
-                  <Input
-                    id="modal-edit-price"
-                    type="text"
-                    inputMode="decimal"
-                    value={editForm.price ?? ""}
-                    onChange={(e) =>
-                      setEditForm({
-                        ...editForm,
-                        price:
-                          e.target.value.trim() === ""
-                            ? undefined
-                            : Math.max(0, parseFloat(e.target.value) || 0),
-                      })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="modal-edit-discount-price">
-                  Discounted Price (₹) - Optional
-                </Label>
-                <Input
-                  id="modal-edit-discount-price"
-                  type="text"
-                  inputMode="decimal"
-                  value={editForm.discount_price || ""}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      discount_price: e.target.value
-                        ? Math.max(0, parseFloat(e.target.value) || 0)
-                        : undefined,
-                    })
-                  }
-                />
-                <p className="text-xs text-gray-500">Leave empty to remove discount</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="modal-edit-description">Description *</Label>
-                <Textarea
-                  id="modal-edit-description"
-                  value={editForm.description}
-                  onChange={(e) =>
-                    setEditForm({
-                      ...editForm,
-                      description: e.target.value,
-                    })
-                  }
-                  rows={4}
-                  className="h-32 resize-none overflow-y-auto"
-                  maxLength={500}
-                />
-              </div>
-
-              {editingServiceData.serviceType === "digitalProducts" && (
-                <div className="space-y-2">
-                  <Label htmlFor="modal-edit-product-link">
-                    Digital Product Link *
-                  </Label>
-                  <Input
-                    id="modal-edit-product-link"
-                    type="url"
-                    value={editForm.productLink || ""}
-                    onChange={(e) =>
-                      setEditForm({
-                        ...editForm,
-                        productLink: e.target.value,
-                      })
-                    }
-                    placeholder="https://example.com/your-product"
-                  />
-                  <p className="text-xs text-gray-500">
-                    This link is sent to students after a successful purchase.
-                  </p>
-                </div>
-              )}
-
-              {editingServiceData.serviceType !== "digitalProducts" && (
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-sm">Free Demo Available</p>
-                      <p className="text-xs text-gray-500">Offer a free trial session</p>
-                    </div>
-                    <Switch
-                      checked={!!editForm.hasFreeDemo}
-                      onCheckedChange={(hasFreeDemo) =>
-                        setEditForm({ ...editForm, hasFreeDemo })
-                      }
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Basics</p>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium text-gray-700">Service Name</Label>
+                    {!editCustomName ? (
+                      <Select
+                        value={editForm.name || ""}
+                        onValueChange={(val) => {
+                          if (val === "__custom__") {
+                            setEditCustomName(true);
+                            setEditForm({ ...editForm, name: "" });
+                          } else {
+                            const detectedType = SERVICE_TYPE_MAP[val];
+                            if (detectedType) {
+                              const is1on1 = detectedType === "oneOnOneSession";
+                              setEditForm({
+                                ...editForm,
+                                name: val,
+                                duration: is1on1 ? (editForm.duration ?? 60) : undefined,
+                              });
+                            } else {
+                              setEditForm({ ...editForm, name: val });
+                            }
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="h-10 rounded-xl border-gray-200 bg-gray-50 focus:border-gray-400 focus:ring-1 focus:ring-gray-300">
+                          <SelectValue placeholder="Choose a service name…" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-72">
+                          {SERVICE_NAME_OPTIONS.map((group) => (
+                            <>
+                              <div key={group.group} className="px-2 pt-2 pb-1">
+                                <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{group.group}</p>
+                              </div>
+                              {group.names.map((name) => (
+                                <SelectItem key={name} value={name}>{name}</SelectItem>
+                              ))}
+                            </>
+                          ))}
+                          <div className="border-t border-gray-100 mt-1 pt-1">
+                            <SelectItem value="__custom__" className="font-medium text-blue-600">✏️  Custom name…</SelectItem>
+                          </div>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Input
+                          autoFocus
+                          value={editForm.name ?? ""}
+                          onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                          placeholder="Enter your service name"
+                          maxLength={100}
+                          className="h-10 rounded-xl border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-300 bg-gray-50 flex-1"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => { setEditCustomName(false); setEditForm({ ...editForm, name: "" }); }}
+                          className="text-xs text-gray-400 hover:text-gray-700 px-2 whitespace-nowrap"
+                        >
+                          Use list
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="modal-edit-description" className="text-sm font-medium text-gray-700">Description</Label>
+                    <Textarea
+                      id="modal-edit-description"
+                      value={editForm.description ?? ""}
+                      onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                      className="resize-none rounded-xl border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-300 bg-gray-50 text-sm leading-relaxed min-h-[88px]"
+                      maxLength={500}
                     />
+                    <p className="text-xs text-gray-400 text-right">{(editForm.description ?? "").length} / 500</p>
+                  </div>
+
+                  {/* — Session Duration (1-on-1 only) — */}
+                  {editingServiceData.serviceType === "oneOnOneSession" && (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">Session Duration</Label>
+                      <div className="grid grid-cols-4 gap-1.5 p-1 bg-gray-100 rounded-xl">
+                        {[15, 30, 60].map((mins) => (
+                          <button
+                            key={mins}
+                            type="button"
+                            onClick={() => { setEditForm({ ...editForm, duration: mins }); setEditCustomDuration(false); }}
+                            className={`py-2 rounded-lg text-sm font-medium transition-all ${
+                              !editCustomDuration && (editForm.duration ?? 60) === mins
+                                ? "bg-white text-gray-900 shadow-sm"
+                                : "text-gray-500 hover:text-gray-700"
+                            }`}
+                          >
+                            {mins} min
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => setEditCustomDuration(true)}
+                          className={`py-2 rounded-lg text-sm font-medium transition-all ${
+                            editCustomDuration ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                          }`}
+                        >
+                          Custom
+                        </button>
+                      </div>
+                      {editCustomDuration && (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number" min={5} max={480} step={5} placeholder="45"
+                            value={editForm.duration && ![15, 30, 60].includes(editForm.duration) ? editForm.duration : ""}
+                            onChange={(e) => { const v = e.target.valueAsNumber; if (!isNaN(v) && v > 0) setEditForm({ ...editForm, duration: v }); }}
+                            className="w-24 h-9 rounded-xl border-gray-200 focus:border-gray-400 bg-gray-50"
+                          />
+                          <span className="text-sm text-gray-500">minutes</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* — Pricing — */}
+                <div className="space-y-4 border-t border-gray-100 pt-5">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Pricing</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="modal-edit-price" className="text-sm font-medium text-gray-700">Price <span className="text-gray-400 font-normal">(₹)</span></Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
+                        <Input
+                          id="modal-edit-price"
+                          type="text"
+                          inputMode="decimal"
+                          value={editForm.price ?? ""}
+                          onChange={(e) => setEditForm({ ...editForm, price: e.target.value.trim() === "" ? undefined : Math.max(0, parseFloat(e.target.value) || 0) })}
+                          className="pl-7 h-10 rounded-xl border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-300 bg-gray-50"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="modal-edit-discount-price" className="text-sm font-medium text-gray-700">Sale Price <span className="text-gray-400 font-normal">(optional)</span></Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
+                        <Input
+                          id="modal-edit-discount-price"
+                          type="text"
+                          inputMode="decimal"
+                          value={editForm.discount_price ?? ""}
+                          onChange={(e) => setEditForm({ ...editForm, discount_price: e.target.value ? Math.max(0, parseFloat(e.target.value) || 0) : undefined })}
+                          placeholder="—"
+                          className="pl-7 h-10 rounded-xl border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-300 bg-gray-50"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* — Product Link (digital only) — */}
+                {editingServiceData.serviceType === "digitalProducts" && (
+                  <div className="space-y-3 border-t border-gray-100 pt-5">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Product Access</p>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="modal-edit-product-link" className="text-sm font-medium text-gray-700">Digital Product Link</Label>
+                      <Input
+                        id="modal-edit-product-link"
+                        type="url"
+                        value={editForm.productLink || ""}
+                        onChange={(e) => setEditForm({ ...editForm, productLink: e.target.value })}
+                        placeholder="https://example.com/your-product"
+                        className="h-10 rounded-xl border-gray-200 focus:border-gray-400 bg-gray-50"
+                      />
+                      <p className="text-xs text-gray-400">Sent to students after a successful purchase.</p>
+                    </div>
                   </div>
                 )}
-                </div>
+
+                {/* — Options — */}
+                {editingServiceData.serviceType !== "digitalProducts" && (
+                  <div className="space-y-0 border-t border-gray-100 pt-5">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-3">Options</p>
+                    <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-3.5 bg-white">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">Free Demo</p>
+                          <p className="text-xs text-gray-500">Offer a free introductory session</p>
+                        </div>
+                        <Switch
+                          checked={!!editForm.hasFreeDemo}
+                          onCheckedChange={(hasFreeDemo) => setEditForm({ ...editForm, hasFreeDemo })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
               </div>
 
-              <div className="border-t bg-background px-6 py-4">
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={cancelEdit} disabled={saving}>
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={() => handleSaveService(editingServiceData.id)}
-                    disabled={saving}
-                  >
-                    {saving ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4 mr-2" />
-                        Save Changes
-                      </>
-                    )}
-                  </Button>
-                </div>
+              {/* Footer */}
+              <div className="border-t border-gray-100 px-6 py-4 flex items-center justify-between gap-3 bg-white flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  disabled={saving}
+                  className="text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors disabled:opacity-40"
+                >
+                  Cancel
+                </button>
+                <Button
+                  onClick={() => handleSaveService(editingServiceData.id)}
+                  disabled={saving}
+                  className="h-9 px-5 rounded-xl bg-gray-900 hover:bg-gray-700 text-white text-sm font-semibold"
+                >
+                  {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving…</> : "Save Changes"}
+                </Button>
               </div>
-            </>
-          )}
+              </div>{/* end left column */}
+
+              {/* Right: Live Preview panel */}
+              {(() => {
+                const previewType = editingServiceData.serviceType ?? "oneOnOneSession";
+                const PreviewIcon = serviceTypeIcons[previewType] || Briefcase;
+                const previewTypeLabel = SERVICE_CONFIG[previewType]?.typeLabel
+                  ?? serviceTypeLabels[previewType]
+                  ?? "Mentoring Service";
+                return (
+                  <div className="hidden md:flex w-80 flex-col border-l border-gray-100 bg-gray-50/60 flex-shrink-0">
+                    <div className="px-5 py-3 border-b border-gray-100 flex-shrink-0 flex items-center gap-2">
+                      <Eye className="h-3.5 w-3.5 text-gray-400" />
+                      <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">Student View</p>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-3">
+                      <Card className="shadow-none border border-gray-200 rounded-2xl">
+                        <CardContent className="p-5 flex flex-col gap-4">
+                          {/* Icon + Name + Badges */}
+                          <div className="flex items-start gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0">
+                              <PreviewIcon className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="font-semibold text-gray-900 leading-snug line-clamp-2 min-h-[44px]">
+                                {editForm.name || <span className="text-gray-300 italic font-normal">Service name…</span>}
+                              </h3>
+                              <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                                <Badge variant="outline" className="text-xs">{previewTypeLabel}</Badge>
+                                {editForm.duration && previewType === "oneOnOneSession" && (
+                                  <Badge variant="outline" className="text-xs flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />{editForm.duration} min
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          {/* Description */}
+                          <p className="text-sm text-gray-600 line-clamp-3 min-h-[40px]">
+                            {editForm.description || <span className="text-gray-300 italic">Description will appear here…</span>}
+                          </p>
+                          {/* Free Demo Badge */}
+                          {editForm.hasFreeDemo && previewType !== "digitalProducts" && (
+                            <div className="flex items-center gap-1.5 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                              <Sparkles className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
+                              <span className="text-xs font-medium text-green-700">Free Demo Available</span>
+                            </div>
+                          )}
+                          {/* Price + CTA */}
+                          <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
+                            {editForm.discount_price ? (
+                              <div className="flex items-end gap-2">
+                                <div className="flex items-center text-green-600 font-semibold text-xl">
+                                  <IndianRupee className="h-4 w-4" />{editForm.discount_price}
+                                </div>
+                                <span className="text-sm text-gray-400 line-through">₹{editForm.price ?? 0}</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center text-gray-900 font-semibold text-xl">
+                                <IndianRupee className="h-4 w-4" />{editForm.price ?? <span className="text-gray-300 text-base font-normal">0</span>}
+                              </div>
+                            )}
+                            <Button variant="outline" size="sm" disabled className="pointer-events-none text-xs gap-1 opacity-70">
+                              View Details <ArrowRight className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <p className="text-[11px] text-gray-400 text-center leading-relaxed px-2">
+                        Live preview — updates as you type
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+
+            </div>
+          )}{/* end two-column wrapper */}
         </DialogContent>
       </Dialog>
 

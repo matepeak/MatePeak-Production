@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SERVICE_CONFIG } from "@/config/serviceConfig";
-import { ArrowRight, IndianRupee, Star } from "lucide-react";
+import { ArrowRight, Clock, IndianRupee, Star } from "lucide-react";
 
 interface ProfileServicesProps {
   mentorUsername: string;
@@ -45,6 +45,7 @@ export default function ProfileServices({
 
         const price = value?.price ?? 0;
         const discountPrice = value?.discount_price;
+        const duration = value?.duration as number | undefined;
 
         return (
           <Card key={key} className="shadow-none border border-gray-200 rounded-2xl h-full">
@@ -56,9 +57,17 @@ export default function ProfileServices({
                   </div>
                   <div className="min-w-0">
                     <h3 className="font-semibold text-gray-900 line-clamp-2 leading-snug min-h-[44px]">{serviceName}</h3>
-                    <Badge variant="outline" className="mt-1 text-xs">
-                      {config?.typeLabel || "Mentoring Service"}
-                    </Badge>
+                    <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                      <Badge variant="outline" className="text-xs">
+                        {config?.typeLabel || "Mentoring Service"}
+                      </Badge>
+                      {duration && (
+                        <Badge variant="outline" className="text-xs flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {duration} min
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

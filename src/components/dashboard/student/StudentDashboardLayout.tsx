@@ -17,8 +17,8 @@ import {
   Settings,
   GraduationCap,
   Clock,
+  CalendarPlus,
 } from "lucide-react";
-import ClockPlus from "lucide-react/dist/esm/icons/clock-plus";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -77,7 +77,7 @@ const StudentDashboardLayout = ({
         {
           id: "time-request" as StudentView,
           label: "Time Request",
-          icon: ClockPlus,
+          icon: CalendarPlus,
           badge: null,
         },
         {
