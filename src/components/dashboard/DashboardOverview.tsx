@@ -526,9 +526,9 @@ const DashboardOverview = ({
             </button>
 
             {/* Message Support */}
-            <a
-              href="mailto:support@matepeak.com"
-              className="flex items-center gap-3 p-3 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-rose-300 transition-all text-left group"
+            <button
+              onClick={() => navigate("/mentor/support")}
+              className="w-full flex items-center gap-3 p-3 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-rose-300 transition-all text-left group"
             >
               <div className="p-2 rounded-lg bg-gray-100 group-hover:bg-rose-50 transition-colors">
                 <MessageCircle className="h-4 w-4 text-rose-400" />
@@ -538,7 +538,7 @@ const DashboardOverview = ({
                   Get Support
                 </p>
               </div>
-            </a>
+            </button>
           </div>
         </CardContent>
       </Card>

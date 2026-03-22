@@ -123,6 +123,27 @@
     @apply bg-background text-foreground;
   }
 
+  /*
+   * Prevent horizontal layout shift when Radix/RemoveScroll overlays open.
+   * Some overlay states inject body margin/padding compensation that nudges
+   * fixed dashboard layouts and briefly reveals the white page background.
+   */
+  html[data-scroll-locked],
+  body[data-scroll-locked],
+  html.with-scroll-bars-hidden,
+  body.with-scroll-bars-hidden {
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .right-scroll-bar-position {
+    right: 0 !important;
+  }
+
+  .width-before-scroll-bar {
+    margin-right: 0 !important;
+  }
+
   ::selection {
     background-color: #000000;
     color: #ffffff;

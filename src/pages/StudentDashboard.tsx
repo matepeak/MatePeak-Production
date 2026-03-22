@@ -8,11 +8,19 @@ import StudentOverview from '@/components/dashboard/student/StudentOverview';
 import MySessions from '@/components/dashboard/student/MySessions';
 import StudentPriorityDmInbox from '@/components/dashboard/student/StudentPriorityDmInbox';
 import MyMentors from '@/components/dashboard/student/MyMentors';
-import StudentReviews from '@/components/dashboard/student/StudentReviews';
 import StudentProfile from '@/components/dashboard/student/StudentProfile';
 import StudentTimeRequest from '@/components/dashboard/student/StudentTimeRequest';
 
-type StudentView = "overview" | "sessions" | "time-request" | "messages" | "mentors" | "reviews" | "profile";
+type StudentView = "overview" | "sessions" | "time-request" | "messages" | "mentors" | "profile";
+
+const ALLOWED_STUDENT_VIEWS: StudentView[] = [
+  'overview',
+  'sessions',
+  'time-request',
+  'messages',
+  'mentors',
+  'profile',
+];
 
 export default function StudentDashboard() {
   const [activeView, setActiveView] = useState<StudentView>('overview');
@@ -109,6 +117,15 @@ export default function StudentDashboard() {
     setStudentProfile(updatedProfile);
   };
 
+  const handleViewChange = (view: string) => {
+    if (ALLOWED_STUDENT_VIEWS.includes(view as StudentView)) {
+      setActiveView(view as StudentView);
+      return;
+    }
+
+    setActiveView('overview');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -127,21 +144,20 @@ export default function StudentDashboard() {
   return (
     <StudentDashboardLayout
       activeView={activeView}
-      onViewChange={setActiveView}
+      onViewChange={handleViewChange}
       studentProfile={studentProfile}
       user={user}
     >
       {activeView === 'overview' && (
         <StudentOverview 
           studentProfile={studentProfile}
-          onNavigate={(view) => setActiveView(view as StudentView)}
+          onNavigate={handleViewChange}
         />
       )}
       {activeView === 'sessions' && <MySessions studentProfile={studentProfile} />}
       {activeView === 'time-request' && <StudentTimeRequest studentProfile={studentProfile} />}
       {activeView === 'messages' && <StudentPriorityDmInbox studentProfile={studentProfile} />}
       {activeView === 'mentors' && <MyMentors studentProfile={studentProfile} />}
-      {activeView === 'reviews' && <StudentReviews studentProfile={studentProfile} />}
       {activeView === 'profile' && (
         <StudentProfile 
           studentProfile={studentProfile}
