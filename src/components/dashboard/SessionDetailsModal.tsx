@@ -135,7 +135,7 @@ const SessionDetailsModal = ({
   const displayMessage = getDisplayMessage(session.message);
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onClose} modal={false}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="space-y-0">
           <div className="flex items-center justify-between pr-8">

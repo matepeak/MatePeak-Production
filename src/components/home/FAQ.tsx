@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 
 const faqs = [
@@ -91,12 +92,12 @@ const FAQ = () => {
           </h2>
           <p className="mt-5 text-base text-gray-500 max-w-xl mx-auto leading-relaxed">
             Everything you need to know about MatePeak. Can't find the answer?{" "}
-            <a
-              href="mailto:support@matepeak.com"
+            <Link
+              to="/support"
               className="text-gray-900 underline underline-offset-2 decoration-gray-300 hover:decoration-gray-900 transition-all duration-150"
             >
               Talk to our team.
-            </a>
+            </Link>
           </p>
         </div>
 

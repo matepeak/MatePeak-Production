@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Headphones, HelpCircle, LifeBuoy, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +27,7 @@ const SUPPORT_TOPICS = [
 
 export default function StudentSupport() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [topic, setTopic] = useState("");
@@ -97,7 +98,13 @@ export default function StudentSupport() {
         <Button
           variant="ghost"
           className="h-10 px-2 text-sm text-gray-700 hover:text-gray-900"
-          onClick={() => navigate("/student/dashboard")}
+          onClick={() =>
+            navigate(
+              location.pathname.startsWith("/mentor")
+                ? "/mentor/dashboard"
+                : "/student/dashboard"
+            )
+          }
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Dashboard
@@ -178,7 +185,7 @@ export default function StudentSupport() {
                   value={message}
                   onChange={(event) => setMessage(event.target.value)}
                   placeholder="Please include booking ID, mentor name, and what happened."
-                  className="min-h-[150px]"
+                  className="h-40 resize-none"
                   required
                 />
               </div>
@@ -211,7 +218,7 @@ export default function StudentSupport() {
                 <LifeBuoy className="h-4 w-4 text-rose-500" />
                 Best details to include
               </div>
-              <p className="mt-2 text-sm text-gray-600">Booking ID, screenshots, and timeline of events.</p>
+              <p className="mt-2 text-sm text-gray-600">Booking ID and timeline of events.</p>
             </CardContent>
           </Card>
           <Card className="border-gray-200">
