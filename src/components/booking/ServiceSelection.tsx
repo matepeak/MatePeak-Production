@@ -75,15 +75,17 @@ export default function ServiceSelection({
     serviceName: string,
     servicePrice: number,
     hasFreeDemo: boolean,
-    serviceDuration?: number
+    serviceDuration?: number,
+    serviceDiscountPrice?: number
   ) => {
     const normalizedServiceType = resolveServiceType(serviceKey, rawType);
     const config = SERVICE_CONFIG[normalizedServiceType] || SERVICE_CONFIG.oneOnOneSession;
-    // Use the mentor's configured duration, falling back to 60 min for sessions.
+    // Use the mentor's configured duration for all service types.
     const duration =
-      normalizedServiceType === "oneOnOneSession"
-        ? serviceDuration || selectedDurations[serviceKey] || 60
-        : 30;
+      serviceDuration ||
+      (normalizedServiceType === "oneOnOneSession"
+        ? selectedDurations[serviceKey] || 60
+        : 30);
 
     const isFreeDemo = freeDemoEnabled[serviceKey] && hasFreeDemo;
 
@@ -96,6 +98,7 @@ export default function ServiceSelection({
       name: serviceName || config?.shortName || serviceKey, // Prioritize custom name
       duration,
       price: isFreeDemo ? 0 : actualPrice,
+      discountPrice: isFreeDemo ? undefined : serviceDiscountPrice,
       hasFreeDemo: hasFreeDemo,
     });
   };
@@ -318,7 +321,8 @@ export default function ServiceSelection({
                         service.name,
                         service.price,
                         service.hasFreeDemo,
-                        service.duration
+                        service.duration,
+                        service.discount_price
                       );
                     }}
                     className={cn(

@@ -41,6 +41,7 @@ export default function MentorServiceDetail() {
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState<ServiceReview[]>([]);
   const [resolvedServiceKey, setResolvedServiceKey] = useState<string | null>(null);
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
 
   const isServiceEnabled = (enabled: unknown) =>
     enabled === true || enabled === "true" || enabled === 1;
@@ -72,6 +73,12 @@ export default function MentorServiceDetail() {
       }
 
       setMentor(profileData as MentorData);
+
+      // Check if the viewer is the mentor themselves
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && user.id === profileData.id) {
+        setIsOwnProfile(true);
+      }
 
       const pricing = (profileData.service_pricing || {}) as Record<string, any>;
       const candidates = [
@@ -276,17 +283,21 @@ export default function MentorServiceDetail() {
                       )}
                     </div>
 
-                    <Link
-                      className="w-full sm:w-auto"
-                      to={`/booking?mentorId=${mentor.id}&serviceId=${encodeURIComponent(
-                        serviceData.normalizedKey
-                      )}`}
-                    >
-                      <Button size="lg" className="w-full sm:w-auto bg-gray-900 hover:bg-gray-800">
-                        <Calendar className="h-4 w-4 mr-2" />
-                        {serviceActionLabel}
-                      </Button>
-                    </Link>
+                    {isOwnProfile ? (
+                      <p className="text-sm text-gray-500 italic">This is your own service</p>
+                    ) : (
+                      <Link
+                        className="w-full sm:w-auto"
+                        to={`/booking?mentorId=${mentor.id}&serviceId=${encodeURIComponent(
+                          serviceData.normalizedKey
+                        )}`}
+                      >
+                        <Button size="lg" className="w-full sm:w-auto bg-gray-900 hover:bg-gray-800">
+                          <Calendar className="h-4 w-4 mr-2" />
+                          {serviceActionLabel}
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                 </CardContent>
               </Card>
