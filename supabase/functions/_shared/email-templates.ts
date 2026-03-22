@@ -22,7 +22,7 @@ export const emailTemplates = {
     .detail-label { color: #6b7280; font-weight: 500; }
     .detail-value { color: #111827; font-weight: 600; }
   </style>
-</head>
+ </head>
 <body>
   <div class="container">
     <div class="header">
@@ -69,12 +69,27 @@ export const emailTemplates = {
       `
           : ""
       }
+
+      ${
+        data.digitalProductLink
+          ? `
+      <div style="text-align: center; margin: 24px 0;">
+        <a href="${data.digitalProductLink}" class="button">Access Digital Product</a>
+      </div>
+      <p style="color: #6b7280; font-size: 13px; word-break: break-all;">
+        Product Link: <a href="${data.digitalProductLink}">${data.digitalProductLink}</a>
+      </p>
+      `
+          : ""
+      }
       
       <p style="color: #6b7280; font-size: 14px;">
         <strong>What to expect:</strong><br>
-        • You'll receive a reminder 24 hours before the session<br>
-        • Another reminder will be sent 1 hour before<br>
-        • ${data.mentorName} will reach out if they need any preparation details
+        ${
+          data.digitalProductLink
+            ? "• Your digital product is ready to access from the link above<br>• Save the link for future access<br>• Reach out to support if the link is not opening"
+            : `• You'll receive a reminder 24 hours before the session<br>• Another reminder will be sent 1 hour before<br>• ${data.mentorName} will reach out if they need any preparation details`
+        }
       </p>
     </div>
     
@@ -161,6 +176,30 @@ export const emailTemplates = {
           : ""
       }
       
+      ${
+        data.meetingLink
+          ? `
+      <div style="text-align: center; margin: 24px 0;">
+        <a href="${data.meetingLink}" class="button">Join Meeting</a>
+      </div>
+      <p style="color: #6b7280; font-size: 13px; word-break: break-all;">
+        Meeting Link: <a href="${data.meetingLink}">${data.meetingLink}</a>
+      </p>
+      `
+          : ""
+      }
+
+      ${
+        data.digitalProductLink
+          ? `
+      <div class="message-box">
+        <strong>Digital Product Link Shared:</strong><br>
+        <a href="${data.digitalProductLink}">${data.digitalProductLink}</a>
+      </div>
+      `
+          : ""
+      }
+
       <div style="text-align: center; margin: 24px 0;">
         <a href="${data.dashboardLink}" class="button">View in Dashboard</a>
       </div>

@@ -1,9 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-  
+    <loc>https://www.matepeak.com/</loc>
+    <lastmod>2026-03-20T04:42:21.058Z</lastmod>
+  </url>
+  <url>
+    <loc>https://www.matepeak.com/explore</loc>
+    <lastmod>2026-03-20T04:42:21.058Z</lastmod>
+  </url>
+  <url>
+    <loc>https://www.matepeak.com/mentors</loc>
+    <lastmod>2026-03-20T04:42:21.058Z</lastmod>
+  </url>
+  <url>
+    <loc>https://www.matepeak.com/how-it-works</loc>
+    <lastmod>2026-03-20T04:42:21.058Z</lastmod>
+  </url>
+  <url>
+    <loc>https://www.matepeak.com/about-us</loc>
+    <lastmod>2026-03-20T04:42:21.058Z</lastmod>
+  </url>
+  <url>
     <loc>https://www.matepeak.com/privacy</loc>
-    <lastmod>2026-03-17T20:10:28.384Z</lastmod>
-
+    <lastmod>2026-03-20T04:42:21.058Z</lastmod>
   </url>
 </urlset>

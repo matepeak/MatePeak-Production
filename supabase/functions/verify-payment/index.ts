@@ -467,6 +467,7 @@ Deno.serve(async (req: Request) => {
     let usedPaymentStatus = booking.payment_status;
     let emailsTriggered = false;
     let confirmationConflict = false;
+    let mentorEarningCreditResult: Record<string, unknown> | null = null;
     let paymentSuccessEmailStatus: "sent" | "failed" | "skipped" = "skipped";
     let paymentSuccessEmailResult: Record<string, unknown> | null = null;
 
@@ -504,6 +505,39 @@ Deno.serve(async (req: Request) => {
       updatedBooking = refreshedBooking as BookingRecord;
       usedPaymentStatus = updatedBooking.payment_status;
       emailsTriggered = true;
+
+      try {
+        const { data: earningData, error: earningError } = await supabase.rpc(
+          "apply_mentor_earning_for_booking",
+          {
+            p_booking_id: bookingId,
+            p_platform_fee_percent: 10,
+          },
+        );
+
+        if (earningError) {
+          console.error("apply_mentor_earning_for_booking failed:", earningError);
+          mentorEarningCreditResult = {
+            success: false,
+            code: "credit_rpc_error",
+            message: earningError.message,
+          };
+        } else {
+          const normalizedEarningResult = Array.isArray(earningData) ? earningData[0] : earningData;
+          mentorEarningCreditResult =
+            (normalizedEarningResult as Record<string, unknown>) || {
+              success: true,
+              code: "credited",
+            };
+        }
+      } catch (creditError) {
+        console.error("apply_mentor_earning_for_booking exception:", creditError);
+        mentorEarningCreditResult = {
+          success: false,
+          code: "credit_exception",
+          message: creditError instanceof Error ? creditError.message : "Unknown credit error",
+        };
+      }
     } else if (isFailure) {
       const updateData: Record<string, unknown> = {
         status: "cancelled",
@@ -599,6 +633,7 @@ Deno.serve(async (req: Request) => {
       idempotent: isSuccess && alreadySuccessful,
       payment_success_email_status: paymentSuccessEmailStatus,
       payment_success_email_result: paymentSuccessEmailResult,
+      mentor_earning_credit_result: mentorEarningCreditResult,
       message:
         isSuccess && !confirmationConflict
           ? "Payment processed as successful"
