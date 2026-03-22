@@ -263,6 +263,12 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
   // Drag and drop state
   const [draggedService, setDraggedService] = useState<string | null>(null);
 
+  const toOptionalNumber = (value: unknown): number | undefined => {
+    if (value === null || value === undefined || value === "") return undefined;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
+
   // New service form state
   const [newService, setNewService] = useState<Partial<Service>>({
     name: "",
@@ -320,7 +326,9 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
             name: value.name || serviceTypeLabels[key] || "Custom Service",
             description: value.description || "",
             price: value.price || 0,
-            discount_price: value.discount_price,
+            discount_price: toOptionalNumber(
+              value.discount_price ?? value.discountPrice ?? value.sale_price
+            ),
             enabled: value.enabled || false,
             serviceType: isCustom ? (value.type || "custom") : key,
             hasFreeDemo: value.hasFreeDemo || false,
@@ -382,6 +390,11 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       }
 
       const updatedService = { ...service, ...editForm };
+      const normalizedDiscountPrice =
+        updatedService.discount_price === undefined ||
+        updatedService.discount_price === null
+          ? undefined
+          : Math.max(0, Number(updatedService.discount_price) || 0);
       console.log("✏️ Updated service object:", updatedService);
 
       // Update service_pricing (works for both predefined and custom services)
@@ -393,7 +406,8 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
           name: updatedService.name,
           description: updatedService.description,
           price: updatedService.price,
-          discount_price: updatedService.discount_price,
+          discount_price: normalizedDiscountPrice,
+          discountPrice: normalizedDiscountPrice,
           hasFreeDemo: updatedService.hasFreeDemo || false,
           productLink:
             service.serviceType === "digitalProducts"
@@ -590,6 +604,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
           description: service.description,
           price: service.price,
           discount_price: service.discount_price,
+          discountPrice: service.discount_price,
           hasFreeDemo: service.hasFreeDemo,
           productLink:
             service.serviceType === "digitalProducts"
@@ -767,6 +782,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       name: service.name,
       description: service.description,
       price: service.price,
+      discount_price: service.discount_price,
       enabled: service.enabled,
       hasFreeDemo: service.hasFreeDemo,
       productLink: service.productLink || "",
@@ -1324,10 +1340,18 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
                     <Input
                       id="new-price"
-                      type="number"
-                      min="0"
-                      value={newService.price || ""}
-                      onChange={(e) => setNewService({ ...newService, price: parseFloat(e.target.value) || 0 })}
+                      type="text"
+                      inputMode="decimal"
+                      value={newService.price ?? ""}
+                      onChange={(e) =>
+                        setNewService({
+                          ...newService,
+                          price:
+                            e.target.value.trim() === ""
+                              ? 0
+                              : Math.max(0, parseFloat(e.target.value) || 0),
+                        })
+                      }
                       placeholder="0"
                       className="pl-7 h-10 rounded-xl border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-300 bg-gray-50"
                     />
@@ -1339,10 +1363,17 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
                     <Input
                       id="new-discount-price"
-                      type="number"
-                      min="0"
-                      value={newService.discount_price || ""}
-                      onChange={(e) => setNewService({ ...newService, discount_price: e.target.value ? parseFloat(e.target.value) : undefined })}
+                      type="text"
+                      inputMode="decimal"
+                      value={newService.discount_price ?? ""}
+                      onChange={(e) =>
+                        setNewService({
+                          ...newService,
+                          discount_price: e.target.value
+                            ? Math.max(0, parseFloat(e.target.value) || 0)
+                            : undefined,
+                        })
+                      }
                       placeholder="—"
                       className="pl-7 h-10 rounded-xl border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-300 bg-gray-50"
                     />
@@ -1468,7 +1499,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                         )}
                         {/* Price + CTA */}
                         <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
-                          {newService.discount_price ? (
+                          {newService.discount_price !== undefined && newService.discount_price !== null ? (
                             <div className="flex items-end gap-2">
                               <div className="flex items-center text-green-600 font-semibold text-xl">
                                 <IndianRupee className="h-4 w-4" />{newService.discount_price}
@@ -1605,7 +1636,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                             {service.description}
                           </p>
                           <div className="flex items-center justify-between mt-2">
-                            {service.discount_price ? (
+                            {service.discount_price !== undefined && service.discount_price !== null ? (
                               <div className="flex items-center gap-2">
                                 <span className="text-lg font-bold text-green-600">
                                   ₹{service.discount_price}
@@ -2018,7 +2049,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                           )}
                           {/* Price + CTA */}
                           <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-2">
-                            {editForm.discount_price ? (
+                            {editForm.discount_price !== undefined && editForm.discount_price !== null ? (
                               <div className="flex items-end gap-2">
                                 <div className="flex items-center text-green-600 font-semibold text-xl">
                                   <IndianRupee className="h-4 w-4" />{editForm.discount_price}
