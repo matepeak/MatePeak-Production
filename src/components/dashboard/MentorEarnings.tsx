@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { Loader2, Wallet, Landmark, CircleCheck, CircleX, Clock3 } from "lucide-react";
 import {
   createWithdrawalRequest,
@@ -85,7 +85,6 @@ const statusMeta: Record<
 };
 
 export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [savingDetails, setSavingDetails] = useState(false);
   const [requesting, setRequesting] = useState(false);

@@ -10,7 +10,7 @@ import {
   type RateLimitResult,
   type RateLimitStatus,
 } from "@/services/rateLimitService";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 export function useRateLimit(action: RateLimitAction) {
   const [isChecking, setIsChecking] = useState(false);

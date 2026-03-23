@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { SERVICE_CONFIG } from "@/config/serviceConfig";
 import {
   Calendar,
@@ -61,7 +61,6 @@ const CANCELLATION_NOTE_MAX_LENGTH = 300;
 const MENTOR_SESSIONS_LAYOUT_KEY = "sessionsLayout:mentor";
 
 const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
-  const { toast } = useToast();
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<SessionStatus>("all");

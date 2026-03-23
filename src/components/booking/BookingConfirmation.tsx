@@ -25,7 +25,7 @@ import {
   isValidEmail,
   sanitizeInput,
 } from "@/utils/inputSanitization";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 interface BookingConfirmationProps {
   selectedService: SelectedService;

@@ -14,7 +14,7 @@ import {
   Users
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { toast } from "@/components/ui/sonner";
 import { useMentorPresenceMap } from '@/hooks/useMentorPresence';
 import PresenceDot from '@/components/PresenceDot';
 

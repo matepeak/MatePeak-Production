@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Clock, Info, Sparkles, Coffee, Briefcase, Sunset, Plus, X } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from "@/components/ui/sonner";
 import { cn } from '@/lib/utils';
 
 interface AvailabilitySetupStepProps {

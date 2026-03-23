@@ -22,7 +22,7 @@ import { SERVICE_CONFIG } from "@/config/serviceConfig";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 
 type TimePeriod = "today" | "week" | "month" | "all";
 
@@ -47,7 +47,6 @@ const DashboardOverview = ({
   const SUCCESSFUL_BOOKING_STATUSES = new Set(["confirmed", "completed"]);
 
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [stats, setStats] = useState<Stats>({
     totalSessions: 0,
     upcomingSessions: 0,
@@ -481,10 +480,8 @@ const DashboardOverview = ({
                 if (onNavigate) {
                   onNavigate("availability");
                 } else {
-                  toast({
-                    title: "Error",
+                  toast.error("Error", {
                     description: "Navigation function not available",
-                    variant: "destructive",
                   });
                 }
               }}
@@ -506,10 +503,8 @@ const DashboardOverview = ({
                 if (onNavigate) {
                   onNavigate("profile");
                 } else {
-                  toast({
-                    title: "Error",
+                  toast.error("Error", {
                     description: "Navigation function not available",
-                    variant: "destructive",
                   });
                 }
               }}
