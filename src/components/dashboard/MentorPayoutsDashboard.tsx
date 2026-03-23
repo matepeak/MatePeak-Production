@@ -110,7 +110,7 @@ const MentorPayoutsDashboard = () => {
       const response = await requestWithdrawal(amount, withdrawNote);
       toast({
         title: "Withdrawal submitted",
-        description: response?.message || "Your payout request is being processed.",
+        description: response?.message || "Your payout request is now pending admin review.",
       });
       setWithdrawAmount("");
       setWithdrawNote("");
@@ -133,7 +133,7 @@ const MentorPayoutsDashboard = () => {
         <h1 className="text-5xl font-black tracking-tight text-gray-900">Payments</h1>
         <div className="flex items-center gap-2 border rounded-full bg-white px-4 py-2">
           <Building2 className="h-4 w-4 text-gray-700" />
-          <span className="text-sm font-semibold text-emerald-700">Payout via Indian Bank Connected</span>
+          <span className="text-sm font-semibold text-emerald-700">Manual payout with admin approval</span>
         </div>
       </div>
 
@@ -200,7 +200,8 @@ const MentorPayoutsDashboard = () => {
               Withdraw
             </Button>
           </div>
-          <p className="text-sm text-gray-500 mt-2">Minimum withdrawal is Rs. 500.</p>
+          <p className="text-sm text-gray-500 mt-2">Minimum withdrawal is Rs. 1.</p>
+          <p className="text-sm text-gray-500">Requests are queued for admin review and paid manually after approval.</p>
         </CardContent>
       </Card>
 

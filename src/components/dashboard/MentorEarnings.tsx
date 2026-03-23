@@ -203,9 +203,20 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
   const verification = statusMeta[verificationStatus];
   const VerificationIcon = verification.icon;
 
+  const hasPayoutDetails = useMemo(() => {
+    const account = snapshot?.payoutAccount;
+    if (!account) return false;
+
+    if (account.payout_method === "bank") {
+      return Boolean(account.account_holder_name && account.account_number && account.ifsc_code);
+    }
+
+    return Boolean(account.upi_id);
+  }, [snapshot?.payoutAccount]);
+
   const canRequestWithdrawal = useMemo(() => {
-    return wallet.balance >= MIN_WITHDRAWAL_AMOUNT && verificationStatus === "verified";
-  }, [wallet.balance, verificationStatus]);
+    return wallet.balance >= MIN_WITHDRAWAL_AMOUNT && hasPayoutDetails;
+  }, [wallet.balance, hasPayoutDetails]);
 
   const validatePayoutFields = () => {
     if (method === "bank") {
@@ -262,10 +273,15 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
       return;
     }
 
+    // Always show success variant when save operation succeeds
+    const toastTitle = result.verified 
+      ? "Account details verified successfully" 
+      : "Account details saved successfully";
+    
     toast({
-      title: result.verified ? "Bank details verified" : "Details saved as unverified",
+      title: toastTitle,
       description: result.message,
-      variant: result.verified ? "default" : "destructive",
+      variant: "default",
     });
 
     await loadSnapshot();
@@ -293,10 +309,10 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
       return;
     }
 
-    if (verificationStatus !== "verified") {
+    if (!hasPayoutDetails) {
       toast({
-        title: "Verification required",
-        description: "Please verify payout details before requesting withdrawal.",
+        title: "Payout details required",
+        description: "Please save payout details before requesting withdrawal.",
         variant: "destructive",
       });
       return;
@@ -367,7 +383,7 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="text-sm text-gray-600">Withdrawal is available only after balance reaches ₹500</div>
+            <div className="text-sm text-gray-600">Withdrawal is available only after balance reaches ₹{MIN_WITHDRAWAL_AMOUNT}</div>
             <Badge className={verification.className}>
               <VerificationIcon className="h-3.5 w-3.5 mr-1" />
               {verification.label}
@@ -503,7 +519,7 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
             <div className="text-sm text-red-600">
               {wallet.balance < MIN_WITHDRAWAL_AMOUNT
                 ? `You need at least ₹${MIN_WITHDRAWAL_AMOUNT} balance to withdraw.`
-                : "Verify payout details before requesting withdrawal."}
+                : "Save payout details before requesting withdrawal."}
             </div>
           )}
 

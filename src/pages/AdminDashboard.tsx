@@ -148,7 +148,7 @@ const AdminDashboard = () => {
                   >
                     <DollarSign className="h-6 w-6 text-green-600 mb-2" />
                     <h3 className="font-semibold">Withdrawal Requests</h3>
-                    <p className="text-sm text-gray-600">Approve mentor payment withdrawals</p>
+                    <p className="text-sm text-gray-600">Review requests and settle mentor payouts manually</p>
                   </button>
 
                   <button

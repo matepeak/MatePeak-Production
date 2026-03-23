@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export const MIN_WITHDRAWAL_AMOUNT = 500;
+export const MIN_WITHDRAWAL_AMOUNT = 1;
 
 export type PayoutMethod = "bank" | "upi";
 export type VerificationStatus = "unverified" | "pending" | "verified" | "failed";
@@ -179,10 +179,14 @@ export async function saveAndVerifyPayoutAccount(
     const verificationResponse = data || {};
 
     if (error || !verificationResponse?.success) {
-      const failureMessage =
+      const rawFailureMessage =
         verificationResponse?.message ||
         error?.message ||
         "Verification failed. Details are saved but remain unverified.";
+
+      const failureMessage = /access to requested resource not available/i.test(rawFailureMessage)
+        ? "Automatic payout verification is temporarily unavailable. Details are saved and can be used for manual admin-reviewed withdrawals."
+        : rawFailureMessage;
 
       const { error: updateError } = await supabase
         .from("mentor_payout_accounts")
@@ -253,15 +257,36 @@ export async function createWithdrawalRequest(
   amount: number
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const { data, error } = await supabase.rpc("mentor_create_withdrawal_request", {
-      p_amount: amount,
+    const { data, error } = await supabase.functions.invoke("wallet-withdraw", {
+      body: {
+        amount,
+        note: null,
+        test_mode: false,
+      },
     });
 
-    if (error) throw error;
+    if (error) {
+      const context = (error as any)?.context;
+      if (context && typeof context.json === "function") {
+        try {
+          const payload = await context.json();
+          const message = String(payload?.error || payload?.message || "").trim();
+          if (message) throw new Error(message);
+        } catch {
+          // Ignore JSON parsing issues and fall back to generic message.
+        }
+      }
+
+      throw new Error((error as any)?.message || "Withdrawal request failed");
+    }
+
+    if (!data?.success) {
+      throw new Error(data?.error || data?.message || "Withdrawal request failed");
+    }
 
     return {
       success: true,
-      message: data?.message || "Withdrawal request submitted successfully",
+      message: data?.message || "Withdrawal request submitted for admin review",
     };
   } catch (error: any) {
     console.error("Error creating withdrawal request:", error);
