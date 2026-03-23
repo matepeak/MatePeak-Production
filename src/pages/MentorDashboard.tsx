@@ -15,7 +15,7 @@ import ServicesManagement from "@/components/dashboard/ServicesManagement";
 import MentorPaymentsSetup from "@/components/dashboard/MentorPaymentsSetup";
 import MentorPayoutsDashboard from "@/components/dashboard/MentorPayoutsDashboard";
 import MentorEarnings from "@/components/dashboard/MentorEarnings";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 
 type DashboardView =
   | "overview"
@@ -34,7 +34,6 @@ type DashboardView =
 const MentorDashboard = () => {
   const navigate = useNavigate();
   const { username } = useParams<{ username: string }>();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<DashboardView>("overview");
   const [mentorProfile, setMentorProfile] = useState<any>(null);
@@ -53,10 +52,8 @@ const MentorDashboard = () => {
       } = await supabase.auth.getSession();
 
       if (authError || !session) {
-        toast({
-          title: "Authentication required",
+        toast.error("Authentication required", {
           description: "Please sign in to access the dashboard",
-          variant: "destructive",
         });
         navigate("/expert/login");
         return;
@@ -67,10 +64,8 @@ const MentorDashboard = () => {
         session.user.user_metadata?.role ||
         session.user.user_metadata?.user_type;
       if (userRole === "student") {
-        toast({
-          title: "Access denied",
+        toast.error("Access denied", {
           description: "This dashboard is for mentors only",
-          variant: "destructive",
         });
         navigate("/dashboard");
         return;
@@ -92,8 +87,7 @@ const MentorDashboard = () => {
 
       if (!profile) {
         // Profile doesn't exist, redirect to onboarding
-        toast({
-          title: "Complete your profile",
+        toast.info("Complete your profile", {
           description: "Please complete the onboarding process first",
         });
         navigate("/expert/onboarding");
@@ -122,10 +116,8 @@ const MentorDashboard = () => {
 
       // Security check: Verify the username in URL matches the logged-in user's profile
       if (username && profileWithEmail.username !== username) {
-        toast({
-          title: "Access Denied",
+        toast.error("Access Denied", {
           description: "You can only access your own dashboard",
-          variant: "destructive",
         });
         // Redirect to their own dashboard
         navigate(`/dashboard/${profileWithEmail.username}`, { replace: true });
@@ -135,10 +127,8 @@ const MentorDashboard = () => {
       setMentorProfile(profileWithEmail);
     } catch (error) {
       console.error("Error loading dashboard:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to load dashboard. Please try again.",
-        variant: "destructive",
       });
       navigate("/");
     } finally {

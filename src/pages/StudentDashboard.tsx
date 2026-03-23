@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from "@/components/ui/sonner";
 import StudentDashboardLayout from '@/components/dashboard/student/StudentDashboardLayout';
 import StudentOverview from '@/components/dashboard/student/StudentOverview';
 import MySessions from '@/components/dashboard/student/MySessions';

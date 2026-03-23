@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { MessageSquare, Search, Loader2, RefreshCw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +18,6 @@ interface StudentPriorityDmInboxProps {
 }
 
 export default function StudentPriorityDmInbox({ studentProfile }: StudentPriorityDmInboxProps) {
-  const { toast } = useToast();
   const [threads, setThreads] = useState<PriorityDmThread[]>([]);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -47,10 +46,8 @@ export default function StudentPriorityDmInbox({ studentProfile }: StudentPriori
       }
     } catch (error: any) {
       console.error("Error loading requester priority DMs:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: error.message || "Failed to load messages",
-        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -118,18 +115,15 @@ export default function StudentPriorityDmInbox({ studentProfile }: StudentPriori
         throw new Error(result.error || "Failed to mark message as read");
       }
 
-      toast({
-        title: "Marked as read",
+      toast.success("Marked as read", {
         description: "This message will be auto-deleted after 24 hours.",
       });
 
       await loadThreads(true);
     } catch (error: any) {
       console.error("Error marking message as read:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: error.message || "Failed to mark message as read",
-        variant: "destructive",
       });
     } finally {
       setMarkingRead(false);

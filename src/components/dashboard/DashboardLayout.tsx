@@ -36,7 +36,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { NotificationBell } from "./NotificationBell";
 
 type DashboardView =
@@ -72,7 +72,6 @@ const DashboardLayout = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   // Grouped navigation structure for better organization
   const navigationGroups = [
@@ -197,17 +196,12 @@ const DashboardLayout = ({
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
 
-      toast({
-        title: "Signed out successfully",
-        description: "You have been signed out of your account",
-      });
+      toast.success("Signed out successfully");
       navigate("/");
     } catch (error) {
       console.error("Error signing out:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to sign out. Please try again.",
-        variant: "destructive",
       });
     }
   };

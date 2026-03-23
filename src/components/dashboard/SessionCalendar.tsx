@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -29,7 +29,6 @@ interface Session {
 }
 
 const SessionCalendar = ({ mentorProfile }: SessionCalendarProps) => {
-  const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,10 +63,8 @@ const SessionCalendar = ({ mentorProfile }: SessionCalendarProps) => {
       setSessions(data || []);
     } catch (error: any) {
       console.error("Error fetching sessions:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to load sessions",
-        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -178,8 +175,7 @@ const SessionCalendar = ({ mentorProfile }: SessionCalendarProps) => {
     a.click();
     window.URL.revokeObjectURL(url);
 
-    toast({
-      title: "Success",
+    toast.success("Calendar file downloaded.", {
       description: "Calendar file downloaded. Import it to Google Calendar.",
     });
   };
