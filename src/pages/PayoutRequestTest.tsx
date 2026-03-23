@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import {
   addTestWalletCredit,
+  getMentorPayouts,
   getMentorPayoutProfile,
   getMentorWalletSummary,
   getWithdrawalRequests,
@@ -25,26 +26,30 @@ const PayoutRequestTest = () => {
   const [wallet, setWallet] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [requests, setRequests] = useState<any[]>([]);
+  const [payouts, setPayouts] = useState<any[]>([]);
   const [lastResult, setLastResult] = useState<any>(null);
   const [userEmail, setUserEmail] = useState<string>("");
   const [crediting, setCrediting] = useState(false);
+  const [smokeTesting, setSmokeTesting] = useState(false);
 
   const amountNumber = useMemo(() => Number(amount || 0), [amount]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [{ data: authData }, walletData, profileData, requestData] = await Promise.all([
+      const [{ data: authData }, walletData, profileData, requestData, payoutData] = await Promise.all([
         supabase.auth.getUser(),
         getMentorWalletSummary(),
         getMentorPayoutProfile(),
         getWithdrawalRequests(15),
+        getMentorPayouts(15),
       ]);
 
       setUserEmail(authData.user?.email || "");
       setWallet(walletData);
       setProfile(profileData);
       setRequests(requestData || []);
+      setPayouts(payoutData || []);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to load payout test data";
       toast.error(message);
@@ -94,6 +99,34 @@ const PayoutRequestTest = () => {
     }
   };
 
+  const handleRunSmokeTest = async () => {
+    setSmokeTesting(true);
+    try {
+      const creditResult = await addTestWalletCredit();
+      const withdrawResult = await requestWithdrawal(1, `Smoke test ${new Date().toISOString()}`, true);
+      setLastResult({
+        success: true,
+        action: "smoke_test",
+        steps: {
+          credit: creditResult,
+          withdraw: withdrawResult,
+        },
+      });
+      toast.success("INR 1 payout smoke test submitted");
+      await loadData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Smoke test failed";
+      setLastResult({
+        success: false,
+        action: "smoke_test",
+        error: message,
+      });
+      toast.error(message);
+    } finally {
+      setSmokeTesting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 space-y-6">
@@ -114,6 +147,12 @@ const PayoutRequestTest = () => {
               disabled={loading || submitting || crediting || !userEmail}
             >
               {crediting ? "Adding..." : "Add INR 1 Test Credit"}
+            </Button>
+            <Button
+              onClick={handleRunSmokeTest}
+              disabled={loading || submitting || crediting || smokeTesting || !userEmail}
+            >
+              {smokeTesting ? "Running..." : "Run INR 1 Smoke Test"}
             </Button>
             <Button asChild variant="secondary">
               <Link to="/mentor/dashboard">Back to Mentor Dashboard</Link>
@@ -254,6 +293,37 @@ const PayoutRequestTest = () => {
                       <Badge variant="outline">{item.status}</Badge>
                       {item.transaction_id ? <Badge>{item.transaction_id}</Badge> : null}
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Payout Logs</CardTitle>
+            <CardDescription>
+              Compact provider-side payout status and failure reasons for quick debugging.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            ) : payouts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No payout logs yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {payouts.map((item) => (
+                  <div key={item.id} className="border rounded-md p-3 text-sm space-y-1">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <p className="font-medium">{item.id}</p>
+                      <Badge variant={item.status === "success" ? "default" : "outline"}>{item.status}</Badge>
+                    </div>
+                    <p className="text-muted-foreground">Created: {new Date(item.created_at).toLocaleString()}</p>
+                    <p>Amount: INR {Number(item.amount || 0).toFixed(2)}</p>
+                    <p>Provider Payout ID: {item.provider_payout_id || "-"}</p>
+                    <p className="text-red-600">Error: {item.failure_reason || "-"}</p>
                   </div>
                 ))}
               </div>

@@ -242,19 +242,96 @@ export async function getPendingMentorVerifications() {
 
 export async function getPendingWithdrawals() {
   try {
-    const { data, error } = await supabase
+    const { data: withdrawals, error } = await supabase
       .from('withdrawal_requests')
-      .select(`
-        *,
-        profiles!withdrawal_requests_mentor_id_fkey (
-          email,
-          full_name
-        )
-      `)
-      .eq('status', 'pending')
+      .select('*')
       .order('requested_at', { ascending: false });
 
     if (error) throw error;
+
+    const mentorIds = Array.from(
+      new Set((withdrawals || []).map((item: any) => item.mentor_id).filter(Boolean)),
+    );
+
+    let profilesById = new Map<string, { email: string | null; full_name: string | null }>();
+    let payoutAccountsByMentorId = new Map<string, any>();
+    let legacyPayoutProfilesByMentorId = new Map<string, any>();
+    let paymentProfilesByMentorId = new Map<string, any>();
+    if (mentorIds.length > 0) {
+      const { data: profileRows, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id,email,full_name')
+        .in('id', mentorIds);
+
+      if (profilesError) throw profilesError;
+
+      const { data: payoutRows, error: payoutError } = await supabase
+        .from('mentor_payout_accounts')
+        .select('mentor_id,payout_method,account_holder_name,account_number,ifsc_code,bank_name,upi_id,is_active,updated_at')
+        .in('mentor_id', mentorIds)
+        .eq('is_active', true)
+        .order('updated_at', { ascending: false });
+
+      const payoutRowsSafe = payoutError ? [] : payoutRows || [];
+
+      const { data: legacyPayoutRows, error: legacyPayoutError } = await supabase
+        .from('mentor_payout_profiles')
+        .select('mentor_id,payout_method,account_holder_name,account_number,ifsc_code,upi_id,is_active,updated_at')
+        .in('mentor_id', mentorIds)
+        .eq('is_active', true)
+        .order('updated_at', { ascending: false });
+
+      const legacyPayoutRowsSafe = legacyPayoutError ? [] : legacyPayoutRows || [];
+
+      const { data: paymentProfileRows, error: paymentProfileError } = await supabase
+        .from('mentor_payment_profiles')
+        .select('mentor_id,payout_method,account_holder_name,account_number,ifsc_code,upi_id,is_active,updated_at')
+        .in('mentor_id', mentorIds)
+        .eq('is_active', true)
+        .order('updated_at', { ascending: false });
+
+      const paymentProfileRowsSafe = paymentProfileError ? [] : paymentProfileRows || [];
+
+      profilesById = new Map(
+        (profileRows || []).map((profile: any) => [
+          profile.id,
+          {
+            email: profile.email || null,
+            full_name: profile.full_name || null,
+          },
+        ]),
+      );
+
+      for (const payoutRow of payoutRowsSafe) {
+        if (!payoutAccountsByMentorId.has(payoutRow.mentor_id)) {
+          payoutAccountsByMentorId.set(payoutRow.mentor_id, payoutRow);
+        }
+      }
+
+      for (const legacyPayoutRow of legacyPayoutRowsSafe) {
+        if (!legacyPayoutProfilesByMentorId.has(legacyPayoutRow.mentor_id)) {
+          legacyPayoutProfilesByMentorId.set(legacyPayoutRow.mentor_id, legacyPayoutRow);
+        }
+      }
+
+      for (const paymentProfileRow of paymentProfileRowsSafe) {
+        if (!paymentProfilesByMentorId.has(paymentProfileRow.mentor_id)) {
+          paymentProfilesByMentorId.set(paymentProfileRow.mentor_id, paymentProfileRow);
+        }
+      }
+    }
+
+    const data = (withdrawals || []).map((withdrawal: any) => ({
+      ...withdrawal,
+      profiles: profilesById.get(withdrawal.mentor_id) || {
+        email: null,
+        full_name: null,
+      },
+      payout_account: payoutAccountsByMentorId.get(withdrawal.mentor_id) || null,
+      payout_profile: legacyPayoutProfilesByMentorId.get(withdrawal.mentor_id) || null,
+      payment_profile: paymentProfilesByMentorId.get(withdrawal.mentor_id) || null,
+    }));
+
     return { data, error: null };
   } catch (error: any) {
     console.error('Error fetching pending withdrawals:', error);

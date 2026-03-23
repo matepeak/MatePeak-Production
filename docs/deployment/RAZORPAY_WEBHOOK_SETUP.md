@@ -12,6 +12,10 @@ Run from workspace root:
 
 ```bash
 npx supabase secrets set --project-ref hnevrdlcqhmsfubakljg RAZORPAY_WEBHOOK_SECRET=your_webhook_secret_here
+npx supabase secrets set --project-ref hnevrdlcqhmsfubakljg RAZORPAYX_KEY_ID=your_razorpayx_key_id
+npx supabase secrets set --project-ref hnevrdlcqhmsfubakljg RAZORPAYX_KEY_SECRET=your_razorpayx_key_secret
+npx supabase secrets set --project-ref hnevrdlcqhmsfubakljg RAZORPAYX_ACCOUNT_NUMBER=your_razorpayx_source_account_number
+npx supabase secrets set --project-ref hnevrdlcqhmsfubakljg PAYOUT_RECONCILE_SECRET=your_long_random_secret
 ```
 
 Keep this secret identical to Razorpay Dashboard webhook secret.
@@ -20,6 +24,7 @@ Keep this secret identical to Razorpay Dashboard webhook secret.
 
 ```bash
 npx supabase functions deploy razorpay-payout-webhook --project-ref hnevrdlcqhmsfubakljg
+npx supabase functions deploy reconcile-mentor-payouts --project-ref hnevrdlcqhmsfubakljg
 ```
 
 Endpoint URL after deploy:
@@ -40,6 +45,12 @@ In Razorpay Dashboard:
    - `payout.rejected`
    - `payout.reversed`
    - Optional: `payout.pending`, `payout.queued`, `payout.initiated`, `payout.processing`
+
+Also ensure in RazorpayX dashboard:
+
+1. The source account number matches `RAZORPAYX_ACCOUNT_NUMBER`.
+2. API keys used are RazorpayX-enabled and have payout permissions.
+3. Fund account validations are enabled for your account if using bank verification flows.
 
 ## 4) How event mapping works
 
@@ -62,7 +73,30 @@ Lookup strategy:
    - `withdrawal_requests.status`
    - `withdrawal_requests.transaction_id`
 
-## 6) Troubleshooting
+## 6) Reconciliation setup (recommended)
+
+Webhook delivery can occasionally be delayed or fail. Deploy and schedule `reconcile-mentor-payouts` to settle stuck `processing` payouts.
+
+Manual run example:
+
+```bash
+curl -X POST "https://hnevrdlcqhmsfubakljg.supabase.co/functions/v1/reconcile-mentor-payouts" \
+   -H "Content-Type: application/json" \
+   -H "x-reconcile-secret: your_long_random_secret" \
+   -d '{"limit": 50, "older_than_minutes": 2}'
+```
+
+Recommended schedule: every 5-10 minutes.
+
+GitHub Actions option (already added in repo):
+
+- Workflow: `.github/workflows/payout-reconcile.yml`
+- Add repository secrets:
+   - `SUPABASE_PROJECT_REF` (for example: `hnevrdlcqhmsfubakljg`)
+   - `PAYOUT_RECONCILE_SECRET` (must match Supabase Edge Function secret)
+- Frequency: every 10 minutes (can be adjusted in cron).
+
+## 7) Troubleshooting
 
 - `401 Invalid webhook signature`:
   - Secret mismatch between Razorpay and Supabase.
@@ -70,3 +104,7 @@ Lookup strategy:
   - Event arrived before payout row was updated with provider id, or `reference_id` did not match payout UUID.
 - `500` from RPC:
   - Verify migration `20260319003000_mentor_payout_wallet_system.sql` applied and RPCs exist.
+- Withdrawals remain open in admin panel:
+   - Apply migration `20260322113000_unify_admin_withdrawal_settlement.sql`.
+- Verification works but payouts queue as manual:
+   - Verify `RAZORPAYX_ACCOUNT_NUMBER`, `RAZORPAYX_KEY_ID`, `RAZORPAYX_KEY_SECRET` are set for functions.

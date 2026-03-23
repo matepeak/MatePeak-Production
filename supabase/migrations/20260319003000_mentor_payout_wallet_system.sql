@@ -626,7 +626,7 @@ ON public.mentor_payouts FOR SELECT
 USING (is_admin(auth.uid()));
 
 -- 13) Grants
-GRANT EXECUTE ON FUNCTION public.upsert_mentor_payout_profile(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, BOOLEAN) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.upsert_mentor_payout_profile(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, BOOLEAN) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.apply_mentor_earning_for_booking(UUID, NUMERIC) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.request_mentor_withdrawal(NUMERIC, TEXT) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.mark_mentor_payout_success(UUID, TEXT, JSONB) TO authenticated, service_role;
