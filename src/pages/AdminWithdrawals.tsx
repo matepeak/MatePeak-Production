@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, DollarSign, Check, X, Calendar, User, CreditCard } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface WithdrawalRequest {
@@ -51,7 +51,6 @@ type StatusFilter = 'pending' | 'approved' | 'rejected';
 
 const AdminWithdrawals = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalRequest | null>(null);
@@ -87,11 +86,7 @@ const AdminWithdrawals = () => {
     const { data, error } = await getPendingWithdrawals();
     
     if (error) {
-      toast({
-        title: 'Error',
-        description: error?.message || 'Failed to load pending withdrawals',
-        variant: 'destructive'
-      });
+      toast.error('Failed to load pending withdrawals');
     } else {
       setWithdrawals(data || []);
     }
@@ -109,31 +104,20 @@ const AdminWithdrawals = () => {
     );
     
     if (result.success) {
-      toast({
-        title: 'Success',
-        description: 'Withdrawal approved successfully',
-      });
+      toast.success('Withdrawal approved successfully');
       setShowApproveDialog(false);
       setTransactionRef('');
       setNotes('');
       loadPendingWithdrawals();
     } else {
-      toast({
-        title: 'Error',
-        description: result.error || 'Failed to approve withdrawal',
-        variant: 'destructive'
-      });
+      toast.error(result.error || 'Failed to approve withdrawal');
     }
     setProcessing(false);
   };
 
   const handleReject = async () => {
     if (!selectedWithdrawal || !rejectionReason.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please provide a rejection reason',
-        variant: 'destructive'
-      });
+      toast.error('Please provide a rejection reason');
       return;
     }
     
@@ -141,19 +125,12 @@ const AdminWithdrawals = () => {
     const result = await rejectWithdrawal(selectedWithdrawal.id, rejectionReason);
     
     if (result.success) {
-      toast({
-        title: 'Success',
-        description: 'Withdrawal rejected and funds restored to wallet',
-      });
+      toast.success('Withdrawal rejected and funds restored to wallet');
       setShowRejectDialog(false);
       setRejectionReason('');
       loadPendingWithdrawals();
     } else {
-      toast({
-        title: 'Error',
-        description: result.error || 'Failed to reject withdrawal',
-        variant: 'destructive'
-      });
+      toast.error(result.error || 'Failed to reject withdrawal');
     }
     setProcessing(false);
   };

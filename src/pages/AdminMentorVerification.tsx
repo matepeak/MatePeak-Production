@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, Check, X, Eye, FileText, Award, Calendar, Mail, User, GraduationCap, Globe, Languages as LanguagesIcon, Banknote, Shield } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -45,7 +45,6 @@ interface MentorProfile {
 
 const AdminMentorVerification = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [mentors, setMentors] = useState<MentorProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMentor, setSelectedMentor] = useState<MentorProfile | null>(null);
@@ -64,11 +63,7 @@ const AdminMentorVerification = () => {
     const { data, error } = await getPendingMentorVerifications();
     
     if (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load pending verifications',
-        variant: 'destructive'
-      });
+      toast.error('Failed to load pending verifications');
     } else {
       setMentors(data || []);
     }
@@ -82,30 +77,19 @@ const AdminMentorVerification = () => {
     const result = await verifyMentor(selectedMentor.id, notes);
     
     if (result.success) {
-      toast({
-        title: 'Success',
-        description: 'Mentor verified successfully',
-      });
+      toast.success('Mentor verified successfully');
       setShowVerifyDialog(false);
       setNotes('');
       loadPendingMentors();
     } else {
-      toast({
-        title: 'Error',
-        description: result.error || 'Failed to verify mentor',
-        variant: 'destructive'
-      });
+      toast.error(result.error || 'Failed to verify mentor');
     }
     setProcessing(false);
   };
 
   const handleReject = async () => {
     if (!selectedMentor || !rejectionReason.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please provide a rejection reason',
-        variant: 'destructive'
-      });
+      toast.error('Please provide a rejection reason');
       return;
     }
     
@@ -113,19 +97,12 @@ const AdminMentorVerification = () => {
     const result = await rejectMentor(selectedMentor.id, rejectionReason);
     
     if (result.success) {
-      toast({
-        title: 'Success',
-        description: 'Mentor verification rejected',
-      });
+      toast.success('Mentor verification rejected');
       setShowRejectDialog(false);
       setRejectionReason('');
       loadPendingMentors();
     } else {
-      toast({
-        title: 'Error',
-        description: result.error || 'Failed to reject mentor',
-        variant: 'destructive'
-      });
+      toast.error(result.error || 'Failed to reject mentor');
     }
     setProcessing(false);
   };

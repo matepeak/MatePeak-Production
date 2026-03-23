@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import {
   Star,
   MessageSquare,
@@ -44,7 +44,6 @@ interface Review {
 type RatingFilter = "all" | "5" | "4" | "3" | "2" | "1";
 
 const ReviewsManagement = ({ mentorProfile }: ReviewsManagementProps) => {
-  const { toast } = useToast();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<RatingFilter>("all");
@@ -109,10 +108,8 @@ const ReviewsManagement = ({ mentorProfile }: ReviewsManagementProps) => {
       setReviews(reviewsWithProfiles as Review[]);
     } catch (error: any) {
       console.error("Error fetching reviews:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to load reviews",
-        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -121,10 +118,8 @@ const ReviewsManagement = ({ mentorProfile }: ReviewsManagementProps) => {
 
   const handleReplySubmit = async (reviewId: string) => {
     if (!replyText.trim()) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Please enter a reply",
-        variant: "destructive",
       });
       return;
     }
@@ -141,20 +136,15 @@ const ReviewsManagement = ({ mentorProfile }: ReviewsManagementProps) => {
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Reply posted successfully",
-      });
+      toast.success("Reply posted successfully");
 
       setReplyingTo(null);
       setReplyText("");
       fetchReviews();
     } catch (error: any) {
       console.error("Error posting reply:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to post reply",
-        variant: "destructive",
       });
     } finally {
       setSubmitting(false);
@@ -186,10 +176,7 @@ const ReviewsManagement = ({ mentorProfile }: ReviewsManagementProps) => {
     a.click();
     window.URL.revokeObjectURL(url);
 
-    toast({
-      title: "Success",
-      description: "Reviews exported successfully",
-    });
+    toast.success("Reviews exported successfully");
   };
 
   const filteredReviews = reviews.filter((review) => {

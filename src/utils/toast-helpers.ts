@@ -27,8 +27,7 @@ interface ToastOptions {
  */
 export const showSuccessToast = (message: string, options?: ToastOptions) => {
   return toast.success(message, {
-    description: options?.description,
-    duration: options?.duration || 10000,
+    duration: options?.duration,
     action: options?.action,
   });
 };
@@ -39,7 +38,7 @@ export const showSuccessToast = (message: string, options?: ToastOptions) => {
 export const showErrorToast = (message: string, options?: ToastOptions) => {
   return toast.error(message, {
     description: options?.description,
-    duration: options?.duration || 10000,
+    duration: options?.duration,
     action: options?.action,
   });
 };
@@ -50,7 +49,7 @@ export const showErrorToast = (message: string, options?: ToastOptions) => {
 export const showWarningToast = (message: string, options?: ToastOptions) => {
   return toast.warning(message, {
     description: options?.description,
-    duration: options?.duration || 10000,
+    duration: options?.duration,
     action: options?.action,
   });
 };
@@ -61,7 +60,7 @@ export const showWarningToast = (message: string, options?: ToastOptions) => {
 export const showInfoToast = (message: string, options?: ToastOptions) => {
   return toast.info(message, {
     description: options?.description,
-    duration: options?.duration || 10000,
+    duration: options?.duration,
     action: options?.action,
   });
 };
@@ -108,7 +107,7 @@ export const showPromiseToast = <T>(
 export const showCustomToast = (message: string, options?: ToastOptions) => {
   return toast(message, {
     description: options?.description,
-    duration: options?.duration || 10000,
+    duration: options?.duration,
     action: options?.action,
   });
 };

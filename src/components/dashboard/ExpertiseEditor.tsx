@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Loader2, Save, Check, Tag, Briefcase, GraduationCap, Heart, Code, BookOpen, Palette, TrendingUp, Users } from "lucide-react";
@@ -133,7 +133,6 @@ const ExpertiseEditor = ({
   onCancelEdit,
   onSaveSuccess,
 }: ExpertiseEditorProps) => {
-  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
 
@@ -233,10 +232,8 @@ const ExpertiseEditor = ({
     }
 
     if (selectedCategories.length === 0) {
-      toast({
-        title: "Expertise required",
+      toast.error("Expertise required", {
         description: "Please select at least one area of expertise",
-        variant: "destructive",
       });
       return;
     }
@@ -267,16 +264,11 @@ const ExpertiseEditor = ({
       setSelectedTags(nextTags);
       onSaveSuccess();
 
-      toast({
-        title: "Expertise updated",
-        description: "Your areas of expertise have been updated successfully",
-      });
+      toast.success("Expertise updated");
     } catch (error: any) {
       console.error("Error updating expertise:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: error.message || "Failed to update expertise. Please try again.",
-        variant: "destructive",
       });
     } finally {
       setLoading(false);

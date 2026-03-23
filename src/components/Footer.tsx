@@ -54,7 +54,7 @@ const Footer = () => {
     { label: "Explore", to: "/explore" },
     { label: "How It Works", to: "/how-it-works" },
     { label: "About", to: "/about-us" },
-    { label: "Support", href: "mailto:support@matepeak.com" },
+    { label: "Support", to: "/support" },
   ];
 
   const utilityLinks = [
@@ -80,25 +80,15 @@ const Footer = () => {
               </Link>
 
               <nav className="flex flex-wrap items-center gap-x-8 gap-y-4 text-[15px] font-semibold text-gray-900 lg:justify-center">
-                {footerLinks.map((item) =>
-                  item.to ? (
-                    <Link
-                      key={item.label}
-                      to={item.to}
-                      className="hover:text-matepeak-primary transition-colors"
-                    >
-                      {item.label}
-                    </Link>
-                  ) : (
-                    <a
-                      key={item.label}
-                      href={item.href}
-                      className="hover:text-matepeak-primary transition-colors"
-                    >
-                      {item.label}
-                    </a>
-                  )
-                )}
+                {footerLinks.map((item) => (
+                  <Link
+                    key={item.label}
+                    to={item.to}
+                    className="hover:text-matepeak-primary transition-colors"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
               </nav>
 
               <div className="flex items-center gap-1 lg:justify-end">
@@ -144,12 +134,12 @@ const Footer = () => {
             <div className="flex flex-col gap-5 border-t border-black/5 pt-6 text-sm text-gray-600 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
                 <span>© {new Date().getFullYear()} MatePeak</span>
-                <a
-                  href="mailto:support@matepeak.com"
+                <Link
+                  to="/support"
                   className="hover:text-matepeak-primary transition-colors"
                 >
                   Support
-                </a>
+                </Link>
               </div>
 
               <div className="flex flex-wrap items-center gap-x-6 gap-y-3 lg:justify-end">

@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { MessageSquare, Send, Loader2, Search, RefreshCw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +18,6 @@ interface MessagingProps {
 }
 
 const MentorPriorityDmInbox = ({ mentorProfile }: MessagingProps) => {
-  const { toast } = useToast();
   const [threads, setThreads] = useState<PriorityDmThread[]>([]);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
@@ -48,10 +47,8 @@ const MentorPriorityDmInbox = ({ mentorProfile }: MessagingProps) => {
       }
     } catch (error: any) {
       console.error("Error loading priority DMs:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: error.message || "Failed to load priority messages",
-        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -121,18 +118,15 @@ const MentorPriorityDmInbox = ({ mentorProfile }: MessagingProps) => {
       }
 
       setReplyText("");
-      toast({
-        title: "Reply sent",
+      toast.success("Reply sent", {
         description: "Your priority reply has been delivered.",
       });
 
       await loadPendingThreads(true);
     } catch (error: any) {
       console.error("Error replying to priority DM:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: error.message || "Failed to send reply",
-        variant: "destructive",
       });
     } finally {
       setSending(false);

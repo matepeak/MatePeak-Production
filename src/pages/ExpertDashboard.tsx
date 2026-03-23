@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Search, Calendar, Clock, Users, UserCircle, Gift, LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 export default function ExpertDashboard() {
   const navigate = useNavigate();

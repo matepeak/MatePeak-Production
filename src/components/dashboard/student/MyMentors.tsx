@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { 
   Star, 
-  MessageSquare, 
   Calendar,
   Search,
   MapPin,
@@ -15,7 +14,7 @@ import {
   Users
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { toast } from "@/components/ui/sonner";
 import { useMentorPresenceMap } from '@/hooks/useMentorPresence';
 import PresenceDot from '@/components/PresenceDot';
 
@@ -54,7 +53,7 @@ export default function MyMentors({ studentProfile }: MyMentorsProps) {
             last_seen
           )
         `)
-        .eq('student_id', user.id);
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
@@ -74,15 +73,15 @@ export default function MyMentors({ studentProfile }: MyMentorsProps) {
           const { count: totalSessions } = await supabase
             .from('bookings')
             .select('*', { count: 'exact', head: true })
-            .eq('student_id', user.id)
+            .eq('user_id', user.id)
             .eq('expert_id', mentor.id);
 
           const { count: upcomingSessions } = await supabase
             .from('bookings')
             .select('*', { count: 'exact', head: true })
-            .eq('student_id', user.id)
+            .eq('user_id', user.id)
             .eq('expert_id', mentor.id)
-            .gte('session_date', new Date().toISOString())
+            .gte('scheduled_date', new Date().toISOString().split('T')[0])
             .neq('status', 'cancelled');
 
           const { data: reviews } = await supabase
@@ -248,7 +247,7 @@ export default function MyMentors({ studentProfile }: MyMentorsProps) {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2">
                   <Button 
                     variant="outline" 
                     size="sm"
@@ -257,14 +256,6 @@ export default function MyMentors({ studentProfile }: MyMentorsProps) {
                   >
                     <Calendar className="h-4 w-4" />
                     Book Again
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="flex items-center gap-1"
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                    Message
                   </Button>
                 </div>
               </CardContent>

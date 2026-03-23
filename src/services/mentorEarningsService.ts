@@ -68,6 +68,21 @@ const parseAmount = (value: unknown): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const NON_BLOCKING_VERIFICATION_MESSAGE =
+  "Payout details are saved. Automatic verification is temporarily unavailable, but you can still request withdrawals for admin review.";
+
+const isNonBlockingVerificationError = (message: string): boolean => {
+  return /access to requested resource not available|edge function returned a non-2xx status code|failed to send a request to the edge function|network request failed|razorpay credentials are not configured|missing razorpayx_account_number/i.test(
+    message
+  );
+};
+
+const normalizeVerificationMessage = (message: string): string => {
+  return isNonBlockingVerificationError(message)
+    ? NON_BLOCKING_VERIFICATION_MESSAGE
+    : message;
+};
+
 export async function getMentorEarningsSnapshot(
   mentorId: string
 ): Promise<{ success: boolean; data?: EarningsSnapshot; error?: string }> {
@@ -177,21 +192,36 @@ export async function saveAndVerifyPayoutAccount(
     });
 
     const verificationResponse = data || {};
+    let edgeErrorMessage = "";
+
+    if (error) {
+      const context = (error as any)?.context;
+      if (context && typeof context.json === "function") {
+        try {
+          const payload = await context.json();
+          edgeErrorMessage = String(payload?.error || payload?.message || "").trim();
+        } catch {
+          // Ignore payload parsing issues and use generic error message fallback.
+        }
+      }
+    }
 
     if (error || !verificationResponse?.success) {
       const rawFailureMessage =
         verificationResponse?.message ||
+        edgeErrorMessage ||
         error?.message ||
         "Verification failed. Details are saved but remain unverified.";
 
-      const failureMessage = /access to requested resource not available/i.test(rawFailureMessage)
-        ? "Automatic payout verification is temporarily unavailable. Details are saved and can be used for manual admin-reviewed withdrawals."
-        : rawFailureMessage;
+      const failureMessage = normalizeVerificationMessage(rawFailureMessage);
+      const failureStatus: VerificationStatus = isNonBlockingVerificationError(rawFailureMessage)
+        ? "pending"
+        : "failed";
 
       const { error: updateError } = await supabase
         .from("mentor_payout_accounts")
         .update({
-          verification_status: "failed",
+          verification_status: failureStatus,
           verification_message: failureMessage,
           verification_reference: verificationResponse?.reference_id || null,
           verified_at: null,
@@ -209,21 +239,28 @@ export async function saveAndVerifyPayoutAccount(
     }
 
     const verified = Boolean(verificationResponse?.verified);
-    const finalStatus = normalizeVerificationStatus(
+    const resolvedStatus = normalizeVerificationStatus(
       verificationResponse?.verification_status ?? (verified ? "verified" : "failed")
     );
+    const rawMessage =
+      verificationResponse?.message ||
+      (resolvedStatus === "verified"
+        ? "Payout account verified successfully"
+        : resolvedStatus === "pending"
+          ? "Verification is in progress."
+          : "Verification failed. Details are saved but remain unverified.");
+
+    const finalMessage = normalizeVerificationMessage(rawMessage);
+    const finalStatus: VerificationStatus =
+      resolvedStatus === "failed" && isNonBlockingVerificationError(rawMessage)
+        ? "pending"
+        : resolvedStatus;
 
     const { error: updateError } = await supabase
       .from("mentor_payout_accounts")
       .update({
         verification_status: finalStatus,
-        verification_message:
-          verificationResponse?.message ||
-          (finalStatus === "verified"
-            ? "Payout account verified successfully"
-            : finalStatus === "pending"
-              ? "Verification is in progress."
-              : "Verification failed. Details are saved but remain unverified."),
+        verification_message: finalMessage,
         verification_reference: verificationResponse?.reference_id || null,
         verified_at: finalStatus === "verified" ? new Date().toISOString() : null,
         last_verified_at: new Date().toISOString(),
@@ -235,13 +272,7 @@ export async function saveAndVerifyPayoutAccount(
     return {
       success: true,
       verified: finalStatus === "verified",
-      message:
-        verificationResponse?.message ||
-        (finalStatus === "verified"
-          ? "Payout account verified successfully"
-          : finalStatus === "pending"
-            ? "Verification is in progress."
-            : "Verification failed. Details are saved but remain unverified."),
+      message: finalMessage,
     };
   } catch (error: any) {
     console.error("Error saving payout account:", error);

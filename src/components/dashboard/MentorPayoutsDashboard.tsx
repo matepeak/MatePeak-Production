@@ -10,7 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import {
   getMentorWalletSummary,
   getMentorEarnings,
@@ -40,7 +40,6 @@ const getPayoutAmount = (earning: any) => {
 };
 
 const MentorPayoutsDashboard = () => {
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [withdrawing, setWithdrawing] = useState(false);
 
@@ -79,10 +78,8 @@ const MentorPayoutsDashboard = () => {
       setWithdrawals(withdrawalRows);
     } catch (error) {
       console.error("Failed to load payout dashboard", error);
-      toast({
-        title: "Failed to load payouts",
+      toast.error("Failed to load payouts", {
         description: "Please refresh the page.",
-        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -97,10 +94,8 @@ const MentorPayoutsDashboard = () => {
   const submitWithdrawal = async () => {
     const amount = Number(withdrawAmount);
     if (!amount || amount <= 0) {
-      toast({
-        title: "Invalid amount",
+      toast.error("Invalid amount", {
         description: "Enter a valid withdrawal amount.",
-        variant: "destructive",
       });
       return;
     }
@@ -108,18 +103,15 @@ const MentorPayoutsDashboard = () => {
     try {
       setWithdrawing(true);
       const response = await requestWithdrawal(amount, withdrawNote);
-      toast({
-        title: "Withdrawal submitted",
-        description: response?.message || "Your payout request is now pending admin review.",
+      toast.success("Withdrawal submitted", {
+        description: response?.message || "Your payout request is being processed.",
       });
       setWithdrawAmount("");
       setWithdrawNote("");
       await loadData();
     } catch (error: any) {
-      toast({
-        title: "Withdrawal failed",
+      toast.error("Withdrawal failed", {
         description: error?.message || "Please try again.",
-        variant: "destructive",
       });
     } finally {
       setWithdrawing(false);

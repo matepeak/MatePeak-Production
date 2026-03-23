@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { Loader2, Wallet, Landmark, CircleCheck, CircleX, Clock3 } from "lucide-react";
 import {
   createWithdrawalRequest,
@@ -57,6 +57,22 @@ const BANK_OPTIONS = [
 
 const ACCOUNT_NUMBER_REGEX = /^\d{9,18}$/;
 const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+const UPI_REGEX = /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z]{2,64}$/;
+
+const sanitizeVerificationMessage = (message?: string | null): string => {
+  const raw = String(message || "").trim();
+  if (!raw) return "";
+
+  if (
+    /access to requested resource not available|edge function returned a non-2xx status code|failed to send a request to the edge function|network request failed|razorpay credentials are not configured|missing razorpayx_account_number/i.test(
+      raw
+    )
+  ) {
+    return "Payout details are saved. Automatic verification is temporarily unavailable, but you can still request withdrawals for admin review.";
+  }
+
+  return raw;
+};
 
 const statusMeta: Record<
   VerificationStatus,
@@ -85,7 +101,6 @@ const statusMeta: Record<
 };
 
 export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [savingDetails, setSavingDetails] = useState(false);
   const [requesting, setRequesting] = useState(false);
@@ -237,6 +252,9 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
     }
 
     if (!upiId.trim()) return "UPI ID is required";
+    if (!UPI_REGEX.test(upiId.trim())) {
+      return "Invalid UPI ID format (example: name@upi)";
+    }
     return null;
   };
 
@@ -391,7 +409,7 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
           </div>
 
           {!!snapshot?.payoutAccount?.verification_message && (
-            <p className="text-sm text-gray-600">{snapshot.payoutAccount.verification_message}</p>
+            <p className="text-sm text-gray-600">{sanitizeVerificationMessage(snapshot.payoutAccount.verification_message)}</p>
           )}
 
           <Tabs value={method} onValueChange={(value) => setMethod(value as PayoutMethod)}>

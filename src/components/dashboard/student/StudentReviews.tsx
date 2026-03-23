@@ -12,7 +12,7 @@ import {
   AlertCircle,
   CheckCircle,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { useNavigate } from "react-router-dom";
 import { validateReviewComment } from "@/utils/inputSanitization";
 

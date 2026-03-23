@@ -16,7 +16,7 @@ import {
   getWithdrawalRequests,
   requestWithdrawal,
 } from "@/services/mentorPayoutService";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 const PayoutRequestTest = () => {
   const [loading, setLoading] = useState(true);

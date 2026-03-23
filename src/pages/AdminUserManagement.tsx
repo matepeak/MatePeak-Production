@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, Ban, UserX, UserCheck, Search, Shield } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -25,7 +25,6 @@ interface UserProfile {
 
 const AdminUserManagement = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
@@ -45,11 +44,7 @@ const AdminUserManagement = () => {
     const { data, error } = await getSuspendedUsers();
     
     if (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load suspended users',
-        variant: 'destructive'
-      });
+      toast.error('Failed to load suspended users');
     } else {
       setUsers(data || []);
     }
@@ -73,22 +68,14 @@ const AdminUserManagement = () => {
       if (error) throw error;
       setSearchResults(data || []);
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: 'Failed to search users',
-        variant: 'destructive'
-      });
+      toast.error('Failed to search users');
     }
     setLoading(false);
   };
 
   const handleSuspend = async () => {
     if (!selectedUser || !suspensionReason.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please provide a suspension reason',
-        variant: 'destructive'
-      });
+      toast.error('Please provide a suspension reason');
       return;
     }
     
@@ -96,21 +83,14 @@ const AdminUserManagement = () => {
     const result = await suspendUser(selectedUser.id, suspensionReason);
     
     if (result.success) {
-      toast({
-        title: 'Success',
-        description: 'User suspended successfully',
-      });
+      toast.success('User suspended successfully');
       setShowSuspendDialog(false);
       setSuspensionReason('');
       setSearchQuery('');
       setSearchResults([]);
       loadSuspendedUsers();
     } else {
-      toast({
-        title: 'Error',
-        description: result.error || 'Failed to suspend user',
-        variant: 'destructive'
-      });
+      toast.error(result.error || 'Failed to suspend user');
     }
     setProcessing(false);
   };
@@ -122,18 +102,11 @@ const AdminUserManagement = () => {
     const result = await unsuspendUser(selectedUser.id);
     
     if (result.success) {
-      toast({
-        title: 'Success',
-        description: 'User unsuspended successfully',
-      });
+      toast.success('User unsuspended successfully');
       setShowUnsuspendDialog(false);
       loadSuspendedUsers();
     } else {
-      toast({
-        title: 'Error',
-        description: result.error || 'Failed to unsuspend user',
-        variant: 'destructive'
-      });
+      toast.error(result.error || 'Failed to unsuspend user');
     }
     setProcessing(false);
   };

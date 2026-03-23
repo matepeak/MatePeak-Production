@@ -3,12 +3,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { SERVICE_CONFIG } from "@/config/serviceConfig";
 import {
   Calendar,
   Clock,
   Eye,
+  Trash2,
   Search,
   ArrowUpDown,
   Download,
@@ -16,16 +17,11 @@ import {
   Users,
   ClockAlert,
   Filter,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Popover,
   PopoverContent,
@@ -60,16 +56,22 @@ type SortOption =
   | "amount-asc"
   | "status";
 type DateRange = "all" | "today" | "week" | "month";
+type SessionViewMode = "cards" | "list";
 const CANCELLATION_NOTE_MAX_LENGTH = 300;
+const MENTOR_SESSIONS_LAYOUT_KEY = "sessionsLayout:mentor";
 
 const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
-  const { toast } = useToast();
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<SessionStatus>("all");
   const [dateRange, setDateRange] = useState<DateRange>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("date-desc");
+  const [viewMode, setViewMode] = useState<SessionViewMode>(() => {
+    if (typeof window === "undefined") return "cards";
+    const saved = window.localStorage.getItem(MENTOR_SESSIONS_LAYOUT_KEY);
+    return saved === "list" || saved === "cards" ? saved : "cards";
+  });
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelDialog, setCancelDialog] = useState<{
     open: boolean;
@@ -82,6 +84,13 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
   });
   const [cancelNoteError, setCancelNoteError] = useState("");
   const [detailsModal, setDetailsModal] = useState<{
+    open: boolean;
+    session: any;
+  }>({
+    open: false,
+    session: null,
+  });
+  const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
     session: any;
   }>({
@@ -105,6 +114,25 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
       }
     }
     return session.status || "pending";
+  };
+
+  const getSessionStatusForUI = (session: any): string => {
+    const effectiveStatus = getEffectiveStatus(session);
+
+    if (effectiveStatus === "confirmed") {
+      try {
+        const sessionDate = new Date(
+          `${session.scheduled_date}T${session.scheduled_time}`
+        );
+        if (sessionDate > new Date()) {
+          return "pending";
+        }
+      } catch {
+        // Fall through to the original effective status
+      }
+    }
+
+    return effectiveStatus;
   };
 
   const toLocalDateString = (date: Date): string => {
@@ -162,6 +190,11 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
   useEffect(() => {
     fetchSessions();
   }, [mentorProfile, dateRange]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(MENTOR_SESSIONS_LAYOUT_KEY, viewMode);
+  }, [viewMode]);
 
   // Helper function to format session type display name
   const formatSessionType = (sessionType: string | null | undefined) => {
@@ -287,6 +320,8 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
     }
   };
 
+  const visibleSessions = sessions;
+
   // Calculate statistics using useMemo for performance - respecting date range filter
   const statistics = useMemo(() => {
     const now = new Date();
@@ -299,14 +334,14 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
     // Filter sessions by current date range first (for display in the list)
-    const dateFilteredSessions = sessions.filter((s) =>
+    const dateFilteredSessions = visibleSessions.filter((s) =>
       isWithinDateRange(s.scheduled_date, s.scheduled_time, dateRange)
     );
 
     const pending = dateFilteredSessions.filter(
       (s) => s.status === "pending"
     ).length;
-    const thisWeek = sessions.filter((s) => {
+    const thisWeek = visibleSessions.filter((s) => {
       try {
         const sessionDate = new Date(`${s.scheduled_date}T${s.scheduled_time}`);
         return sessionDate >= weekStart && sessionDate < weekEnd;
@@ -315,7 +350,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
       }
     }).length;
 
-    const thisMonth = sessions.filter((s) => {
+    const thisMonth = visibleSessions.filter((s) => {
       try {
         const sessionDate = new Date(`${s.scheduled_date}T${s.scheduled_time}`);
         return sessionDate >= monthStart && sessionDate <= monthEnd;
@@ -324,51 +359,53 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
       }
     }).length;
 
-    const upcoming = sessions.filter((s) => {
+    const hasUpcoming = visibleSessions.some((s) => {
       try {
         const sessionDate = new Date(`${s.scheduled_date}T${s.scheduled_time}`);
         return sessionDate > now && s.status === "confirmed";
       } catch {
         return false;
       }
-    }).length;
+    });
+
+    const upcoming = hasUpcoming ? 1 : 0;
 
     return {
-      total: sessions.length, // Total should always be ALL sessions
+      total: visibleSessions.length,
       pending,
       thisWeek,
       thisMonth,
       upcoming,
     };
-  }, [sessions, dateRange]);
+  }, [visibleSessions, dateRange]);
 
   // Get status counts for tab badges - respecting date range filter
   const statusCounts = useMemo(() => {
-    const dateFilteredSessions = sessions.filter((s) =>
+    const dateFilteredSessions = visibleSessions.filter((s) =>
       isWithinDateRange(s.scheduled_date, s.scheduled_time, dateRange)
     );
 
     return {
       all: dateFilteredSessions.length,
       pending: dateFilteredSessions.filter(
-        (s) => getEffectiveStatus(s) === "pending"
+        (s) => getSessionStatusForUI(s) === "pending"
       ).length,
       confirmed: dateFilteredSessions.filter(
-        (s) => getEffectiveStatus(s) === "confirmed"
+        (s) => getSessionStatusForUI(s) === "confirmed"
       ).length,
       completed: dateFilteredSessions.filter(
-        (s) => getEffectiveStatus(s) === "completed"
+        (s) => getSessionStatusForUI(s) === "completed"
       ).length,
       cancelled: dateFilteredSessions.filter(
-        (s) => getEffectiveStatus(s) === "cancelled"
+        (s) => getSessionStatusForUI(s) === "cancelled"
       ).length,
     };
-  }, [sessions, dateRange]);
+  }, [visibleSessions, dateRange]);
 
   // Get upcoming sessions (next 3) - respecting date range filter
   const upcomingSessions = useMemo(() => {
     const now = new Date();
-    return sessions
+    return visibleSessions
       .filter((s) => {
         try {
           const sessionDate = new Date(
@@ -389,8 +426,13 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
         const dateB = new Date(`${b.scheduled_date}T${b.scheduled_time}`);
         return dateA.getTime() - dateB.getTime();
       })
-      .slice(0, 3);
-  }, [sessions, dateRange]);
+      .slice(0, 1);
+  }, [visibleSessions, dateRange]);
+
+  const nextUpcomingSessionId = useMemo(
+    () => upcomingSessions[0]?.id ?? null,
+    [upcomingSessions]
+  );
 
   const fetchSessions = async () => {
     try {
@@ -405,6 +447,8 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
         .from("bookings")
         .select("*")
         .eq("expert_id", mentorProfile.id)
+        .eq("is_deleted", false)
+        .in("session_type", ["oneOnOneSession", "one-on-one", "oneonesession"])
         .in("status", ["confirmed", "completed", "cancelled"])
         .order("scheduled_date", { ascending: false })
         .limit(100);
@@ -430,7 +474,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
         const userIds = expertSessions.map((s) => s.user_id).filter(Boolean);
         const { data: studentsData } = await supabase
           .from("profiles")
-          .select("id, full_name, email, phone")
+          .select("id, full_name, email, avatar_url")
           .in("id", userIds);
 
         // Merge student data with sessions
@@ -439,6 +483,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
           student: studentsData?.find((s) => s.id === session.user_id),
           display_name:
             studentsData?.find((s) => s.id === session.user_id)?.full_name ||
+            session.user_name ||
             session.student_name ||
             "Student",
           display_email:
@@ -446,7 +491,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
             session.student_email ||
             "",
           display_phone:
-            studentsData?.find((s) => s.id === session.user_id)?.phone || "",
+            session.user_phone || "",
           user_role: "expert" as const,
         }));
       }
@@ -456,6 +501,8 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
         .from("bookings")
         .select("*")
         .eq("user_id", mentorProfile.id)
+        .eq("is_deleted", false)
+        .in("session_type", ["oneOnOneSession", "one-on-one", "oneonesession"])
         .in("status", ["confirmed", "completed", "cancelled"])
         .order("scheduled_date", { ascending: false })
         .limit(100);
@@ -481,7 +528,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
           .filter(Boolean);
         const { data: mentorsData } = await supabase
           .from("expert_profiles")
-          .select("id, full_name, email, phone")
+          .select("id, full_name, profile_picture_url")
           .in("id", expertIds);
 
         // Merge mentor data with sessions
@@ -492,9 +539,9 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
             mentorsData?.find((m) => m.id === session.expert_id)?.full_name ||
             "Mentor",
           display_email:
-            mentorsData?.find((m) => m.id === session.expert_id)?.email || "",
+            session.expert_email || "",
           display_phone:
-            mentorsData?.find((m) => m.id === session.expert_id)?.phone || "",
+            "",
           user_role: "student" as const,
         }));
       }
@@ -537,12 +584,12 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
   };
 
   // Filter, search, and sort sessions
-  const filteredAndSortedSessions = sessions
+  const filteredAndSortedSessions = visibleSessions
     .filter((session) => {
-      const effectiveStatus = getEffectiveStatus(session);
+      const statusForUI = getSessionStatusForUI(session);
 
-      // Status filter - use effective status
-      if (filter !== "all" && effectiveStatus !== filter) return false;
+      // Status filter - use UI status mapping
+      if (filter !== "all" && statusForUI !== filter) return false;
 
       // Date range filter
       if (
@@ -753,16 +800,83 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
     return session.expert_id || session.display_email || session.display_name;
   };
 
+  const getParticipantAvatar = (session: any) => {
+    return (
+      session?.student?.avatar_url ||
+      session?.mentor_profile?.profile_picture_url ||
+      session?.avatar_url ||
+      ""
+    );
+  };
+
+  const getParticipantInitial = (session: any) => {
+    const label = String(session?.display_name || "Mentee").trim();
+    return label.charAt(0).toUpperCase();
+  };
+
   const participantSessionCounts = useMemo(() => {
     const counts = new Map<string, number>();
 
-    sessions.forEach((session) => {
+    visibleSessions.forEach((session) => {
       const key = String(getParticipantKey(session) || "unknown");
       counts.set(key, (counts.get(key) || 0) + 1);
     });
 
     return counts;
-  }, [sessions]);
+  }, [visibleSessions]);
+
+  const canDeleteSession = (session: any) => {
+    const effectiveStatus = getEffectiveStatus(session);
+    return ["completed", "cancelled"].includes(effectiveStatus);
+  };
+
+  const handleDeleteSession = async (session: any) => {
+    if (!session?.id) return;
+
+    if (!canDeleteSession(session)) {
+      toast({
+        title: "Only completed or cancelled sessions can be deleted",
+        variant: "destructive",
+      });
+      setDeleteDialog({ open: false, session: null });
+      return;
+    }
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const { error } = await supabase
+        .from("bookings")
+        .update({
+          is_deleted: true,
+          deleted_at: new Date().toISOString(),
+          deleted_by: user?.id || null,
+        })
+        .eq("id", session.id);
+
+      if (error) throw error;
+
+      setSessions((prev) => prev.filter((item) => item.id !== session.id));
+
+      setDetailsModal((prev) =>
+        prev.session?.id === session.id ? { open: false, session: null } : prev
+      );
+
+      toast({
+        title: "Session deleted",
+      });
+
+      setDeleteDialog({ open: false, session: null });
+    } catch (error: any) {
+      toast({
+        title: "Unable to delete session",
+        description: error?.message || "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const getRiskIndicator = (session: any, effectiveStatus: string) => {
     if (!isUpcoming(session.scheduled_date, session.scheduled_time)) {
@@ -1108,17 +1222,17 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
           )}
         </button>
         <button
-          onClick={() => setFilter("confirmed")}
+          onClick={() => setFilter("pending")}
           className={`px-4 py-2 text-sm font-medium rounded-xl transition-all ${
-            filter === "confirmed"
+            filter === "pending"
               ? "bg-gray-900 text-white shadow-sm"
               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
         >
-          Confirmed
-          {statusCounts.confirmed > 0 && (
+          Pending
+          {statusCounts.pending > 0 && (
             <span className="ml-1.5 opacity-75">
-              ({statusCounts.confirmed})
+              ({statusCounts.pending})
             </span>
           )}
         </button>
@@ -1212,7 +1326,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
         </div>
 
         {/* Filter Dropdown for Sort */}
-        <Popover>
+        <Popover modal={false}>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
@@ -1224,25 +1338,28 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
           <PopoverContent className="w-64 p-4" align="end">
             <div className="space-y-3">
               <h4 className="font-semibold text-sm">Sort By</h4>
-              <Select
-                value={sortBy}
-                onValueChange={(value) => setSortBy(value as SortOption)}
-              >
-                <SelectTrigger className="w-full h-9">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="date-desc">Date (Newest First)</SelectItem>
-                  <SelectItem value="date-asc">Date (Oldest First)</SelectItem>
-                  <SelectItem value="amount-desc">
-                    Amount (High to Low)
-                  </SelectItem>
-                  <SelectItem value="amount-asc">
-                    Amount (Low to High)
-                  </SelectItem>
-                  <SelectItem value="status">Status</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-1">
+                {([
+                  { value: "date-desc", label: "Date (Newest First)" },
+                  { value: "date-asc", label: "Date (Oldest First)" },
+                  { value: "amount-desc", label: "Amount (High to Low)" },
+                  { value: "amount-asc", label: "Amount (Low to High)" },
+                  { value: "status", label: "Status" },
+                ] as Array<{ value: SortOption; label: string }>).map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setSortBy(option.value)}
+                    className={`w-full h-9 px-3 rounded-md text-left text-sm transition-colors ${
+                      sortBy === option.value
+                        ? "bg-gray-100 text-gray-900 font-medium"
+                        : "text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
 
               {sortBy !== "date-desc" && (
                 <Button
@@ -1257,6 +1374,36 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
             </div>
           </PopoverContent>
         </Popover>
+
+        {/* Cards/List Switch */}
+        <div className="flex items-center rounded-xl border border-gray-200 bg-white p-1 h-11">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setViewMode("cards")}
+            className={`h-9 px-3 rounded-lg text-xs font-medium ${
+              viewMode === "cards"
+                ? "bg-gray-900 text-white hover:bg-gray-900"
+                : "text-gray-600 hover:bg-gray-100"
+            }`}
+          >
+            <LayoutGrid className="h-3.5 w-3.5 mr-1.5" />
+            Cards
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setViewMode("list")}
+            className={`h-9 px-3 rounded-lg text-xs font-medium ${
+              viewMode === "list"
+                ? "bg-gray-900 text-white hover:bg-gray-900"
+                : "text-gray-600 hover:bg-gray-100"
+            }`}
+          >
+            <List className="h-3.5 w-3.5 mr-1.5" />
+            List
+          </Button>
+        </div>
       </div>
 
       {/* Results Count */}
@@ -1267,7 +1414,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
             <span className="font-medium text-gray-900">
               {filteredAndSortedSessions.length}
             </span>{" "}
-            of {sessions.length} session{sessions.length !== 1 ? "s" : ""}
+            of {visibleSessions.length} session{visibleSessions.length !== 1 ? "s" : ""}
             {searchQuery && (
               <span className="ml-1">
                 matching{" "}
@@ -1280,147 +1427,306 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
         </div>
       )}
 
-      {/* Sessions List - Horizontal Rows */}
+      {/* Sessions List */}
       <div>
         {loading ? (
-          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden divide-y divide-gray-100/80">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className={`px-6 py-6 lg:px-8 lg:py-7 ${
-                  i % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-                }`}
-              >
-                <div className="flex flex-col lg:flex-row lg:items-start gap-4 lg:gap-6">
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <Skeleton className="h-5 w-56" />
-                    <div className="flex items-center gap-2">
-                      <Skeleton className="h-4 w-4 rounded" />
-                      <Skeleton className="h-4 w-64" />
-                    </div>
-                    <Skeleton className="h-10 w-full max-w-[520px] rounded-lg" />
-                  </div>
-                  <div className="flex items-center gap-2 lg:pl-6 lg:border-l border-gray-100">
-                    <Skeleton className="h-6 w-24 rounded-md" />
-                    <Skeleton className="h-6 w-20 rounded-md" />
-                  </div>
-                  <div className="lg:pl-6 lg:border-l border-gray-100">
-                    <Skeleton className="h-9 w-24 rounded-lg" />
-                  </div>
-                </div>
+          viewMode === "list" ? (
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[880px]">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      {[
+                        "Session",
+                        "Mentee",
+                        "Date & Time",
+                        "Status",
+                        "Amount",
+                        "Actions",
+                        "",
+                      ].map((header) => (
+                        <th
+                          key={header}
+                          className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                        >
+                          {header}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <tr
+                        key={i}
+                        className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}
+                      >
+                        <td className="px-4 py-4 text-center">
+                          <Skeleton className="h-4 w-40" />
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <Skeleton className="h-8 w-8 rounded-full" />
+                            <Skeleton className="h-4 w-28" />
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <Skeleton className="h-4 w-44" />
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <Skeleton className="h-6 w-20 rounded-md" />
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <Skeleton className="h-4 w-16" />
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <Skeleton className="h-8 w-20 rounded-lg" />
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <Skeleton className="h-8 w-8 rounded" />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ))}
-          </div>
-        ) : filteredAndSortedSessions.length > 0 ? (
-          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden divide-y divide-gray-100/80">
-            {filteredAndSortedSessions.map((session, index) => {
-              const effectiveStatus = getEffectiveStatus(session);
-              const participantKey = String(getParticipantKey(session) || "unknown");
-              const participantSessionCount =
-                participantSessionCounts.get(participantKey) || 0;
-              const isNewParticipant = participantSessionCount <= 1;
-              const riskIndicator = getRiskIndicator(session, effectiveStatus);
-              const showCountdown =
-                isUpcoming(session.scheduled_date, session.scheduled_time) &&
-                ["pending", "confirmed"].includes(effectiveStatus);
-
-              return (
-                <div
-                  key={session.id}
-                  className={`px-6 py-6 lg:px-8 lg:py-7 ${
-                    index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-                  }`}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Card
+                  key={i}
+                  className="bg-white border border-gray-200 rounded-2xl shadow-none"
                 >
-                  <div className="flex flex-col lg:flex-row lg:items-start gap-5 lg:gap-8">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <h3 className="text-[17px] font-semibold tracking-tight text-gray-900 truncate">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col lg:flex-row lg:items-start gap-4 lg:gap-6">
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <Skeleton className="h-5 w-56" />
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-4 w-4 rounded" />
+                          <Skeleton className="h-4 w-64" />
+                        </div>
+                        <Skeleton className="h-10 w-full max-w-[520px] rounded-lg" />
+                      </div>
+                      <div className="flex items-center gap-2 lg:pl-6 lg:border-l border-gray-100">
+                        <Skeleton className="h-6 w-24 rounded-md" />
+                        <Skeleton className="h-6 w-20 rounded-md" />
+                      </div>
+                      <div className="lg:pl-6 lg:border-l border-gray-100">
+                        <Skeleton className="h-9 w-24 rounded-lg" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )
+        ) : filteredAndSortedSessions.length > 0 ? (
+          viewMode === "list" ? (
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[880px]">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Session
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Mentee
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Date & Time
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Amount
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <span className="sr-only">Delete</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredAndSortedSessions.map((session, index) => {
+                      const effectiveStatus = getEffectiveStatus(session);
+                      const statusForUI = getSessionStatusForUI(session);
+                      const avatarUrl = getParticipantAvatar(session);
+
+                      return (
+                        <tr
+                          key={session.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setDetailsModal({ open: true, session })}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              setDetailsModal({ open: true, session });
+                            }
+                          }}
+                          aria-label={`View details for ${formatSessionType(session.session_type)}`}
+                          className={`border-b border-gray-100 ${
+                            index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                          }`}
+                        >
+                          <td className="px-4 py-4 align-middle text-center">
+                            <p className="text-sm font-semibold text-gray-900 truncate max-w-[240px] mx-auto">
+                              {formatSessionType(session.session_type)}
+                            </p>
+                          </td>
+                          <td className="px-4 py-4 align-middle text-center">
+                            <div className="flex items-center justify-center gap-2 min-w-[180px]">
+                              {avatarUrl ? (
+                                <img
+                                  src={avatarUrl}
+                                  alt={session.display_name || "Mentee"}
+                                  className="h-8 w-8 rounded-full object-cover border border-gray-200"
+                                />
+                              ) : (
+                                <div className="h-8 w-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
+                                  {getParticipantInitial(session)}
+                                </div>
+                              )}
+                              <span className="text-sm text-gray-800 truncate max-w-[180px]">
+                                {session.display_name || "Mentee"}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 align-middle text-center">
+                            <span className="text-sm text-gray-700 whitespace-nowrap">
+                              {formatDate(session.scheduled_date, session.scheduled_time)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 align-middle text-center">
+                            <div className="inline-flex justify-center">
+                              {getStatusBadge(statusForUI)}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 align-middle text-center">
+                            <span className="text-sm font-semibold text-green-600 whitespace-nowrap">
+                              {session.total_amount && session.total_amount > 0
+                                ? `₹${session.total_amount.toFixed(2)}`
+                                : "₹0.00"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 align-middle text-center">
+                            <div className="flex items-center justify-center">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setDetailsModal({ open: true, session });
+                                }}
+                                className="h-8 px-3 text-xs font-medium border-gray-200 rounded-lg flex items-center gap-1.5 bg-white hover:bg-gray-50"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                <span>View</span>
+                              </Button>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 align-middle text-center">
+                            {canDeleteSession(session) ? (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setDeleteDialog({ open: true, session });
+                                }}
+                                className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                aria-label="Delete session"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            ) : null}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {filteredAndSortedSessions.map((session) => {
+                const statusForUI = getSessionStatusForUI(session);
+                const avatarUrl = getParticipantAvatar(session);
+
+                return (
+                  <Card
+                    key={session.id}
+                    className="border border-gray-200 rounded-2xl shadow-none bg-white"
+                  >
+                    <CardContent className="p-5 space-y-4">
+                      <div className="space-y-2">
+                        <h3 className="text-base font-semibold text-gray-900 truncate">
                           {formatSessionType(session.session_type)}
                         </h3>
+                        <div className="flex items-center gap-2">
+                          {avatarUrl ? (
+                            <img
+                              src={avatarUrl}
+                              alt={session.display_name || "Mentee"}
+                              className="h-7 w-7 rounded-full object-cover border border-gray-200"
+                            />
+                          ) : (
+                            <div className="h-7 w-7 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
+                              {getParticipantInitial(session)}
+                            </div>
+                          )}
+                          <span className="text-sm text-gray-800 truncate">
+                            {session.display_name || "Mentee"}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-700 truncate">
+                          {formatDate(session.scheduled_date, session.scheduled_time)}
+                        </p>
                       </div>
 
-                      <div className="flex items-center gap-2 mt-1.5 min-w-0">
-                        <Calendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                        <span className="text-sm text-gray-700 truncate">
-                          {formatDate(session.scheduled_date, session.scheduled_time)}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="inline-flex">{getStatusBadge(statusForUI)}</div>
+                        <span className="text-sm font-semibold text-green-600 whitespace-nowrap">
+                          {session.total_amount && session.total_amount > 0
+                            ? `₹${session.total_amount.toFixed(2)}`
+                            : "₹0.00"}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2 mt-3 flex-wrap">
-                        <Badge
+                      <div className="flex items-center gap-2 justify-end">
+                        <Button
+                          size="sm"
                           variant="outline"
-                          className="bg-gray-100 text-gray-600 border border-gray-200 rounded-md text-xs px-2 py-0.5 whitespace-nowrap font-medium"
+                          onClick={() => setDetailsModal({ open: true, session })}
+                          className="h-8 px-3 text-xs font-medium border-gray-200 rounded-lg flex items-center gap-1.5 bg-white hover:bg-gray-50"
                         >
-                          {isNewParticipant ? "New Student" : `Repeat (${participantSessionCount})`}
-                        </Badge>
+                          <Eye className="h-3.5 w-3.5" />
+                          <span>View</span>
+                        </Button>
 
-                        {showCountdown && (
-                          <Badge
-                            variant="outline"
-                            className="bg-gray-100 text-gray-700 border border-gray-200 rounded-md text-xs px-2 py-0.5 whitespace-nowrap font-medium"
+                        {canDeleteSession(session) && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => setDeleteDialog({ open: true, session })}
+                            className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700"
+                            aria-label="Delete session"
                           >
-                            {getTimeRemaining(
-                              session.scheduled_date,
-                              session.scheduled_time
-                            )}
-                          </Badge>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         )}
                       </div>
-
-                      {session.message && (
-                        <div className="mt-4 max-w-2xl">
-                          <p className="text-sm text-gray-600 leading-6 whitespace-pre-wrap break-words line-clamp-3">
-                            <span className="font-medium text-gray-500">Mentee's Message:</span>{" "}
-                            {session.message}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="lg:min-w-[240px] lg:pl-7 lg:border-l border-gray-100 flex flex-col items-start lg:items-end gap-3">
-                      <div className="flex items-center gap-2 flex-wrap lg:justify-end">
-                        {session.total_amount && session.total_amount > 0 && (
-                          <span className="text-sm font-semibold text-green-600 whitespace-nowrap">
-                            ₹{session.total_amount.toFixed(2)}
-                          </span>
-                        )}
-                        {isUpcoming(session.scheduled_date, session.scheduled_time) &&
-                          effectiveStatus === "confirmed" && (
-                            <Badge
-                              variant="outline"
-                              className="bg-gray-100 text-gray-700 border border-gray-200 rounded-md text-xs px-2 py-0.5 whitespace-nowrap font-medium"
-                            >
-                              Upcoming
-                            </Badge>
-                          )}
-                        {getStatusBadge(effectiveStatus)}
-                      </div>
-
-                      {riskIndicator && (
-                        <Badge
-                          variant="outline"
-                          className="bg-gray-50 text-gray-600 border border-gray-200 rounded-md text-xs px-2 py-0.5 whitespace-nowrap flex items-center gap-1"
-                        >
-                          <ClockAlert className="h-3.5 w-3.5 text-gray-500" />
-                          <span>{riskIndicator}</span>
-                        </Badge>
-                      )}
-
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setDetailsModal({ open: true, session })}
-                        className="h-9 px-4 text-xs font-medium border-gray-200 rounded-lg flex items-center gap-1.5 bg-white hover:bg-gray-50"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        <span>View</span>
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )
         ) : (
           <Card className="bg-gradient-to-br from-gray-50 to-gray-100 border-0 rounded-2xl shadow-none">
             <CardContent className="p-16">
@@ -1528,6 +1834,45 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
               disabled={cancelLoading || !cancelDialog.note.trim()}
             >
               {cancelLoading ? "Cancelling..." : "Cancel and Notify Student"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => {
+          if (cancelLoading) return;
+          setDeleteDialog((prev) => ({
+            open,
+            session: open ? prev.session : null,
+          }));
+        }}
+      >
+        <DialogContent className="sm:max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle>Delete Session</DialogTitle>
+            <DialogDescription>
+              Delete this session from your dashboard?
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteDialog({ open: false, session: null })}
+              disabled={cancelLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => handleDeleteSession(deleteDialog.session)}
+              disabled={cancelLoading}
+            >
+              Delete Session
             </Button>
           </DialogFooter>
         </DialogContent>
