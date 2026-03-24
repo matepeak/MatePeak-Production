@@ -1,6 +1,25 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export const MIN_WITHDRAWAL_AMOUNT = 1;
+export const MIN_WITHDRAWAL_AMOUNT = 500;
+export const COMMISSION_RATE = 0.1; // 10% platform commission
+
+/**
+ * Calculate net earnings after platform commission
+ * @param grossEarnings - Total earnings before commission
+ * @returns Net earnings after 10% commission
+ */
+export const calculateNetEarnings = (grossEarnings: number): number => {
+  return grossEarnings * (1 - COMMISSION_RATE);
+};
+
+/**
+ * Calculate commission amount
+ * @param grossEarnings - Total earnings before commission
+ * @returns Commission amount (10% of gross)
+ */
+export const calculateCommissionAmount = (grossEarnings: number): number => {
+  return grossEarnings * COMMISSION_RATE;
+};
 
 export type PayoutMethod = "bank" | "upi";
 export type VerificationStatus = "unverified" | "pending" | "verified" | "failed";

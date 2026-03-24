@@ -15,6 +15,29 @@
   scrollbar-width: thin;
   scrollbar-color: #bdbdbd #f3f4f6;
 }
+
+@keyframes phase2-scan-line-move {
+  0% {
+    left: -7rem;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    left: calc(100% + 7rem);
+    opacity: 0;
+  }
+}
+
+.phase2-scan-line {
+  animation: phase2-scan-line-move 1.45s ease-in-out infinite;
+  will-change: left, opacity;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

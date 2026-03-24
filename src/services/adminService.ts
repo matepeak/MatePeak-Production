@@ -7,6 +7,121 @@ export interface AdminActionResponse {
   data?: any;
 }
 
+interface WithdrawalEmailContext {
+  mentorEmail?: string | null;
+  mentorName?: string | null;
+  amount?: number | null;
+  requestedAt?: string | null;
+  transactionRef?: string | null;
+  notes?: string | null;
+  rejectionReason?: string | null;
+}
+
+const formatAmountINR = (amount?: number | null) => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 2,
+  }).format(Number(amount || 0));
+};
+
+const buildApprovalEmailHtml = (
+  withdrawalId: string,
+  context: WithdrawalEmailContext
+) => {
+  const mentorName = context.mentorName || 'Mentor';
+  const amount = formatAmountINR(context.amount);
+  const requestedAt = context.requestedAt
+    ? new Date(context.requestedAt).toLocaleString('en-IN')
+    : '-';
+  const approvedAt = new Date().toLocaleString('en-IN');
+  const decisionNote = context.notes?.trim() || 'Approved after admin review.';
+
+  return `
+    <div style="font-family: Arial, Helvetica, sans-serif; max-width: 640px; margin: 0 auto; color: #111827; line-height: 1.6;">
+      <h2 style="margin: 0 0 12px; color: #111827;">Withdrawal Request Approved</h2>
+      <p style="margin: 0 0 14px;">Hi ${mentorName},</p>
+      <p style="margin: 0 0 18px;">Your withdrawal request has been approved by the admin team.</p>
+
+      <table style="width: 100%; border-collapse: collapse; margin: 0 0 18px;">
+        <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Request ID</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${withdrawalId}</td></tr>
+        <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Amount</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${amount}</td></tr>
+        <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Requested On</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${requestedAt}</td></tr>
+        <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Approved On</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${approvedAt}</td></tr>
+        <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Transaction Reference</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${context.transactionRef || '-'}</td></tr>
+      </table>
+
+      <p style="margin: 0 0 8px;"><strong>Admin Note:</strong></p>
+      <p style="margin: 0 0 18px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px;">${decisionNote}</p>
+
+      <p style="margin: 0; color: #6b7280; font-size: 13px;">This is an automated email from MatePeak.</p>
+    </div>
+  `;
+};
+
+const buildRejectionEmailHtml = (
+  withdrawalId: string,
+  context: WithdrawalEmailContext
+) => {
+  const mentorName = context.mentorName || 'Mentor';
+  const amount = formatAmountINR(context.amount);
+  const requestedAt = context.requestedAt
+    ? new Date(context.requestedAt).toLocaleString('en-IN')
+    : '-';
+  const rejectedAt = new Date().toLocaleString('en-IN');
+  const rejectionReason = context.rejectionReason?.trim() || 'Rejected by admin review.';
+
+  return `
+    <div style="font-family: Arial, Helvetica, sans-serif; max-width: 640px; margin: 0 auto; color: #111827; line-height: 1.6;">
+      <h2 style="margin: 0 0 12px; color: #b91c1c;">Withdrawal Request Rejected</h2>
+      <p style="margin: 0 0 14px;">Hi ${mentorName},</p>
+      <p style="margin: 0 0 18px;">Your withdrawal request has been rejected by the admin team. The reserved amount has been restored to your wallet.</p>
+
+      <table style="width: 100%; border-collapse: collapse; margin: 0 0 18px;">
+        <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Request ID</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${withdrawalId}</td></tr>
+        <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Amount</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${amount}</td></tr>
+        <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Requested On</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${requestedAt}</td></tr>
+        <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Rejected On</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${rejectedAt}</td></tr>
+      </table>
+
+      <p style="margin: 0 0 8px;"><strong>Reason:</strong></p>
+      <p style="margin: 0 0 18px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 10px;">${rejectionReason}</p>
+
+      <p style="margin: 0; color: #6b7280; font-size: 13px;">This is an automated email from MatePeak.</p>
+    </div>
+  `;
+};
+
+const sendWithdrawalDecisionEmail = async (
+  type: 'approved' | 'rejected',
+  withdrawalId: string,
+  context: WithdrawalEmailContext
+) => {
+  const mentorEmail = String(context.mentorEmail || '').trim();
+  if (!mentorEmail) return;
+
+  const subject =
+    type === 'approved'
+      ? `Withdrawal Approved - ${formatAmountINR(context.amount)}`
+      : `Withdrawal Rejected - ${formatAmountINR(context.amount)}`;
+  const html =
+    type === 'approved'
+      ? buildApprovalEmailHtml(withdrawalId, context)
+      : buildRejectionEmailHtml(withdrawalId, context);
+
+  try {
+    await supabase.functions.invoke('send-email', {
+      body: {
+        to: mentorEmail,
+        subject,
+        html,
+      },
+    });
+  } catch (emailError) {
+    console.error('Failed to send withdrawal decision email:', emailError);
+  }
+};
+
 // =====================================================
 // USER SUSPENSION
 // =====================================================
@@ -119,6 +234,35 @@ export async function rejectMentor(
   }
 }
 
+export async function setPhase2MaxAttempts(
+  mentorProfileId: string,
+  maxAttempts: number,
+  notes?: string
+): Promise<AdminActionResponse> {
+  try {
+    const { data, error } = await supabase.rpc('admin_set_phase2_max_attempts', {
+      mentor_profile_id: mentorProfileId,
+      max_attempts: maxAttempts,
+      notes: notes || null,
+    });
+
+    if (error) throw error;
+
+    return {
+      success: true,
+      message: data?.message || 'Max attempts updated successfully',
+      data,
+    };
+  } catch (error: any) {
+    console.error('Error updating phase 2 max attempts:', error);
+    return {
+      success: false,
+      message: 'Failed to update max attempts',
+      error: error.message,
+    };
+  }
+}
+
 // =====================================================
 // WITHDRAWAL MANAGEMENT
 // =====================================================
@@ -126,7 +270,8 @@ export async function rejectMentor(
 export async function approveWithdrawal(
   withdrawalId: string,
   transactionRef?: string,
-  notes?: string
+  notes?: string,
+  emailContext?: WithdrawalEmailContext
 ): Promise<AdminActionResponse> {
   try {
     const { data, error } = await supabase.rpc('admin_approve_withdrawal', {
@@ -136,6 +281,12 @@ export async function approveWithdrawal(
     });
 
     if (error) throw error;
+
+    await sendWithdrawalDecisionEmail('approved', withdrawalId, {
+      ...emailContext,
+      transactionRef: transactionRef || null,
+      notes: notes || null,
+    });
 
     return {
       success: true,
@@ -154,7 +305,8 @@ export async function approveWithdrawal(
 
 export async function rejectWithdrawal(
   withdrawalId: string,
-  reason: string
+  reason: string,
+  emailContext?: WithdrawalEmailContext
 ): Promise<AdminActionResponse> {
   try {
     const { data, error } = await supabase.rpc('admin_reject_withdrawal', {
@@ -163,6 +315,11 @@ export async function rejectWithdrawal(
     });
 
     if (error) throw error;
+
+    await sendWithdrawalDecisionEmail('rejected', withdrawalId, {
+      ...emailContext,
+      rejectionReason: reason,
+    });
 
     return {
       success: true,
@@ -218,22 +375,65 @@ export async function moderateReview(
 
 export async function getPendingMentorVerifications() {
   try {
-    const { data, error } = await supabase
+    const pendingFilter = 'verification_status.eq.under_review,phase2_review_status.eq.under_review,profile_status.eq.pending_review';
+
+    const primary = await supabase
       .from('expert_profiles')
       .select(`
         *,
-        profiles!expert_profiles_user_id_fkey (
+        profiles (
           email,
           full_name,
           avatar_url
         )
       `)
-      .in('profile_status', ['pending_review', 'draft'])
+      .or(pendingFilter)
       .eq('is_verified', false)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    return { data, error: null };
+    if (!primary.error) {
+      return { data: primary.data, error: null };
+    }
+
+    const fallback = await supabase
+      .from('expert_profiles')
+      .select('*')
+      .or('verification_status.eq.under_review,profile_status.eq.pending_review')
+      .eq('is_verified', false)
+      .order('created_at', { ascending: false });
+
+    if (fallback.error) throw fallback.error;
+
+    const rows = fallback.data || [];
+    const userIds = Array.from(new Set(rows.map((row: any) => row.user_id).filter(Boolean)));
+
+    let profileMap = new Map<string, { email: string | null; full_name: string | null; avatar_url: string | null }>();
+    if (userIds.length > 0) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id,email,full_name,avatar_url')
+        .in('id', userIds);
+
+      if (!profilesError && profiles) {
+        profileMap = new Map(
+          profiles.map((profile: any) => [
+            profile.id,
+            {
+              email: profile.email ?? null,
+              full_name: profile.full_name ?? null,
+              avatar_url: profile.avatar_url ?? null,
+            },
+          ])
+        );
+      }
+    }
+
+    const enrichedRows = rows.map((row: any) => ({
+      ...row,
+      profiles: profileMap.get(row.user_id) || null,
+    }));
+
+    return { data: enrichedRows, error: null };
   } catch (error: any) {
     console.error('Error fetching pending verifications:', error);
     return { data: null, error };

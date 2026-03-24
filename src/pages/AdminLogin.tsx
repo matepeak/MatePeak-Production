@@ -49,47 +49,47 @@ const AdminLogin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo/Title */}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-full mb-4">
-            <Shield className="h-8 w-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Admin Portal</h1>
-          <p className="text-gray-400">MatePeak Platform Administration</p>
+          <img
+            src="/lovable-uploads/14bf0eea-1bc9-4675-9231-356df10eb82d.png"
+            alt="MatePeak Logo"
+            className="h-12 mx-auto mb-4"
+          />
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Portal</h1>
+          <p className="text-gray-600">MatePeak Platform Administration</p>
         </div>
 
-        {/* Login Card */}
-        <Card className="border-gray-700 bg-gray-800/50 backdrop-blur">
-          <CardHeader>
-            <CardTitle className="text-white">Administrator Login</CardTitle>
-            <CardDescription className="text-gray-400">
+        <Card className="border-gray-200 shadow-none">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-gray-900">Administrator Login</CardTitle>
+            <CardDescription className="text-gray-600">
               Enter your credentials to access the admin dashboard
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
-                <Alert variant="destructive" className="bg-red-900/20 border-red-800">
+                <Alert variant="destructive" className="border-red-200 bg-red-50">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-200">
+                <Label htmlFor="email" className="text-sm font-medium text-gray-700">
                   Email Address
                 </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-3.5 h-4 w-4 text-gray-500" />
                   <Input
                     id="email"
                     type="email"
                     placeholder="admin@matepeak.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 bg-gray-700/50 border-gray-600 text-white placeholder:text-gray-400"
+                    className="h-11 pl-10 bg-gray-50 border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-black focus:ring-black transition-all"
                     required
                     autoComplete="email"
                     autoFocus
@@ -98,18 +98,18 @@ const AdminLogin = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-gray-200">
+                <Label htmlFor="password" className="text-sm font-medium text-gray-700">
                   Password
                 </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Lock className="absolute left-3 top-3.5 h-4 w-4 text-gray-500" />
                   <Input
                     id="password"
                     type="password"
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 bg-gray-700/50 border-gray-600 text-white placeholder:text-gray-400"
+                    className="h-11 pl-10 bg-gray-50 border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-black focus:ring-black transition-all"
                     required
                     autoComplete="current-password"
                   />
@@ -118,7 +118,7 @@ const AdminLogin = () => {
 
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full h-11 bg-black hover:bg-gray-800 text-white font-semibold transition-all mt-6"
                 disabled={loading}
               >
                 {loading ? (
@@ -128,15 +128,14 @@ const AdminLogin = () => {
                   </>
                 ) : (
                   <>
-                    <Shield className="mr-2 h-4 w-4" />
                     Sign In
                   </>
                 )}
               </Button>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-gray-700">
-              <p className="text-center text-sm text-gray-400">
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <p className="text-center text-sm text-gray-600">
                 <Lock className="inline h-3 w-3 mr-1" />
                 Secure admin authentication
               </p>
@@ -144,11 +143,10 @@ const AdminLogin = () => {
           </CardContent>
         </Card>
 
-        {/* Footer */}
         <div className="text-center mt-6">
           <button
             onClick={() => navigate('/')}
-            className="text-gray-400 hover:text-white text-sm transition-colors"
+            className="text-sm text-matepeak-primary hover:text-matepeak-secondary transition-colors"
           >
             ← Back to MatePeak Home
           </button>

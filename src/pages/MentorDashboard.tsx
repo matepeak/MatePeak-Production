@@ -12,8 +12,6 @@ import MentorPriorityDmInbox from "@/components/dashboard/MentorPriorityDmInbox"
 import StudentDirectory from "@/components/dashboard/StudentDirectory";
 import CustomTimeRequests from "@/components/dashboard/CustomTimeRequests";
 import ServicesManagement from "@/components/dashboard/ServicesManagement";
-import MentorPaymentsSetup from "@/components/dashboard/MentorPaymentsSetup";
-import MentorPayoutsDashboard from "@/components/dashboard/MentorPayoutsDashboard";
 import MentorEarnings from "@/components/dashboard/MentorEarnings";
 import { toast } from "@/components/ui/sonner";
 
@@ -27,8 +25,6 @@ type DashboardView =
   | "students"
   | "requests"
   | "services"
-  | "payments"
-  | "payouts"
   | "earnings";
 
 const MentorDashboard = () => {
@@ -199,10 +195,6 @@ const MentorDashboard = () => {
       {activeView === "services" && (
         <ServicesManagement mentorId={mentorProfile.id} />
       )}
-      {activeView === "payments" && (
-        <MentorPaymentsSetup mentorProfile={mentorProfile} />
-      )}
-      {activeView === "payouts" && <MentorPayoutsDashboard />}
       {activeView === "earnings" && (
         <MentorEarnings mentorProfile={mentorProfile} />
       )}

@@ -9,8 +9,11 @@ const corsHeaders = {
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-const MIN_WITHDRAWAL_AMOUNT = 1;
-const TEST_WITHDRAWAL_MINIMUM_AMOUNT = 1;
+const paymentsNotificationEmail = Deno.env.get("WITHDRAWAL_ALERT_EMAIL") || "payments@matepeak.com";
+const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
+const resendFrom = Deno.env.get("RESEND_FROM") || "MatePeak <support@matepeak.com>";
+const MIN_WITHDRAWAL_AMOUNT = 500;
+const TEST_WITHDRAWAL_MINIMUM_AMOUNT = 500;
 
 const json = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), {
@@ -51,6 +54,148 @@ const mapPayoutAccountToProfile = (account: any) => {
     kyc_status: account.verification_status === "verified" ? "verified" : "submitted",
     is_kyc_verified: account.verification_status === "verified",
   };
+};
+
+const escapeHtml = (value: unknown) =>
+  String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+
+const formatAmountINR = (amount: number) => {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 2,
+  }).format(Number(amount || 0));
+};
+
+const sendPaymentsWithdrawalAlert = async (
+  serviceClient: any,
+  mentorId: string,
+  mentorEmail: string | null,
+  amount: number,
+  withdrawalId: string,
+  flowMode: "atomic" | "legacy"
+) => {
+  if (!paymentsNotificationEmail) {
+    return;
+  }
+
+  try {
+    let mentorUsername: string | null = null;
+    let mentorName: string | null = null;
+
+    const { data: profileRow } = await serviceClient
+      .from("profiles")
+      .select("full_name,email")
+      .eq("id", mentorId)
+      .maybeSingle();
+
+    mentorName = profileRow?.full_name || null;
+    const resolvedMentorEmail = mentorEmail || profileRow?.email || null;
+
+    const { data: expertById } = await serviceClient
+      .from("expert_profiles")
+      .select("username")
+      .eq("id", mentorId)
+      .maybeSingle();
+    mentorUsername = expertById?.username || null;
+
+    const requestedAt = new Date().toLocaleString("en-IN", {
+      dateStyle: "medium",
+      timeStyle: "medium",
+      hour12: true,
+    });
+
+    const html = `
+      <div style="font-family: Arial, Helvetica, sans-serif; max-width: 700px; margin: 0 auto; color: #111827; line-height: 1.6;">
+        <h2 style="margin: 0 0 12px;">New Withdrawal Request Submitted</h2>
+        <p style="margin: 0 0 16px;">A mentor has submitted a withdrawal request that requires admin review.</p>
+        <table style="width: 100%; border-collapse: collapse; margin: 0 0 16px;">
+          <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Withdrawal ID</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${escapeHtml(withdrawalId)}</td></tr>
+          <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Amount</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${escapeHtml(formatAmountINR(amount))}</td></tr>
+          <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Requested At</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${escapeHtml(requestedAt)}</td></tr>
+          <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Mentor Username</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${escapeHtml(mentorUsername || "-")}</td></tr>
+          <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Mentor Name</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${escapeHtml(mentorName || "-")}</td></tr>
+          <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Mentor Email</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${escapeHtml(resolvedMentorEmail || "-")}</td></tr>
+          <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Mentor ID</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${escapeHtml(mentorId)}</td></tr>
+          <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Flow</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${escapeHtml(flowMode)}</td></tr>
+        </table>
+      </div>
+    `;
+
+    const subject = `New Withdrawal Request - ${formatAmountINR(amount)} - ${mentorUsername || mentorId}`;
+
+    const { data: emailData, error: emailError } = await serviceClient.functions.invoke("send-email", {
+      body: {
+        to: paymentsNotificationEmail,
+        subject,
+        html,
+      },
+    });
+
+    if (!emailError && emailData?.success) {
+      console.log("Withdrawal alert email sent to payments mailbox", {
+        to: paymentsNotificationEmail,
+        withdrawalId,
+        mentorId,
+        amount,
+        emailId: emailData?.id || null,
+        provider: "send-email-function",
+      });
+      return;
+    }
+
+    console.error("send-email function failed, trying direct Resend fallback", {
+      error: emailError,
+      data: emailData,
+      to: paymentsNotificationEmail,
+      withdrawalId,
+    });
+
+    if (!resendApiKey) {
+      console.error("RESEND_API_KEY missing; cannot perform fallback email send");
+      return;
+    }
+
+    const resendResponse = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resendApiKey}`,
+      },
+      body: JSON.stringify({
+        from: resendFrom,
+        to: paymentsNotificationEmail,
+        subject,
+        html,
+      }),
+    });
+
+    if (!resendResponse.ok) {
+      const resendBody = await resendResponse.text();
+      console.error("Direct Resend fallback failed", {
+        status: resendResponse.status,
+        body: resendBody,
+      });
+      return;
+    }
+
+    const resendData = await resendResponse.json();
+    console.log("Withdrawal alert email sent via direct Resend fallback", {
+      to: paymentsNotificationEmail,
+      withdrawalId,
+      mentorId,
+      amount,
+      emailId: resendData?.id || null,
+      provider: "direct-resend",
+    });
+  } catch (error) {
+    console.error("Error sending withdrawal alert to payments:", error);
+  }
 };
 
 serve(async (req) => {
@@ -304,6 +449,15 @@ serve(async (req) => {
       withdrawalId = String(withdrawalRow.id);
       payoutId = `legacy-${withdrawalId}`;
     }
+
+    await sendPaymentsWithdrawalAlert(
+      serviceClient,
+      userData.user.id,
+      userData.user.email || null,
+      requestedAmount,
+      withdrawalId,
+      flowMode,
+    );
 
     return json(200, {
       success: true,

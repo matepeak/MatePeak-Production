@@ -13,12 +13,24 @@ import {
   CheckCircle,
   XCircle,
   Settings,
+  X,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 import { SERVICE_CONFIG } from "@/config/serviceConfig";
+import { calculateNetEarnings, calculateCommissionAmount, COMMISSION_RATE } from "@/services/mentorEarningsService";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
@@ -58,6 +70,19 @@ const DashboardOverview = ({
   const [upcomingSessions, setUpcomingSessions] = useState<any[]>([]);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("all");
   const [timeRequests, setTimeRequests] = useState<any[]>([]);
+  const [pendingPayouts, setPendingPayouts] = useState<number>(0);
+  const [lifetimeEarnings, setLifetimeEarnings] = useState<number>(0);
+  const [trendData, setTrendData] = useState<any[]>([]);
+  const [bookingComparison, setBookingComparison] = useState<{ current: number; previous: number; change: number; percentChange: number }>({ current: 0, previous: 0, change: 0, percentChange: 0 });
+  const [earningsComparison, setEarningsComparison] = useState<{ current: number; previous: number; change: number; percentChange: number }>({ current: 0, previous: 0, change: 0, percentChange: 0 });
+  const [serviceBreakdown, setServiceBreakdown] = useState<Array<{ service: string; bookings: number; revenue: number; percentage: number }>>([]);
+  const [timeInsights, setTimeInsights] = useState<{ bestDay: string; bestTime: string; peakBookingTime: string }>({ bestDay: "", bestTime: "", peakBookingTime: "" });
+  const [conversionFunnel, setConversionFunnel] = useState<{ views: number; clicks: number; bookings: number; viewToClick: number; clickToBooking: number }>({ views: 0, clicks: 0, bookings: 0, viewToClick: 0, clickToBooking: 0 });
+  const [keyInsights, setKeyInsights] = useState<string[]>([]);
+  const [utilizationMetrics, setUtilizationMetrics] = useState<{ totalSlots: number; bookedSlots: number; utilizationRate: number }>({ totalSlots: 0, bookedSlots: 0, utilizationRate: 0 });
+  const [hidePhase2StatusCard, setHidePhase2StatusCard] = useState(false);
+
+  const chartColors = ["#3b82f6", "#f97316", "#8b5cf6", "#22c55e", "#06b6d4"];
 
   useEffect(() => {
     fetchDashboardData();
@@ -224,6 +249,223 @@ const DashboardOverview = ({
         completionRate: Math.round(completionRate),
       });
 
+      const calculateDateKey = (date: Date) => {
+        const p = timePeriod;
+        if (p === "month") {
+          return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+        }
+        if (p === "week") {
+          const day = date.getDay();
+          const mondayOffset = day === 0 ? -6 : 1 - day;
+          const monday = new Date(date);
+          monday.setDate(date.getDate() + mondayOffset);
+          return monday.toISOString().slice(0, 10);
+        }
+        return date.toISOString().slice(0, 10);
+      };
+
+      const generateTrendKeys = () => {
+        const values: string[] = [];
+        const today = new Date();
+
+        if (timePeriod === "month") {
+          for (let i = 11; i >= 0; i -= 1) {
+            const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+            values.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+          }
+        } else if (timePeriod === "week") {
+          const firstDay = new Date(today);
+          const day = firstDay.getDay();
+          firstDay.setDate(firstDay.getDate() - (day === 0 ? 6 : day - 1));
+          for (let i = 7; i >= 0; i -= 1) {
+            const d = new Date(firstDay);
+            d.setDate(firstDay.getDate() - i * 7);
+            values.push(d.toISOString().slice(0, 10));
+          }
+        } else {
+          for (let i = 13; i >= 0; i -= 1) {
+            const d = new Date(today);
+            d.setDate(today.getDate() - i);
+            values.push(d.toISOString().slice(0, 10));
+          }
+        }
+
+        return values;
+      };
+
+      const trendKeys = generateTrendKeys();
+      const trendMap = new Map<string, { date: string; bookedSessions: number; totalEarnings: number; avgEarnings: number }>();
+      trendKeys.forEach((key) => {
+        trendMap.set(key, {
+          date: key,
+          bookedSessions: 0,
+          totalEarnings: 0,
+          avgEarnings: 0,
+        });
+      });
+
+      const relevantSessions = (mentorSessions || []).filter((session) => {
+        const status = String(session.status || "").toLowerCase();
+        return status === "confirmed" || status === "completed";
+      });
+
+      relevantSessions.forEach((session) => {
+        if (!session.scheduled_date) return;
+
+        const date = new Date(session.scheduled_date);
+        const key = calculateDateKey(date);
+        if (!trendMap.has(key)) return;
+
+        const node = trendMap.get(key);
+        if (!node) return;
+
+        const amount = Number(session.total_amount || 0);
+        node.bookedSessions += 1;
+        node.totalEarnings += amount;
+      });
+
+      const computedTrendData = Array.from(trendMap.values()).map((point) => ({
+        ...point,
+        avgEarnings: point.bookedSessions > 0 ? point.totalEarnings / point.bookedSessions : 0,
+      }));
+
+      setTrendData(computedTrendData);
+
+      // Calculate period-over-period comparison
+      if (computedTrendData.length > 0) {
+        const midpoint = Math.floor(computedTrendData.length / 2);
+        const firstHalf = computedTrendData.slice(0, midpoint);
+        const secondHalf = computedTrendData.slice(midpoint);
+
+        const currentBookings = secondHalf.reduce((sum, point) => sum + point.bookedSessions, 0);
+        const previousBookings = firstHalf.reduce((sum, point) => sum + point.bookedSessions, 0);
+        const bookingChange = currentBookings - previousBookings;
+        const bookingPercentChange = previousBookings > 0 ? (bookingChange / previousBookings) * 100 : 0;
+
+        const currentEarnings = secondHalf.reduce((sum, point) => sum + point.totalEarnings, 0);
+        const previousEarnings = firstHalf.reduce((sum, point) => sum + point.totalEarnings, 0);
+        const earningsChange = currentEarnings - previousEarnings;
+        const earningsPercentChange = previousEarnings > 0 ? (earningsChange / previousEarnings) * 100 : 0;
+
+        setBookingComparison({
+          current: currentBookings,
+          previous: previousBookings,
+          change: bookingChange,
+          percentChange: bookingPercentChange,
+        });
+
+        setEarningsComparison({
+          current: currentEarnings,
+          previous: previousEarnings,
+          change: earningsChange,
+          percentChange: earningsPercentChange,
+        });
+      }
+
+      const computedPending = (mentorSessions || []).reduce((sum, session) => {
+        const status = String(session.status || "").toLowerCase();
+        const payoutStatus = String(session.payment_status || "").toLowerCase();
+        if (status === "confirmed" && payoutStatus === "pending") {
+          return sum + Number(session.total_amount || 0);
+        }
+        return sum;
+      }, 0);
+
+      const computedLifetime = (mentorSessions || []).reduce((sum, session) => {
+        const paymentStatus = String(session.payment_status || "").toLowerCase();
+        const bookingStatus = String(session.status || "").toLowerCase();
+        if (paymentStatus === "paid" || bookingStatus === "completed") {
+          return sum + Number(session.total_amount || 0);
+        }
+        return sum;
+      }, 0);
+
+      setPendingPayouts(computedPending);
+      setLifetimeEarnings(computedLifetime);
+
+      // Calculate Service Breakdown
+      const serviceMap = new Map<string, { bookings: number; revenue: number }>();
+      (mentorSessions || [])
+        .filter((s) => s.status === "completed" || s.payment_status === "paid")
+        .forEach((session) => {
+          const serviceName = getServiceDisplayName(session.session_type);
+          const current = serviceMap.get(serviceName) || { bookings: 0, revenue: 0 };
+          current.bookings += 1;
+          current.revenue += Number(session.total_amount || 0);
+          serviceMap.set(serviceName, current);
+        });
+
+      const totalServiceBookings = Array.from(serviceMap.values()).reduce((sum, s) => sum + s.bookings, 0);
+      const serviceBreakdownData = Array.from(serviceMap.entries())
+        .map(([service, data]) => ({
+          service,
+          bookings: data.bookings,
+          revenue: data.revenue,
+          percentage: totalServiceBookings > 0 ? (data.bookings / totalServiceBookings) * 100 : 0,
+        }))
+        .sort((a, b) => b.bookings - a.bookings);
+
+      setServiceBreakdown(serviceBreakdownData);
+
+      // Calculate Time Insights
+      const dayMap = new Map<string, number>();
+      const hourMap = new Map<number, number>();
+      (mentorSessions || [])
+        .filter((s) => s.scheduled_date && s.scheduled_time)
+        .forEach((session) => {
+          const date = new Date(`${session.scheduled_date}T${session.scheduled_time}`);
+          const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
+          const hour = date.getHours();
+          dayMap.set(dayName, (dayMap.get(dayName) || 0) + 1);
+          hourMap.set(hour, (hourMap.get(hour) || 0) + 1);
+        });
+
+      const bestDay = dayMap.size > 0 ? Array.from(dayMap.entries()).sort((a, b) => b[1] - a[1])[0][0] : "N/A";
+      const bestHour = hourMap.size > 0 ? Array.from(hourMap.entries()).sort((a, b) => b[1] - a[1])[0][0] : 0;
+      const bestTime = bestHour > 0 ? `${String(bestHour).padStart(2, "0")}:00 - ${String(bestHour + 1).padStart(2, "0")}:00` : "N/A";
+
+      setTimeInsights({
+        bestDay,
+        bestTime,
+        peakBookingTime: bestTime,
+      });
+
+      // Generate Key Insights
+      const insights: string[] = [];
+      if (serviceBreakdownData.length > 0) {
+        insights.push(`"${serviceBreakdownData[0].service}" generated ${serviceBreakdownData[0].percentage.toFixed(0)}% of bookings`);
+      }
+      if (bestDay !== "N/A") {
+        insights.push(`Peak bookings on ${bestDay}s`);
+      }
+      if (bestTime !== "N/A") {
+        insights.push(`Best time slot: ${bestTime}`);
+      }
+      if (bookingComparison.percentChange > 0) {
+        insights.push(`📈 Bookings up ${bookingComparison.percentChange.toFixed(0)}% vs previous period`);
+      } else if (bookingComparison.percentChange < 0) {
+        insights.push(`📉 Bookings down ${Math.abs(bookingComparison.percentChange).toFixed(0)}% vs previous period`);
+      }
+
+      setKeyInsights(insights);
+
+      // Set utilization metrics (estimate based on average availability)
+      const estimatedSlotsPerDay = 8; // Assume mentor can do 8 sessions per day
+      const recentDays = mentorSessions?.filter((s) => {
+        const date = new Date(s.scheduled_date);
+        const daysDiff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+        return daysDiff <= 14;
+      }).length || 0;
+
+      const estimatedTotalSlots = estimatedSlotsPerDay * 14;
+      const utilisationRate = estimatedTotalSlots > 0 ? (recentDays / estimatedTotalSlots) * 100 : 0;
+
+      setUtilizationMetrics({
+        totalSlots: estimatedTotalSlots,
+        bookedSlots: recentDays,
+        utilizationRate: Math.min(utilisationRate, 100),
+      });
+
       // Set upcoming sessions for calendar
       setUpcomingSessions(upcoming.slice(0, 5));
     } catch (error) {
@@ -305,7 +547,7 @@ const DashboardOverview = ({
     },
     {
       title: "Earnings",
-      value: `Rs. ${stats.totalEarnings.toLocaleString("en-IN")}`,
+      value: `Rs. ${calculateNetEarnings(stats.totalEarnings).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
       icon: IndianRupee,
       iconColor: "text-rose-400",
     },
@@ -317,6 +559,16 @@ const DashboardOverview = ({
       suffix: stats.averageRating > 0 ? "/ 5.0" : "",
     },
   ];
+
+  const getServiceDisplayName = (sessionType: string): string => {
+    if (mentorProfile?.service_pricing?.[sessionType]?.name) {
+      return mentorProfile.service_pricing[sessionType].name;
+    }
+    if (SERVICE_CONFIG[sessionType]) {
+      return SERVICE_CONFIG[sessionType].name;
+    }
+    return sessionType || SERVICE_CONFIG.oneOnOneSession?.name || "1-on-1 Session";
+  };
 
   const formatDate = (scheduledDate: string, scheduledTime: string) => {
     try {
@@ -331,6 +583,22 @@ const DashboardOverview = ({
       return "Date not set";
     }
   };
+
+  const isPhase2UnderReview = mentorProfile?.verification_status === "under_review";
+
+  const shouldShowPhase2StatusCard =
+    mentorProfile?.onboarding_version === "v2" &&
+    mentorProfile?.phase_1_complete === true &&
+    (mentorProfile?.phase_2_complete !== true || isPhase2UnderReview) &&
+    !hidePhase2StatusCard;
+
+  const phase2Progress = Number(mentorProfile?.phase2_progress || 0);
+  const phase2Status =
+    mentorProfile?.verification_status === "under_review"
+      ? "Under Review"
+      : mentorProfile?.verification_status === "verified"
+      ? "Verified"
+      : "Pending";
 
   return (
     <div className="space-y-6">
@@ -349,6 +617,53 @@ const DashboardOverview = ({
           </p>
         </div>
       </div>
+
+      {shouldShowPhase2StatusCard && (
+        <Card className="border border-rose-200 bg-rose-50/50 rounded-2xl shadow-none">
+          <CardContent className="p-5 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  {isPhase2UnderReview ? "Phase 2 Verification Under Review" : "Complete Phase 2 Onboarding"}
+                </p>
+                <p className="text-xs text-gray-600 mt-1">
+                  {isPhase2UnderReview
+                    ? "You have submitted Phase 2. Your verification is under review."
+                    : "Unlock verified badge, faster trust, and unlimited booking after admin approval."}
+                </p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-xs font-medium px-2 py-1 rounded-md bg-white border border-gray-200 text-gray-700">
+                  Status: {phase2Status}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Dismiss phase 2 status"
+                  onClick={() => setHidePhase2StatusCard(true)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {!isPhase2UnderReview && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs text-gray-600">
+                  <span>Progress</span>
+                  <span>{Math.min(Math.max(phase2Progress, 0), 4)}/4</span>
+                </div>
+                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gray-900 transition-all duration-300"
+                    style={{ width: `${(Math.min(Math.max(phase2Progress, 0), 4) / 4) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Time Period Filters - Improved Design */}
       <div className="flex items-center gap-2 pb-2">
@@ -480,8 +795,10 @@ const DashboardOverview = ({
                 if (onNavigate) {
                   onNavigate("availability");
                 } else {
-                  toast.error("Error", {
+                  toast({
+                    title: "Error",
                     description: "Navigation function not available",
+                    variant: "destructive",
                   });
                 }
               }}
@@ -503,8 +820,10 @@ const DashboardOverview = ({
                 if (onNavigate) {
                   onNavigate("profile");
                 } else {
-                  toast.error("Error", {
+                  toast({
+                    title: "Error",
                     description: "Navigation function not available",
+                    variant: "destructive",
                   });
                 }
               }}
@@ -521,9 +840,9 @@ const DashboardOverview = ({
             </button>
 
             {/* Message Support */}
-            <button
-              onClick={() => navigate("/mentor/support")}
-              className="w-full flex items-center gap-3 p-3 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-rose-300 transition-all text-left group"
+            <a
+              href="mailto:support@matepeak.com"
+              className="flex items-center gap-3 p-3 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-rose-300 transition-all text-left group"
             >
               <div className="p-2 rounded-lg bg-gray-100 group-hover:bg-rose-50 transition-colors">
                 <MessageCircle className="h-4 w-4 text-rose-400" />
@@ -533,7 +852,7 @@ const DashboardOverview = ({
                   Get Support
                 </p>
               </div>
-            </button>
+            </a>
           </div>
         </CardContent>
       </Card>
