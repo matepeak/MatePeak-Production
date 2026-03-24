@@ -18,6 +18,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 import { SERVICE_CONFIG } from "@/config/serviceConfig";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -59,6 +69,18 @@ const DashboardOverview = ({
   const [upcomingSessions, setUpcomingSessions] = useState<any[]>([]);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("all");
   const [timeRequests, setTimeRequests] = useState<any[]>([]);
+  const [pendingPayouts, setPendingPayouts] = useState<number>(0);
+  const [lifetimeEarnings, setLifetimeEarnings] = useState<number>(0);
+  const [trendData, setTrendData] = useState<any[]>([]);
+  const [bookingComparison, setBookingComparison] = useState<{ current: number; previous: number; change: number; percentChange: number }>({ current: 0, previous: 0, change: 0, percentChange: 0 });
+  const [earningsComparison, setEarningsComparison] = useState<{ current: number; previous: number; change: number; percentChange: number }>({ current: 0, previous: 0, change: 0, percentChange: 0 });
+  const [serviceBreakdown, setServiceBreakdown] = useState<Array<{ service: string; bookings: number; revenue: number; percentage: number }>>([]);
+  const [timeInsights, setTimeInsights] = useState<{ bestDay: string; bestTime: string; peakBookingTime: string }>({ bestDay: "", bestTime: "", peakBookingTime: "" });
+  const [conversionFunnel, setConversionFunnel] = useState<{ views: number; clicks: number; bookings: number; viewToClick: number; clickToBooking: number }>({ views: 0, clicks: 0, bookings: 0, viewToClick: 0, clickToBooking: 0 });
+  const [keyInsights, setKeyInsights] = useState<string[]>([]);
+  const [utilizationMetrics, setUtilizationMetrics] = useState<{ totalSlots: number; bookedSlots: number; utilizationRate: number }>({ totalSlots: 0, bookedSlots: 0, utilizationRate: 0 });
+
+  const chartColors = ["#3b82f6", "#f97316", "#8b5cf6", "#22c55e", "#06b6d4"];
 
   useEffect(() => {
     fetchDashboardData();
@@ -225,6 +247,223 @@ const DashboardOverview = ({
         completionRate: Math.round(completionRate),
       });
 
+      const calculateDateKey = (date: Date) => {
+        const p = timePeriod;
+        if (p === "month") {
+          return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+        }
+        if (p === "week") {
+          const day = date.getDay();
+          const mondayOffset = day === 0 ? -6 : 1 - day;
+          const monday = new Date(date);
+          monday.setDate(date.getDate() + mondayOffset);
+          return monday.toISOString().slice(0, 10);
+        }
+        return date.toISOString().slice(0, 10);
+      };
+
+      const generateTrendKeys = () => {
+        const values: string[] = [];
+        const today = new Date();
+
+        if (timePeriod === "month") {
+          for (let i = 11; i >= 0; i -= 1) {
+            const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+            values.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+          }
+        } else if (timePeriod === "week") {
+          const firstDay = new Date(today);
+          const day = firstDay.getDay();
+          firstDay.setDate(firstDay.getDate() - (day === 0 ? 6 : day - 1));
+          for (let i = 7; i >= 0; i -= 1) {
+            const d = new Date(firstDay);
+            d.setDate(firstDay.getDate() - i * 7);
+            values.push(d.toISOString().slice(0, 10));
+          }
+        } else {
+          for (let i = 13; i >= 0; i -= 1) {
+            const d = new Date(today);
+            d.setDate(today.getDate() - i);
+            values.push(d.toISOString().slice(0, 10));
+          }
+        }
+
+        return values;
+      };
+
+      const trendKeys = generateTrendKeys();
+      const trendMap = new Map<string, { date: string; bookedSessions: number; totalEarnings: number; avgEarnings: number }>();
+      trendKeys.forEach((key) => {
+        trendMap.set(key, {
+          date: key,
+          bookedSessions: 0,
+          totalEarnings: 0,
+          avgEarnings: 0,
+        });
+      });
+
+      const relevantSessions = (mentorSessions || []).filter((session) => {
+        const status = String(session.status || "").toLowerCase();
+        return status === "confirmed" || status === "completed";
+      });
+
+      relevantSessions.forEach((session) => {
+        if (!session.scheduled_date) return;
+
+        const date = new Date(session.scheduled_date);
+        const key = calculateDateKey(date);
+        if (!trendMap.has(key)) return;
+
+        const node = trendMap.get(key);
+        if (!node) return;
+
+        const amount = Number(session.total_amount || 0);
+        node.bookedSessions += 1;
+        node.totalEarnings += amount;
+      });
+
+      const computedTrendData = Array.from(trendMap.values()).map((point) => ({
+        ...point,
+        avgEarnings: point.bookedSessions > 0 ? point.totalEarnings / point.bookedSessions : 0,
+      }));
+
+      setTrendData(computedTrendData);
+
+      // Calculate period-over-period comparison
+      if (computedTrendData.length > 0) {
+        const midpoint = Math.floor(computedTrendData.length / 2);
+        const firstHalf = computedTrendData.slice(0, midpoint);
+        const secondHalf = computedTrendData.slice(midpoint);
+
+        const currentBookings = secondHalf.reduce((sum, point) => sum + point.bookedSessions, 0);
+        const previousBookings = firstHalf.reduce((sum, point) => sum + point.bookedSessions, 0);
+        const bookingChange = currentBookings - previousBookings;
+        const bookingPercentChange = previousBookings > 0 ? (bookingChange / previousBookings) * 100 : 0;
+
+        const currentEarnings = secondHalf.reduce((sum, point) => sum + point.totalEarnings, 0);
+        const previousEarnings = firstHalf.reduce((sum, point) => sum + point.totalEarnings, 0);
+        const earningsChange = currentEarnings - previousEarnings;
+        const earningsPercentChange = previousEarnings > 0 ? (earningsChange / previousEarnings) * 100 : 0;
+
+        setBookingComparison({
+          current: currentBookings,
+          previous: previousBookings,
+          change: bookingChange,
+          percentChange: bookingPercentChange,
+        });
+
+        setEarningsComparison({
+          current: currentEarnings,
+          previous: previousEarnings,
+          change: earningsChange,
+          percentChange: earningsPercentChange,
+        });
+      }
+
+      const computedPending = (mentorSessions || []).reduce((sum, session) => {
+        const status = String(session.status || "").toLowerCase();
+        const payoutStatus = String(session.payment_status || "").toLowerCase();
+        if (status === "confirmed" && payoutStatus === "pending") {
+          return sum + Number(session.total_amount || 0);
+        }
+        return sum;
+      }, 0);
+
+      const computedLifetime = (mentorSessions || []).reduce((sum, session) => {
+        const paymentStatus = String(session.payment_status || "").toLowerCase();
+        const bookingStatus = String(session.status || "").toLowerCase();
+        if (paymentStatus === "paid" || bookingStatus === "completed") {
+          return sum + Number(session.total_amount || 0);
+        }
+        return sum;
+      }, 0);
+
+      setPendingPayouts(computedPending);
+      setLifetimeEarnings(computedLifetime);
+
+      // Calculate Service Breakdown
+      const serviceMap = new Map<string, { bookings: number; revenue: number }>();
+      (mentorSessions || [])
+        .filter((s) => s.status === "completed" || s.payment_status === "paid")
+        .forEach((session) => {
+          const serviceName = getServiceDisplayName(session.session_type);
+          const current = serviceMap.get(serviceName) || { bookings: 0, revenue: 0 };
+          current.bookings += 1;
+          current.revenue += Number(session.total_amount || 0);
+          serviceMap.set(serviceName, current);
+        });
+
+      const totalServiceBookings = Array.from(serviceMap.values()).reduce((sum, s) => sum + s.bookings, 0);
+      const serviceBreakdownData = Array.from(serviceMap.entries())
+        .map(([service, data]) => ({
+          service,
+          bookings: data.bookings,
+          revenue: data.revenue,
+          percentage: totalServiceBookings > 0 ? (data.bookings / totalServiceBookings) * 100 : 0,
+        }))
+        .sort((a, b) => b.bookings - a.bookings);
+
+      setServiceBreakdown(serviceBreakdownData);
+
+      // Calculate Time Insights
+      const dayMap = new Map<string, number>();
+      const hourMap = new Map<number, number>();
+      (mentorSessions || [])
+        .filter((s) => s.scheduled_date && s.scheduled_time)
+        .forEach((session) => {
+          const date = new Date(`${session.scheduled_date}T${session.scheduled_time}`);
+          const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
+          const hour = date.getHours();
+          dayMap.set(dayName, (dayMap.get(dayName) || 0) + 1);
+          hourMap.set(hour, (hourMap.get(hour) || 0) + 1);
+        });
+
+      const bestDay = dayMap.size > 0 ? Array.from(dayMap.entries()).sort((a, b) => b[1] - a[1])[0][0] : "N/A";
+      const bestHour = hourMap.size > 0 ? Array.from(hourMap.entries()).sort((a, b) => b[1] - a[1])[0][0] : 0;
+      const bestTime = bestHour > 0 ? `${String(bestHour).padStart(2, "0")}:00 - ${String(bestHour + 1).padStart(2, "0")}:00` : "N/A";
+
+      setTimeInsights({
+        bestDay,
+        bestTime,
+        peakBookingTime: bestTime,
+      });
+
+      // Generate Key Insights
+      const insights: string[] = [];
+      if (serviceBreakdownData.length > 0) {
+        insights.push(`"${serviceBreakdownData[0].service}" generated ${serviceBreakdownData[0].percentage.toFixed(0)}% of bookings`);
+      }
+      if (bestDay !== "N/A") {
+        insights.push(`Peak bookings on ${bestDay}s`);
+      }
+      if (bestTime !== "N/A") {
+        insights.push(`Best time slot: ${bestTime}`);
+      }
+      if (bookingComparison.percentChange > 0) {
+        insights.push(`📈 Bookings up ${bookingComparison.percentChange.toFixed(0)}% vs previous period`);
+      } else if (bookingComparison.percentChange < 0) {
+        insights.push(`📉 Bookings down ${Math.abs(bookingComparison.percentChange).toFixed(0)}% vs previous period`);
+      }
+
+      setKeyInsights(insights);
+
+      // Set utilization metrics (estimate based on average availability)
+      const estimatedSlotsPerDay = 8; // Assume mentor can do 8 sessions per day
+      const recentDays = mentorSessions?.filter((s) => {
+        const date = new Date(s.scheduled_date);
+        const daysDiff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+        return daysDiff <= 14;
+      }).length || 0;
+
+      const estimatedTotalSlots = estimatedSlotsPerDay * 14;
+      const utilisationRate = estimatedTotalSlots > 0 ? (recentDays / estimatedTotalSlots) * 100 : 0;
+
+      setUtilizationMetrics({
+        totalSlots: estimatedTotalSlots,
+        bookedSlots: recentDays,
+        utilizationRate: Math.min(utilisationRate, 100),
+      });
+
       // Set upcoming sessions for calendar
       setUpcomingSessions(upcoming.slice(0, 5));
     } catch (error) {
@@ -318,6 +557,16 @@ const DashboardOverview = ({
       suffix: stats.averageRating > 0 ? "/ 5.0" : "",
     },
   ];
+
+  const getServiceDisplayName = (sessionType: string): string => {
+    if (mentorProfile?.service_pricing?.[sessionType]?.name) {
+      return mentorProfile.service_pricing[sessionType].name;
+    }
+    if (SERVICE_CONFIG[sessionType]) {
+      return SERVICE_CONFIG[sessionType].name;
+    }
+    return sessionType || SERVICE_CONFIG.oneOnOneSession?.name || "1-on-1 Session";
+  };
 
   const formatDate = (scheduledDate: string, scheduledTime: string) => {
     try {
@@ -468,77 +717,342 @@ const DashboardOverview = ({
             })}
       </div>
 
-      {/* Quick Actions - Compact Design */}
-      <Card className="bg-gray-100 border-0 rounded-2xl shadow-none">
+      {/* Earnings Summary + Booking Trend & Earnings Graphs */}
+      <div className="space-y-4">
+        {/* Summary Cards */}
+        <Card className="bg-gray-100 border-0 rounded-2xl shadow-none">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-700">
+                Earnings Overview
+              </h3>
+              {/* Time Period Filter for Graphs */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setTimePeriod("today")}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                    timePeriod === "today"
+                      ? "bg-gray-900 text-white shadow-sm"
+                      : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  14 Days
+                </button>
+                <button
+                  onClick={() => setTimePeriod("week")}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                    timePeriod === "week"
+                      ? "bg-gray-900 text-white shadow-sm"
+                      : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  8 Weeks
+                </button>
+                <button
+                  onClick={() => setTimePeriod("month")}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                    timePeriod === "month"
+                      ? "bg-gray-900 text-white shadow-sm"
+                      : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  12 Months
+                </button>
+                <button
+                  onClick={() => setTimePeriod("all")}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                    timePeriod === "all"
+                      ? "bg-gray-900 text-white shadow-sm"
+                      : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  All Time
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="rounded-xl border border-gray-200 bg-white p-3">
+                <p className="text-xs text-gray-500">Total Earnings</p>
+                <p className="text-lg font-bold text-gray-900 mt-1">
+                  Rs. {stats.totalEarnings.toLocaleString("en-IN")}
+                </p>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-white p-3">
+                <p className="text-xs text-gray-500">Pending Payouts</p>
+                <p className="text-lg font-bold text-gray-900 mt-1">
+                  Rs. {pendingPayouts.toLocaleString("en-IN")}
+                </p>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-white p-3">
+                <p className="text-xs text-gray-500">Lifetime Earnings</p>
+                <p className="text-lg font-bold text-gray-900 mt-1">
+                  Rs. {lifetimeEarnings.toLocaleString("en-IN")}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Two Graphs Side by Side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Booking Trend Graph */}
+          <Card className="bg-white border border-gray-200 rounded-2xl shadow-none">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">
+                    Booking Trend
+                  </h3>
+                  <p className="text-xs text-gray-500">Sessions booked over time</p>
+                </div>
+                <span className="text-xs text-gray-500">
+                  {timePeriod === "today"
+                    ? "14 days"
+                    : timePeriod === "week"
+                    ? "8 weeks"
+                    : timePeriod === "month"
+                    ? "12 months"
+                    : "All time"}
+                </span>
+              </div>
+
+              {/* Comparison Badge */}
+              {bookingComparison.current > 0 && (
+                <div className="mb-3 flex items-center gap-2 rounded-lg bg-green-50 p-2.5 border border-green-200">
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">
+                      {bookingComparison.current}
+                    </p>
+                    <p className={`text-xs font-medium ${bookingComparison.change >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      {bookingComparison.change >= 0 ? "+" : ""}{bookingComparison.change.toFixed(0)} sessions ({bookingComparison.percentChange >= 0 ? "+" : ""}{bookingComparison.percentChange.toFixed(1)}%)
+                    </p>
+                  </div>
+                  <div className={`ml-auto text-sm font-bold ${bookingComparison.change >= 0 ? "text-green-600" : "text-red-600"}`}>
+                    {bookingComparison.change >= 0 ? "↑" : "↓"}
+                  </div>
+                </div>
+              )}
+
+              <div className="h-56">
+                {trendData.length === 0 ? (
+                  <div className="flex h-full items-center justify-center text-xs text-gray-500">
+                    No booking data available yet.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trendData}>
+                      <CartesianGrid strokeDasharray="4 4" stroke="#e5e7eb" />
+                      <XAxis
+                        dataKey="date"
+                        minTickGap={10}
+                        tick={{ fontSize: 10, fill: "#6b7280" }}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 10, fill: "#6b7280" }}
+                        allowDecimals={false}
+                      />
+                      <Tooltip />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <Line
+                        type="monotone"
+                        dataKey="bookedSessions"
+                        name="Sessions Booked"
+                        stroke="#22c55e"
+                        strokeWidth={2.5}
+                        dot={{ r: 2 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Earnings Graph */}
+          <Card className="bg-white border border-gray-200 rounded-2xl shadow-none">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">
+                    Earnings Trend
+                  </h3>
+                  <p className="text-xs text-gray-500">Total & average earnings</p>
+                </div>
+                <span className="text-xs text-gray-500">
+                  {timePeriod === "today"
+                    ? "14 days"
+                    : timePeriod === "week"
+                    ? "8 weeks"
+                    : timePeriod === "month"
+                    ? "12 months"
+                    : "All time"}
+                </span>
+              </div>
+
+              {/* Comparison Badge */}
+              {earningsComparison.current > 0 && (
+                <div className="mb-3 flex items-center gap-2 rounded-lg bg-blue-50 p-2.5 border border-blue-200">
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">
+                      Rs. {earningsComparison.current.toLocaleString("en-IN")}
+                    </p>
+                    <p className={`text-xs font-medium ${earningsComparison.change >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      {earningsComparison.change >= 0 ? "+" : ""}Rs. {earningsComparison.change.toLocaleString("en-IN")} ({earningsComparison.percentChange >= 0 ? "+" : ""}{earningsComparison.percentChange.toFixed(1)}%)
+                    </p>
+                  </div>
+                  <div className={`ml-auto text-sm font-bold ${earningsComparison.change >= 0 ? "text-green-600" : "text-red-600"}`}>
+                    {earningsComparison.change >= 0 ? "↑" : "↓"}
+                  </div>
+                </div>
+              )}
+
+              <div className="h-56">
+                {trendData.length === 0 ? (
+                  <div className="flex h-full items-center justify-center text-xs text-gray-500">
+                    No earnings data available yet.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trendData}>
+                      <CartesianGrid strokeDasharray="4 4" stroke="#e5e7eb" />
+                      <XAxis
+                        dataKey="date"
+                        minTickGap={10}
+                        tick={{ fontSize: 10, fill: "#6b7280" }}
+                      />
+                      <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} />
+                      <Tooltip formatter={(value: number) => [`Rs. ${value.toLocaleString("en-IN")}`, ""]} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <Line
+                        type="monotone"
+                        dataKey="totalEarnings"
+                        name="Total Earnings"
+                        stroke="#3b82f6"
+                        strokeWidth={2.5}
+                        dot={{ r: 2 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="avgEarnings"
+                        name="Avg per Session"
+                        stroke="#f97316"
+                        strokeWidth={2.5}
+                        dot={{ r: 2 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Actionable Insights Section - Game Changer */}
+      <Card className="bg-gradient-to-br from-indigo-50 to-blue-50 border-0 rounded-2xl shadow-none">
         <CardContent className="p-5">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">
-            Quick Actions
+          <h3 className="text-sm font-bold text-gray-900 mb-4">
+            💡 Actionable Insights
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {/* Update Availability */}
-            <button
-              onClick={() => {
-                if (onNavigate) {
-                  onNavigate("availability");
-                } else {
-                  toast({
-                    title: "Error",
-                    description: "Navigation function not available",
-                    variant: "destructive",
-                  });
-                }
-              }}
-              className="flex items-center gap-3 p-3 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-rose-300 transition-all text-left group cursor-pointer"
-            >
-              <div className="p-2 rounded-lg bg-gray-100 group-hover:bg-rose-50 transition-colors">
-                <Edit className="h-4 w-4 text-rose-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">
-                  Update Availability
-                </p>
-              </div>
-            </button>
 
-            {/* Profile Management */}
-            <button
-              onClick={() => {
-                if (onNavigate) {
-                  onNavigate("profile");
-                } else {
-                  toast({
-                    title: "Error",
-                    description: "Navigation function not available",
-                    variant: "destructive",
-                  });
-                }
-              }}
-              className="flex items-center gap-3 p-3 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-rose-300 transition-all text-left group cursor-pointer"
-            >
-              <div className="p-2 rounded-lg bg-gray-100 group-hover:bg-rose-50 transition-colors">
-                <Settings className="h-4 w-4 text-rose-400" />
+          {/* Key Insights Row */}
+          {keyInsights.length > 0 && (
+            <div className="mb-4 space-y-2">
+              <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                Recent Patterns
+              </p>
+              <div className="space-y-1.5">
+                {keyInsights.map((insight, idx) => (
+                  <div
+                    key={idx}
+                    className="text-sm text-gray-800 flex items-start gap-2 p-2 rounded-lg bg-white bg-opacity-70"
+                  >
+                    <span className="text-indigo-600 flex-shrink-0 mt-0.5">→</span>
+                    <span>{insight}</span>
+                  </div>
+                ))}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">
-                  Profile Management
-                </p>
-              </div>
-            </button>
+            </div>
+          )}
 
-            {/* Message Support */}
-            <a
-              href="mailto:support@matepeak.com"
-              className="flex items-center gap-3 p-3 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-rose-300 transition-all text-left group"
-            >
-              <div className="p-2 rounded-lg bg-gray-100 group-hover:bg-rose-50 transition-colors">
-                <MessageCircle className="h-4 w-4 text-rose-400" />
+          {/* Service Breakdown + Time Insights Side by Side */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Service Breakdown */}
+            {serviceBreakdown.length > 0 && (
+              <div className="rounded-xl border border-indigo-200 bg-white p-3">
+                <p className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
+                  Service Performance
+                </p>
+                <div className="space-y-2">
+                  {serviceBreakdown.slice(0, 3).map((service, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-sm">
+                      <div>
+                        <p className="font-medium text-gray-900">{service.service}</p>
+                        <p className="text-xs text-gray-500">
+                          {service.bookings} bookings • Rs. {service.revenue.toLocaleString("en-IN")}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-100 to-blue-100 flex items-center justify-center">
+                          <span className="text-sm font-bold text-indigo-600">
+                            {service.percentage.toFixed(0)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">
-                  Get Support
+            )}
+
+            {/* Time-Based & Utilization */}
+            <div className="rounded-xl border border-indigo-200 bg-white p-3 space-y-3">
+              {/* Best Day/Time */}
+              <div>
+                <p className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
+                  Optimal Timing
+                </p>
+                <div className="space-y-1.5">
+                  {timeInsights.bestDay !== "N/A" && (
+                    <div className="text-sm">
+                      <p className="text-gray-600">Best Day</p>
+                      <p className="font-bold text-gray-900">{timeInsights.bestDay}</p>
+                    </div>
+                  )}
+                  {timeInsights.bestTime !== "N/A" && (
+                    <div className="text-sm">
+                      <p className="text-gray-600">Peak Time</p>
+                      <p className="font-bold text-gray-900">{timeInsights.bestTime}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Utilization */}
+              <div>
+                <p className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
+                  Utilization (14 days)
+                </p>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full transition-all ${
+                      utilizationMetrics.utilizationRate >= 70
+                        ? "bg-green-500"
+                        : utilizationMetrics.utilizationRate >= 40
+                        ? "bg-yellow-500"
+                        : "bg-orange-500"
+                    }`}
+                    style={{ width: `${Math.min(utilizationMetrics.utilizationRate, 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-gray-600 mt-1">
+                  {utilizationMetrics.bookedSlots} of {utilizationMetrics.totalSlots} slots booked
+                  <span className="font-bold text-gray-900 ml-1">
+                    ({utilizationMetrics.utilizationRate.toFixed(0)}%)
+                  </span>
                 </p>
               </div>
-            </a>
+            </div>
           </div>
         </CardContent>
       </Card>
