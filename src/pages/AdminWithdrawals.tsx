@@ -100,7 +100,13 @@ const AdminWithdrawals = () => {
     const result = await approveWithdrawal(
       selectedWithdrawal.id,
       transactionRef || undefined,
-      notes || undefined
+      notes || undefined,
+      {
+        mentorEmail: selectedWithdrawal.profiles?.email || null,
+        mentorName: selectedWithdrawal.profiles?.full_name || null,
+        amount: selectedWithdrawal.amount,
+        requestedAt: selectedWithdrawal.requested_at,
+      }
     );
     
     if (result.success) {
@@ -122,7 +128,12 @@ const AdminWithdrawals = () => {
     }
     
     setProcessing(true);
-    const result = await rejectWithdrawal(selectedWithdrawal.id, rejectionReason);
+    const result = await rejectWithdrawal(selectedWithdrawal.id, rejectionReason, {
+      mentorEmail: selectedWithdrawal.profiles?.email || null,
+      mentorName: selectedWithdrawal.profiles?.full_name || null,
+      amount: selectedWithdrawal.amount,
+      requestedAt: selectedWithdrawal.requested_at,
+    });
     
     if (result.success) {
       toast.success('Withdrawal rejected and funds restored to wallet');

@@ -20,6 +20,9 @@ import {
   maskAccountNumber,
   MIN_WITHDRAWAL_AMOUNT,
   saveAndVerifyPayoutAccount,
+  COMMISSION_RATE,
+  calculateNetEarnings,
+  calculateCommissionAmount,
   type EarningsSnapshot,
   type PayoutMethod,
   type VerificationStatus,
@@ -369,7 +372,7 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between mb-2">
@@ -377,13 +380,7 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
               <Wallet className="h-4 w-4 text-rose-400" />
             </div>
             <p className="text-2xl font-bold text-gray-900">{formatINR(wallet.balance)}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-gray-600 mb-2">Total Earned</p>
-            <p className="text-2xl font-bold text-gray-900">{formatINR(wallet.total_earned)}</p>
+            <p className="text-xs text-gray-500 mt-2">Ready to withdraw</p>
           </CardContent>
         </Card>
 
@@ -391,9 +388,48 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
           <CardContent className="pt-6">
             <p className="text-sm text-gray-600 mb-2">Total Withdrawn</p>
             <p className="text-2xl font-bold text-gray-900">{formatINR(wallet.total_withdrawn)}</p>
+            <p className="text-xs text-gray-500 mt-2">Lifetime amount</p>
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Earnings Breakdown</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="border-l-4 border-blue-500 pl-4">
+              <p className="text-xs text-gray-600 font-semibold uppercase">Gross Earnings</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{formatINR(wallet.total_earned)}</p>
+              <p className="text-xs text-gray-500 mt-1">Total booking revenue</p>
+            </div>
+
+            <div className="border-l-4 border-orange-500 pl-4">
+              <p className="text-xs text-gray-600 font-semibold uppercase">Platform Commission</p>
+              <p className="text-2xl font-bold text-orange-600 mt-1">{formatINR(calculateCommissionAmount(wallet.total_earned))}</p>
+              <p className="text-xs text-gray-500 mt-1">{(COMMISSION_RATE * 100).toFixed(0)}% deducted</p>
+            </div>
+
+            <div className="border-l-4 border-green-500 pl-4">
+              <p className="text-xs text-gray-600 font-semibold uppercase">Net Earnings</p>
+              <p className="text-2xl font-bold text-green-600 mt-1">{formatINR(calculateNetEarnings(wallet.total_earned))}</p>
+              <p className="text-xs text-gray-500 mt-1">After commission</p>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 rounded-lg p-4 mt-4">
+            <p className="text-sm text-blue-900">
+              <span className="font-semibold">How it works:</span> When a session is successfully booked and paid, MatePeak retains {(COMMISSION_RATE * 100).toFixed(0)}% as platform commission. Your net earnings (after commission) are credited to your available balance.
+            </p>
+          </div>
+          <div className="bg-blue-50 rounded-lg p-4 mt-4">
+            <p className="text-sm text-blue-900">
+              <span className="font-semibold">How it works:</span> When a session is successfully booked and paid, MatePeak retains {(COMMISSION_RATE * 100).toFixed(0)}% as platform commission. Your net earnings (after commission) are credited to your available balance.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
