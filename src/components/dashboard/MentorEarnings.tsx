@@ -371,12 +371,12 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 max-w-6xl">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="bg-gray-100 rounded-2xl border-0 shadow-sm">
+          <CardContent className="p-6">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-gray-600">Available Balance</p>
+              <p className="text-sm font-medium text-gray-600">Available Balance</p>
               <Wallet className="h-4 w-4 text-rose-400" />
             </div>
             <p className="text-2xl font-bold text-gray-900">{formatINR(wallet.balance)}</p>
@@ -384,46 +384,41 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-gray-600 mb-2">Total Withdrawn</p>
+        <Card className="bg-gray-100 rounded-2xl border-0 shadow-sm">
+          <CardContent className="p-6">
+            <p className="text-sm font-medium text-gray-600 mb-2">Total Withdrawn</p>
             <p className="text-2xl font-bold text-gray-900">{formatINR(wallet.total_withdrawn)}</p>
             <p className="text-xs text-gray-500 mt-2">Lifetime amount</p>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Earnings Breakdown</CardTitle>
+      <Card className="bg-gray-100 rounded-2xl border-0 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-[30px] leading-tight tracking-tight text-gray-900">Earnings Breakdown</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="border-l-4 border-blue-500 pl-4">
+            <div className="bg-white rounded-xl px-4 py-4 border border-gray-100">
               <p className="text-xs text-gray-600 font-semibold uppercase">Gross Earnings</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">{formatINR(wallet.total_earned)}</p>
               <p className="text-xs text-gray-500 mt-1">Total booking revenue</p>
             </div>
 
-            <div className="border-l-4 border-orange-500 pl-4">
+            <div className="bg-white rounded-xl px-4 py-4 border border-gray-100">
               <p className="text-xs text-gray-600 font-semibold uppercase">Platform Commission</p>
               <p className="text-2xl font-bold text-orange-600 mt-1">{formatINR(calculateCommissionAmount(wallet.total_earned))}</p>
               <p className="text-xs text-gray-500 mt-1">{(COMMISSION_RATE * 100).toFixed(0)}% deducted</p>
             </div>
 
-            <div className="border-l-4 border-green-500 pl-4">
+            <div className="bg-white rounded-xl px-4 py-4 border border-gray-100">
               <p className="text-xs text-gray-600 font-semibold uppercase">Net Earnings</p>
               <p className="text-2xl font-bold text-green-600 mt-1">{formatINR(calculateNetEarnings(wallet.total_earned))}</p>
               <p className="text-xs text-gray-500 mt-1">After commission</p>
             </div>
           </div>
 
-          <div className="bg-blue-50 rounded-lg p-4 mt-4">
-            <p className="text-sm text-blue-900">
-              <span className="font-semibold">How it works:</span> When a session is successfully booked and paid, MatePeak retains {(COMMISSION_RATE * 100).toFixed(0)}% as platform commission. Your net earnings (after commission) are credited to your available balance.
-            </p>
-          </div>
-          <div className="bg-blue-50 rounded-lg p-4 mt-4">
+          <div className="bg-white rounded-xl p-4 mt-2 border border-gray-100">
             <p className="text-sm text-blue-900">
               <span className="font-semibold">How it works:</span> When a session is successfully booked and paid, MatePeak retains {(COMMISSION_RATE * 100).toFixed(0)}% as platform commission. Your net earnings (after commission) are credited to your available balance.
             </p>
@@ -431,14 +426,14 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Payout Details</CardTitle>
+      <Card className="bg-gray-100 rounded-2xl border-0 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-[30px] leading-tight tracking-tight text-gray-900">Payout Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="text-sm text-gray-600">Withdrawal is available only after balance reaches ₹{MIN_WITHDRAWAL_AMOUNT}</div>
-            <Badge className={verification.className}>
+            <Badge className={`${verification.className} rounded-full px-3 py-1`}>
               <VerificationIcon className="h-3.5 w-3.5 mr-1" />
               {verification.label}
             </Badge>
@@ -449,9 +444,9 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
           )}
 
           <Tabs value={method} onValueChange={(value) => setMethod(value as PayoutMethod)}>
-            <TabsList>
-              <TabsTrigger value="bank">Bank Transfer</TabsTrigger>
-              <TabsTrigger value="upi">UPI</TabsTrigger>
+            <TabsList className="grid w-full max-w-md grid-cols-2 bg-white border border-gray-200 rounded-xl p-1">
+              <TabsTrigger value="bank" className="rounded-lg data-[state=active]:bg-gray-900 data-[state=active]:text-white">Bank Transfer</TabsTrigger>
+              <TabsTrigger value="upi" className="rounded-lg data-[state=active]:bg-gray-900 data-[state=active]:text-white">UPI</TabsTrigger>
             </TabsList>
 
             <TabsContent value="bank" className="space-y-4 pt-3">
@@ -463,12 +458,13 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
                     value={accountHolderName}
                     onChange={(e) => setAccountHolderName(e.target.value)}
                     placeholder="Enter account holder name"
+                    className="h-11 rounded-xl border-gray-300 bg-white"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="bankName">Bank Name</Label>
                   <Select value={bankName} onValueChange={setBankName}>
-                    <SelectTrigger id="bankName">
+                    <SelectTrigger id="bankName" className="h-11 rounded-xl border-gray-300 bg-white">
                       <SelectValue placeholder="Select bank" />
                     </SelectTrigger>
                     <SelectContent>
@@ -502,6 +498,7 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
                     }}
                     placeholder="Enter account number"
                     inputMode="numeric"
+                    className="h-11 rounded-xl border-gray-300 bg-white"
                   />
                   {accountNumberError && (
                     <p className="text-xs text-red-600">{accountNumberError}</p>
@@ -514,6 +511,7 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
                     value={ifscCode}
                     onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
                     placeholder="HDFC0000001"
+                    className="h-11 rounded-xl border-gray-300 bg-white"
                   />
                   {ifscLookupLoading && (
                     <p className="text-xs text-gray-500">Looking up branch...</p>
@@ -540,12 +538,13 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
                   value={upiId}
                   onChange={(e) => setUpiId(e.target.value)}
                   placeholder="name@upi"
+                  className="h-11 rounded-xl border-gray-300 bg-white"
                 />
               </div>
             </TabsContent>
           </Tabs>
 
-          <Button onClick={handleSaveAndVerify} disabled={savingDetails} className="min-w-44">
+          <Button onClick={handleSaveAndVerify} disabled={savingDetails} className="min-w-44 h-11 rounded-xl bg-gray-900 hover:bg-gray-800 text-white">
             {savingDetails ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -561,9 +560,9 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Withdraw Funds</CardTitle>
+      <Card className="bg-gray-100 rounded-2xl border-0 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-[30px] leading-tight tracking-tight text-gray-900">Withdraw Funds</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-sm text-gray-600">
@@ -588,12 +587,13 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
                 value={withdrawalAmount}
                 onChange={(e) => setWithdrawalAmount(e.target.value)}
                 placeholder="Enter amount"
+                className="h-11 rounded-xl border-gray-300 bg-white"
               />
             </div>
             <Button
               onClick={handleRequestWithdrawal}
               disabled={requesting || !canRequestWithdrawal}
-              className="sm:min-w-44"
+              className="sm:min-w-44 h-11 rounded-xl bg-gray-900 hover:bg-gray-800 text-white"
             >
               {requesting ? (
                 <>
@@ -608,9 +608,9 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Recent Withdrawal Requests</CardTitle>
+      <Card className="bg-gray-100 rounded-2xl border-0 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-[30px] leading-tight tracking-tight text-gray-900">Recent Withdrawal Requests</CardTitle>
         </CardHeader>
         <CardContent>
           {snapshot?.withdrawals?.length ? (
@@ -618,7 +618,7 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
               {snapshot.withdrawals.map((item) => (
                 <div
                   key={item.id}
-                  className="border border-gray-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+                  className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
                 >
                   <div>
                     <p className="text-sm font-semibold text-gray-900">{formatINR(item.amount)}</p>
