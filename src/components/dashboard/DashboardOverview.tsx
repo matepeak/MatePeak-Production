@@ -34,6 +34,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
+import confetti from "canvas-confetti";
 
 type TimePeriod = "today" | "week" | "month" | "all";
 
@@ -584,6 +585,11 @@ const DashboardOverview = ({
   };
 
   const isPhase2UnderReview = mentorProfile?.verification_status === "under_review";
+  const isMentorVerified =
+    mentorProfile?.verification_status === "verified" ||
+    mentorProfile?.mentor_tier === "verified" ||
+    mentorProfile?.mentor_tier === "top" ||
+    Boolean(mentorProfile?.is_verified);
 
   const shouldShowPhase2StatusCard =
     mentorProfile?.onboarding_version === "v2" &&
@@ -598,6 +604,32 @@ const DashboardOverview = ({
       : mentorProfile?.verification_status === "verified"
       ? "Verified"
       : "Pending";
+
+  useEffect(() => {
+    if (!mentorProfile?.id || !isMentorVerified) return;
+
+    const celebrationKey = `mentor-verified-celebration:${mentorProfile.id}`;
+    const alreadyCelebrated = localStorage.getItem(celebrationKey);
+    if (alreadyCelebrated) return;
+
+    localStorage.setItem(celebrationKey, "shown");
+
+    toast.success("You are now a verified mentor! 🎉");
+
+    confetti({
+      particleCount: 120,
+      spread: 75,
+      origin: { y: 0.6 },
+    });
+
+    setTimeout(() => {
+      confetti({
+        particleCount: 90,
+        spread: 100,
+        origin: { y: 0.5 },
+      });
+    }, 250);
+  }, [mentorProfile?.id, isMentorVerified]);
 
   return (
     <div className="space-y-6">
@@ -614,6 +646,14 @@ const DashboardOverview = ({
           <p className="text-gray-600 text-sm">
             Here's what's happening with your mentoring sessions
           </p>
+          <div className="mt-2">
+            <Badge
+              variant="outline"
+              className={isMentorVerified ? "border-emerald-300 text-emerald-700 bg-emerald-50" : "border-gray-300 text-gray-700 bg-white"}
+            >
+              Status: {isMentorVerified ? "Verified" : "Pending"}
+            </Badge>
+          </div>
         </div>
       </div>
 

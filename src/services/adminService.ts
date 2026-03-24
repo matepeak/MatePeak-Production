@@ -245,8 +245,55 @@ export async function moderateReview(
 // ADMIN DATA FETCHING
 // =====================================================
 
-export async function getPendingMentorVerifications() {
+export async function getPendingMentorVerifications(page = 1, pageSize = 20) {
   try {
+    const safePage = Math.max(1, Number(page) || 1);
+    const safePageSize = Math.max(1, Math.min(100, Number(pageSize) || 20));
+    const from = (safePage - 1) * safePageSize;
+    const to = from + safePageSize - 1;
+
+    const enrichWithProfiles = async (rows: any[]) => {
+      const profileIds = Array.from(
+        new Set(rows.map((row: any) => row.user_id || row.id).filter(Boolean))
+      );
+
+      if (profileIds.length === 0) {
+        return rows;
+      }
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id,email,full_name,avatar_url')
+        .in('id', profileIds);
+
+      if (profilesError || !profiles) {
+        return rows;
+      }
+
+      const profileMap = new Map(
+        profiles.map((profile: any) => [
+          profile.id,
+          {
+            email: profile.email ?? null,
+            full_name: profile.full_name ?? null,
+            avatar_url: profile.avatar_url ?? null,
+          },
+        ])
+      );
+
+      return rows.map((row: any) => {
+        const fallbackProfile = profileMap.get(row.user_id || row.id) || null;
+        return {
+          ...row,
+          profiles: {
+            email: row.profiles?.email ?? fallbackProfile?.email ?? null,
+            full_name: row.profiles?.full_name ?? fallbackProfile?.full_name ?? null,
+            avatar_url: row.profiles?.avatar_url ?? fallbackProfile?.avatar_url ?? null,
+          },
+        };
+      });
+    };
+
     const pendingFilter = 'verification_status.eq.under_review,phase2_review_status.eq.under_review,profile_status.eq.pending_review';
 
     const primary = await supabase
@@ -258,57 +305,34 @@ export async function getPendingMentorVerifications() {
           full_name,
           avatar_url
         )
-      `)
+      `, { count: 'exact' })
       .or(pendingFilter)
       .eq('is_verified', false)
+      .range(from, to)
       .order('created_at', { ascending: false });
 
     if (!primary.error) {
-      return { data: primary.data, error: null };
+      const enrichedPrimary = await enrichWithProfiles(primary.data || []);
+      return { data: enrichedPrimary, count: primary.count || 0, error: null };
     }
 
     const fallback = await supabase
       .from('expert_profiles')
-      .select('*')
+      .select('*', { count: 'exact' })
       .or('verification_status.eq.under_review,profile_status.eq.pending_review')
       .eq('is_verified', false)
+      .range(from, to)
       .order('created_at', { ascending: false });
 
     if (fallback.error) throw fallback.error;
 
     const rows = fallback.data || [];
-    const userIds = Array.from(new Set(rows.map((row: any) => row.user_id).filter(Boolean)));
+    const enrichedRows = await enrichWithProfiles(rows);
 
-    let profileMap = new Map<string, { email: string | null; full_name: string | null; avatar_url: string | null }>();
-    if (userIds.length > 0) {
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id,email,full_name,avatar_url')
-        .in('id', userIds);
-
-      if (!profilesError && profiles) {
-        profileMap = new Map(
-          profiles.map((profile: any) => [
-            profile.id,
-            {
-              email: profile.email ?? null,
-              full_name: profile.full_name ?? null,
-              avatar_url: profile.avatar_url ?? null,
-            },
-          ])
-        );
-      }
-    }
-
-    const enrichedRows = rows.map((row: any) => ({
-      ...row,
-      profiles: profileMap.get(row.user_id) || null,
-    }));
-
-    return { data: enrichedRows, error: null };
+    return { data: enrichedRows, count: fallback.count || 0, error: null };
   } catch (error: any) {
     console.error('Error fetching pending verifications:', error);
-    return { data: null, error };
+    return { data: null, count: 0, error };
   }
 }
 
