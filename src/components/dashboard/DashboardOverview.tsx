@@ -706,8 +706,8 @@ const DashboardOverview = ({
 
       setKeyInsights(insights);
 
-      // Set upcoming sessions for calendar
-      setUpcomingSessions(upcoming.slice(0, 5));
+      // Show only the next 3 upcoming sessions in overview widget
+      setUpcomingSessions(upcoming.slice(0, 3));
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
@@ -1426,7 +1426,7 @@ const DashboardOverview = ({
               )}
             </div>
           </div>
-          <CardContent className="p-0">
+          <CardContent className="p-0 ">
             {loading ? (
               <div className="divide-y divide-gray-100">
                 {Array.from({ length: 2 }).map((_, i) => (
@@ -1442,7 +1442,7 @@ const DashboardOverview = ({
                 ))}
               </div>
             ) : timeRequests.length === 0 ? (
-              <div className="p-8 text-center">
+              <div className="min-h-[320px] p-8 flex flex-col items-center justify-center text-center">
                 <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
                   <MessageCircle className="h-6 w-6 text-gray-400" />
                 </div>

@@ -60,6 +60,7 @@ coverage/
 out/
 build/
 .cache/
+.npx-cache/
 
 # Backups and temporary files
 *.backup

@@ -17,8 +17,8 @@ export default function ProfileServices({
   const isServiceEnabled = (enabled: unknown) =>
     enabled === true || enabled === "true" || enabled === 1;
 
-  const entries = Object.entries(servicePricing || {}).filter(([, value]) =>
-    isServiceEnabled(value?.enabled)
+  const entries = Object.entries(servicePricing || {}).filter(
+    ([, value]) => isServiceEnabled(value?.enabled) && value?.deleted !== true
   );
 
   if (entries.length === 0) {
@@ -45,6 +45,8 @@ export default function ProfileServices({
 
         const price = value?.price ?? 0;
         const discountPrice = value?.discount_price;
+        const hasDiscountPrice =
+          discountPrice !== undefined && discountPrice !== null;
         const duration = value?.duration as number | undefined;
 
         return (
@@ -75,7 +77,7 @@ export default function ProfileServices({
               <p className="text-sm text-gray-600 line-clamp-2 min-h-[40px]">{serviceDescription}</p>
 
               <div className="mt-auto pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                {discountPrice ? (
+                {hasDiscountPrice ? (
                   <div className="flex items-end gap-2 min-h-[32px]">
                     <div className="flex items-center text-green-600 font-semibold text-xl">
                       <IndianRupee className="h-4 w-4" />

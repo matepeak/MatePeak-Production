@@ -19,7 +19,7 @@ import OnboardingPhase1Success from "./pages/OnboardingPhase1Success";
 import Dashboard from "./pages/Dashboard";
 import HowItWorks from "./pages/HowItWorks";
 import NotFound from "./pages/NotFound";
-import AboutUs from "./pages/AboutUs";
+import AboutUs from "./pages/about-us/AboutUs";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import RoleSelection from "./pages/RoleSelection";
 import StudentSignup from "./pages/StudentSignup";

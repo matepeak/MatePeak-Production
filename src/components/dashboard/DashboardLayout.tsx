@@ -376,11 +376,11 @@ const DashboardLayout = ({
                 </h3>
               </div>
               {isVerifiedMentor ? (
-                <div className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-green-300 bg-green-200 px-3 py-1 text-xs font-medium text-black shadow-sm">
+                <div className="mt-1 inline-flex items-center gap-1 rounded-full border border-green-300 bg-green-200 px-2.5 py-0.5 text-[11px] font-semibold text-black shadow-sm">
                   <img
                     src="/lovable-uploads/verifiedremovebg.png"
                     alt="Verified mentor"
-                    className="h-6 w-6"
+                    className="h-4 w-4"
                   />
                   <span>Verified Mentor</span>
                 </div>

@@ -83,6 +83,7 @@ export default function DateTimeSelection({
   const visibleDates = Array.from({ length: 7 }, (_, i) =>
     addDays(weekStart, i)
   );
+  const hasAnyAvailableDates = datesWithSlots.size > 0;
 
   // Check which dates have available slots and auto-select - COMBINED for efficiency
   useEffect(() => {
@@ -95,7 +96,7 @@ export default function DateTimeSelection({
     // Only check visible dates if we already have auto-selected, otherwise check more dates
     const datesToCheck = hasAutoSelectedDate
       ? visibleDates
-      : Array.from({ length: 14 }, (_, i) => addDays(new Date(), i));
+      : Array.from({ length: 60 }, (_, i) => addDays(new Date(), i));
 
     // Fetch all dates in parallel
     const availabilityPromises = datesToCheck.map(async (date) => {
@@ -141,6 +142,9 @@ export default function DateTimeSelection({
         if (daysDiff >= 7) {
           setWeekStart(firstAvailable.date);
         }
+      } else {
+        setSelectedDate(null);
+        setSelectedTime(null);
       }
     }
 
@@ -443,300 +447,315 @@ export default function DateTimeSelection({
         </div>
       ) : (
         <>
-          {/* Date Selection */}
-          <div className="bg-gray-100 rounded-2xl p-5 border-0 shadow-sm">
-            <h3 className="text-base font-bold text-gray-900 mb-4">
-              When should we meet?
-            </h3>
+          {!hasAnyAvailableDates ? (
+            <div className="bg-gray-100 rounded-2xl p-8 border-0 shadow-sm">
+              <div className="text-center bg-white rounded-xl p-8">
+                <p className="text-base font-semibold text-gray-900">
+                  No slots available right now
+                </p>
+                <p className="text-sm text-gray-600 mt-1">
+                  This mentor currently has no open time slots. You can request a custom time below.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Date Selection */}
+              <div className="bg-gray-100 rounded-2xl p-5 border-0 shadow-sm">
+                <h3 className="text-base font-bold text-gray-900 mb-4">
+                  When should we meet?
+                </h3>
 
-            <div className="flex items-center gap-3">
-              {/* Week navigation */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handlePrevWeek}
-                className="h-9 w-9 p-0 hover:bg-white rounded-xl"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
+                <div className="flex items-center gap-3">
+                  {/* Week navigation */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handlePrevWeek}
+                    className="h-9 w-9 p-0 hover:bg-white rounded-xl"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
 
-              <div className="flex gap-2 overflow-x-auto flex-1 pb-2 scrollbar-hide">
-                {visibleDates.map((date, index) => {
-                  const isSelected =
-                    selectedDate && isSameDay(date, selectedDate);
-                  const isPast = isDatePast(date);
-                  const isToday = isSameDay(date, new Date());
-                  const dateStr = getLocalDateString(date);
-                  const hasAvailableSlots = datesWithSlots.has(dateStr);
+                  <div className="flex gap-2 overflow-x-auto flex-1 pb-2 scrollbar-hide">
+                    {visibleDates.map((date, index) => {
+                      const isSelected =
+                        selectedDate && isSameDay(date, selectedDate);
+                      const isPast = isDatePast(date);
+                      const isToday = isSameDay(date, new Date());
+                      const dateStr = getLocalDateString(date);
+                      const hasAvailableSlots = datesWithSlots.has(dateStr);
 
-                  return (
-                    <button
-                      key={index}
-                      onClick={() => !isPast && setSelectedDate(date)}
-                      disabled={isPast}
-                      className={cn(
-                        "flex flex-col items-center justify-center min-w-[75px] p-3.5 rounded-xl border-2 transition-all",
-                        isSelected
-                          ? "border-gray-900 bg-gray-900 text-white shadow-sm"
-                          : isPast
-                          ? "border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed"
-                          : hasAvailableSlots
-                          ? "border-green-400 bg-white hover:border-green-500 hover:shadow-sm"
-                          : "border-gray-200 bg-white hover:border-gray-300",
-                        isToday &&
-                          !isSelected &&
-                          !hasAvailableSlots &&
-                          "border-gray-400"
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "text-xs font-semibold",
-                          isSelected ? "text-gray-200" : "text-gray-600"
-                        )}
-                      >
-                        {format(date, "EEE")}
-                      </span>
-                      <span
-                        className={cn(
-                          "text-sm font-bold mt-1.5",
-                          isSelected ? "text-white" : "text-gray-900"
-                        )}
-                      >
-                        {format(date, "d MMM")}
-                      </span>
-                    </button>
-                  );
-                })}
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => !isPast && setSelectedDate(date)}
+                          disabled={isPast}
+                          className={cn(
+                            "flex flex-col items-center justify-center min-w-[75px] p-3.5 rounded-xl border-2 transition-all",
+                            isSelected
+                              ? "border-gray-900 bg-gray-900 text-white shadow-sm"
+                              : isPast
+                              ? "border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed"
+                              : hasAvailableSlots
+                              ? "border-green-400 bg-white hover:border-green-500 hover:shadow-sm"
+                              : "border-gray-200 bg-white hover:border-gray-300",
+                            isToday &&
+                              !isSelected &&
+                              !hasAvailableSlots &&
+                              "border-gray-400"
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "text-xs font-semibold",
+                              isSelected ? "text-gray-200" : "text-gray-600"
+                            )}
+                          >
+                            {format(date, "EEE")}
+                          </span>
+                          <span
+                            className={cn(
+                              "text-sm font-bold mt-1.5",
+                              isSelected ? "text-white" : "text-gray-900"
+                            )}
+                          >
+                            {format(date, "d MMM")}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleNextWeek}
+                    className="h-9 w-9 p-0 hover:bg-white rounded-xl"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </Button>
+                </div>
               </div>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleNextWeek}
-                className="h-9 w-9 p-0 hover:bg-white rounded-xl"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </Button>
-            </div>
-          </div>
+              {/* Time Selection */}
+              {selectedDate && (
+                <div className="bg-gray-100 rounded-2xl p-5 border-0 shadow-sm animate-fade-in">
+                  <h3 className="text-base font-bold text-gray-900 mb-4">
+                    Select time slot ({selectedService.duration} min session)
+                  </h3>
 
-          {/* Time Selection */}
-          {selectedDate && (
-            <div className="bg-gray-100 rounded-2xl p-5 border-0 shadow-sm animate-fade-in">
-              <h3 className="text-base font-bold text-gray-900 mb-4">
-                Select time slot ({selectedService.duration} min session)
-              </h3>
-
-              {loadingSlots ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-                </div>
-              ) : timeSlots.filter((slot) => slot.available).length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-xl border-0 shadow-sm">
-                  <p className="text-gray-600 font-medium">
-                    No available slots for this date
-                  </p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Please select another date
-                  </p>
-                </div>
-              ) : (
-                (() => {
-                  const { morning, afternoon, evening } =
-                    groupTimeSlots(timeSlots);
-
-                  console.log("🔍 Time slots debug:", {
-                    totalSlots: timeSlots.length,
-                    availableSlots: timeSlots.filter((s) => s.available).length,
-                    morning: morning.length,
-                    afternoon: afternoon.length,
-                    evening: evening.length,
-                  });
-
-                  return (
-                    <div className="space-y-5">
-                      {morning.length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                            <span className="text-yellow-500">☀️</span> Morning
-                            (Before 12 PM)
-                          </h4>
-                          <div className="grid grid-cols-2 gap-2.5">
-                            {morning.map((slot) => {
-                              const isSelected = selectedTime === slot.time;
-                              return (
-                                <button
-                                  key={slot.time}
-                                  onClick={() => setSelectedTime(slot.time)}
-                                  className={cn(
-                                    "px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all text-left",
-                                    isSelected
-                                      ? "border-gray-900 bg-gray-900 text-white shadow-sm"
-                                      : "border-gray-200 bg-white hover:border-gray-400 text-gray-700 hover:shadow-sm"
-                                  )}
-                                >
-                                  <div className="font-bold pointer-events-none">
-                                    {slot.time}
-                                  </div>
-                                  <div
-                                    className={cn(
-                                      "text-xs mt-0.5 pointer-events-none",
-                                      isSelected
-                                        ? "text-gray-300"
-                                        : "text-gray-500"
-                                    )}
-                                  >
-                                    {formatTimeRange(
-                                      slot.time,
-                                      selectedService.duration
-                                    )}
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {afternoon.length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                            <span className="text-orange-500">☀️</span>{" "}
-                            Afternoon (12 PM - 5 PM)
-                          </h4>
-                          <div className="grid grid-cols-2 gap-2.5">
-                            {afternoon.map((slot) => {
-                              const isSelected = selectedTime === slot.time;
-                              return (
-                                <button
-                                  key={slot.time}
-                                  onClick={() => setSelectedTime(slot.time)}
-                                  className={cn(
-                                    "px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all text-left",
-                                    isSelected
-                                      ? "border-gray-900 bg-gray-900 text-white shadow-sm"
-                                      : "border-gray-200 bg-white hover:border-gray-400 text-gray-700 hover:shadow-sm"
-                                  )}
-                                >
-                                  <div className="font-bold pointer-events-none">
-                                    {slot.time}
-                                  </div>
-                                  <div
-                                    className={cn(
-                                      "text-xs mt-0.5 pointer-events-none",
-                                      isSelected
-                                        ? "text-gray-300"
-                                        : "text-gray-500"
-                                    )}
-                                  >
-                                    {formatTimeRange(
-                                      slot.time,
-                                      selectedService.duration
-                                    )}
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {evening.length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                            <span className="text-blue-500">🌙</span> Evening
-                            (After 5 PM)
-                          </h4>
-                          <div className="grid grid-cols-2 gap-2.5">
-                            {evening.map((slot) => {
-                              const isSelected = selectedTime === slot.time;
-                              return (
-                                <button
-                                  key={slot.time}
-                                  onClick={() => setSelectedTime(slot.time)}
-                                  className={cn(
-                                    "px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all text-left",
-                                    isSelected
-                                      ? "border-gray-900 bg-gray-900 text-white shadow-sm"
-                                      : "border-gray-200 bg-white hover:border-gray-400 text-gray-700 hover:shadow-sm"
-                                  )}
-                                >
-                                  <div className="font-bold pointer-events-none">
-                                    {slot.time}
-                                  </div>
-                                  <div
-                                    className={cn(
-                                      "text-xs mt-0.5 pointer-events-none",
-                                      isSelected
-                                        ? "text-gray-300"
-                                        : "text-gray-500"
-                                    )}
-                                  >
-                                    {formatTimeRange(
-                                      slot.time,
-                                      selectedService.duration
-                                    )}
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
+                  {loadingSlots ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
                     </div>
-                  );
-                })()
+                  ) : timeSlots.filter((slot) => slot.available).length === 0 ? (
+                    <div className="text-center py-12 bg-white rounded-xl border-0 shadow-sm">
+                      <p className="text-gray-600 font-medium">
+                        No available slots for this date
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Please select another date
+                      </p>
+                    </div>
+                  ) : (
+                    (() => {
+                      const { morning, afternoon, evening } =
+                        groupTimeSlots(timeSlots);
+
+                      console.log("🔍 Time slots debug:", {
+                        totalSlots: timeSlots.length,
+                        availableSlots: timeSlots.filter((s) => s.available).length,
+                        morning: morning.length,
+                        afternoon: afternoon.length,
+                        evening: evening.length,
+                      });
+
+                      return (
+                        <div className="space-y-5">
+                          {morning.length > 0 && (
+                            <div>
+                              <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                <span className="text-yellow-500">☀️</span> Morning
+                                (Before 12 PM)
+                              </h4>
+                              <div className="grid grid-cols-2 gap-2.5">
+                                {morning.map((slot) => {
+                                  const isSelected = selectedTime === slot.time;
+                                  return (
+                                    <button
+                                      key={slot.time}
+                                      onClick={() => setSelectedTime(slot.time)}
+                                      className={cn(
+                                        "px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all text-left",
+                                        isSelected
+                                          ? "border-gray-900 bg-gray-900 text-white shadow-sm"
+                                          : "border-gray-200 bg-white hover:border-gray-400 text-gray-700 hover:shadow-sm"
+                                      )}
+                                    >
+                                      <div className="font-bold pointer-events-none">
+                                        {slot.time}
+                                      </div>
+                                      <div
+                                        className={cn(
+                                          "text-xs mt-0.5 pointer-events-none",
+                                          isSelected
+                                            ? "text-gray-300"
+                                            : "text-gray-500"
+                                        )}
+                                      >
+                                        {formatTimeRange(
+                                          slot.time,
+                                          selectedService.duration
+                                        )}
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {afternoon.length > 0 && (
+                            <div>
+                              <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                <span className="text-orange-500">☀️</span>{" "}
+                                Afternoon (12 PM - 5 PM)
+                              </h4>
+                              <div className="grid grid-cols-2 gap-2.5">
+                                {afternoon.map((slot) => {
+                                  const isSelected = selectedTime === slot.time;
+                                  return (
+                                    <button
+                                      key={slot.time}
+                                      onClick={() => setSelectedTime(slot.time)}
+                                      className={cn(
+                                        "px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all text-left",
+                                        isSelected
+                                          ? "border-gray-900 bg-gray-900 text-white shadow-sm"
+                                          : "border-gray-200 bg-white hover:border-gray-400 text-gray-700 hover:shadow-sm"
+                                      )}
+                                    >
+                                      <div className="font-bold pointer-events-none">
+                                        {slot.time}
+                                      </div>
+                                      <div
+                                        className={cn(
+                                          "text-xs mt-0.5 pointer-events-none",
+                                          isSelected
+                                            ? "text-gray-300"
+                                            : "text-gray-500"
+                                        )}
+                                      >
+                                        {formatTimeRange(
+                                          slot.time,
+                                          selectedService.duration
+                                        )}
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {evening.length > 0 && (
+                            <div>
+                              <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                <span className="text-blue-500">🌙</span> Evening
+                                (After 5 PM)
+                              </h4>
+                              <div className="grid grid-cols-2 gap-2.5">
+                                {evening.map((slot) => {
+                                  const isSelected = selectedTime === slot.time;
+                                  return (
+                                    <button
+                                      key={slot.time}
+                                      onClick={() => setSelectedTime(slot.time)}
+                                      className={cn(
+                                        "px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all text-left",
+                                        isSelected
+                                          ? "border-gray-900 bg-gray-900 text-white shadow-sm"
+                                          : "border-gray-200 bg-white hover:border-gray-400 text-gray-700 hover:shadow-sm"
+                                      )}
+                                    >
+                                      <div className="font-bold pointer-events-none">
+                                        {slot.time}
+                                      </div>
+                                      <div
+                                        className={cn(
+                                          "text-xs mt-0.5 pointer-events-none",
+                                          isSelected
+                                            ? "text-gray-300"
+                                            : "text-gray-500"
+                                        )}
+                                      >
+                                        {formatTimeRange(
+                                          slot.time,
+                                          selectedService.duration
+                                        )}
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()
+                  )}
+                </div>
               )}
-            </div>
-          )}
 
-          {/* Timezone Selection */}
-          {selectedDate && selectedTime && (
-            <div className="bg-gray-100 rounded-2xl p-5 border-0 shadow-sm animate-fade-in">
-              <h3 className="text-base font-bold text-gray-900 mb-4">
-                Timezone
-              </h3>
-              <Select
-                value={selectedTimezone}
-                onValueChange={setSelectedTimezone}
-              >
-                <SelectTrigger className="w-full h-11 rounded-xl">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Asia/Kolkata">
-                    (GMT+5:30) Chennai, Kolkata, Mumbai, New Delhi
-                  </SelectItem>
-                  <SelectItem value="America/New_York">
-                    (GMT-5:00) Eastern Time (US & Canada)
-                  </SelectItem>
-                  <SelectItem value="America/Los_Angeles">
-                    (GMT-8:00) Pacific Time (US & Canada)
-                  </SelectItem>
-                  <SelectItem value="Europe/London">
-                    (GMT+0:00) London
-                  </SelectItem>
-                  <SelectItem value="Asia/Dubai">(GMT+4:00) Dubai</SelectItem>
-                  <SelectItem value="Asia/Singapore">
-                    (GMT+8:00) Singapore
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+              {/* Timezone Selection */}
+              {selectedDate && selectedTime && (
+                <div className="bg-gray-100 rounded-2xl p-5 border-0 shadow-sm animate-fade-in">
+                  <h3 className="text-base font-bold text-gray-900 mb-4">
+                    Timezone
+                  </h3>
+                  <Select
+                    value={selectedTimezone}
+                    onValueChange={setSelectedTimezone}
+                  >
+                    <SelectTrigger className="w-full h-11 rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Asia/Kolkata">
+                        (GMT+5:30) Chennai, Kolkata, Mumbai, New Delhi
+                      </SelectItem>
+                      <SelectItem value="America/New_York">
+                        (GMT-5:00) Eastern Time (US & Canada)
+                      </SelectItem>
+                      <SelectItem value="America/Los_Angeles">
+                        (GMT-8:00) Pacific Time (US & Canada)
+                      </SelectItem>
+                      <SelectItem value="Europe/London">
+                        (GMT+0:00) London
+                      </SelectItem>
+                      <SelectItem value="Asia/Dubai">(GMT+4:00) Dubai</SelectItem>
+                      <SelectItem value="Asia/Singapore">
+                        (GMT+8:00) Singapore
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-          {/* Continue Button */}
-          {selectedDate && selectedTime && (
-            <div className="flex justify-center">
-              <Button
-                onClick={handleContinue}
-                className="bg-gray-900 hover:bg-gray-800 text-white py-2.5 px-6 text-sm font-semibold rounded-lg shadow-sm animate-fade-in transition-all group"
-              >
-                Continue
-                <ArrowRight className="w-4 h-4 ml-2 transition-transform duration-300 ease-out group-hover:translate-x-1" />
-              </Button>
-            </div>
+              {/* Continue Button */}
+              {selectedDate && selectedTime && (
+                <div className="flex justify-center">
+                  <Button
+                    onClick={handleContinue}
+                    className="bg-gray-900 hover:bg-gray-800 text-white py-2.5 px-6 text-sm font-semibold rounded-lg shadow-sm animate-fade-in transition-all group"
+                  >
+                    Continue
+                    <ArrowRight className="w-4 h-4 ml-2 transition-transform duration-300 ease-out group-hover:translate-x-1" />
+                  </Button>
+                </div>
+              )}
+            </>
           )}
 
           {/* Request Custom Time Section */}
@@ -925,7 +944,7 @@ export default function DateTimeSelection({
                       placeholder="Add any specific requirements or questions..."
                       value={requestMessage}
                       onChange={(e) => setRequestMessage(e.target.value)}
-                      className="border-gray-300 rounded-xl min-h-[80px] resize-none"
+                      className="border-gray-300 rounded-xl h-[120px] resize-none"
                     />
                   </div>
 

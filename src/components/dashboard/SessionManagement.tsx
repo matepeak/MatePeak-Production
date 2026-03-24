@@ -1500,7 +1500,10 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
                   <CardContent className="p-6">
                     <div className="flex flex-col lg:flex-row lg:items-start gap-4 lg:gap-6">
                       <div className="min-w-0 flex-1 space-y-2">
-                        <Skeleton className="h-5 w-56" />
+                        <div className="flex items-start justify-between gap-3">
+                          <Skeleton className="h-5 w-56" />
+                          <Skeleton className="h-6 w-24 rounded-md" />
+                        </div>
                         <div className="flex items-center gap-2">
                           <Skeleton className="h-4 w-4 rounded" />
                           <Skeleton className="h-4 w-64" />
@@ -1508,7 +1511,6 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
                         <Skeleton className="h-10 w-full max-w-[520px] rounded-lg" />
                       </div>
                       <div className="flex items-center gap-2 lg:pl-6 lg:border-l border-gray-100">
-                        <Skeleton className="h-6 w-24 rounded-md" />
                         <Skeleton className="h-6 w-20 rounded-md" />
                       </div>
                       <div className="lg:pl-6 lg:border-l border-gray-100">
@@ -1665,9 +1667,14 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
                   >
                     <CardContent className="p-5 space-y-4">
                       <div className="space-y-2">
-                        <h3 className="text-base font-semibold text-gray-900 truncate">
-                          {formatSessionType(session.session_type)}
-                        </h3>
+                        <div className="flex items-start justify-between gap-3">
+                          <h3 className="text-base font-semibold text-gray-900 truncate pr-2">
+                            {formatSessionType(session.session_type)}
+                          </h3>
+                          <div className="inline-flex shrink-0">
+                            {getStatusBadge(statusForUI)}
+                          </div>
+                        </div>
                         <div className="flex items-center gap-2">
                           {avatarUrl ? (
                             <img
@@ -1689,8 +1696,7 @@ const SessionManagement = ({ mentorProfile }: SessionManagementProps) => {
                         </p>
                       </div>
 
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="inline-flex">{getStatusBadge(statusForUI)}</div>
+                      <div className="flex items-center justify-end gap-2">
                         <span className="text-sm font-semibold text-green-600 whitespace-nowrap">
                           {session.total_amount && session.total_amount > 0
                             ? `₹${session.total_amount.toFixed(2)}`
