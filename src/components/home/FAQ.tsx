@@ -55,7 +55,7 @@ const faqs = [
     category: "Payments",
     question: "Is my payment secure?",
     answer:
-      "All payments are processed through Stripe, one of the world's most trusted payment platforms. Your card details are never stored on our servers. Funds are held securely and only released to the mentor after a session is completed, so you're always protected.",
+      "All payments are processed through Razorpay, one of the world's most trusted payment platforms. Your card details are never stored on our servers. Funds are held securely and only released to the mentor after a session is completed, so you're always protected.",
   },
   {
     category: "Payments",
