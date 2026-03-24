@@ -20,8 +20,6 @@ import {
   Settings,
   Eye,
   PackageOpen,
-  CreditCard,
-  HandCoins,
   Wallet,
   CalendarPlus,
 } from "lucide-react";
@@ -49,8 +47,6 @@ type DashboardView =
   | "students"
   | "requests"
   | "services"
-  | "payments"
-  | "payouts"
   | "earnings";
 
 interface DashboardLayoutProps {
@@ -114,7 +110,7 @@ const DashboardLayout = ({
       items: [
         {
           id: "earnings" as DashboardView,
-          label: "Earnings (Under Development)",
+          label: "Earnings",
           icon: Wallet,
           badge: null,
         },
@@ -160,23 +156,6 @@ const DashboardLayout = ({
         },
       ],
     },
-    {
-      label: "Finance",
-      items: [
-        {
-          id: "payments" as DashboardView,
-          label: "Payments",
-          icon: CreditCard,
-          badge: null,
-        },
-        {
-          id: "payouts" as DashboardView,
-          label: "Payouts",
-          icon: HandCoins,
-          badge: null,
-        },
-      ],
-    },
   ];
 
   // Keyboard shortcut for command palette
@@ -211,6 +190,12 @@ const DashboardLayout = ({
     const lastName = mentorProfile?.last_name || "";
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || "M";
   };
+
+  const isVerifiedMentor =
+    mentorProfile?.mentor_tier === "verified" ||
+    mentorProfile?.mentor_tier === "top" ||
+    mentorProfile?.verification_status === "verified" ||
+    Boolean(mentorProfile?.is_verified);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -390,7 +375,18 @@ const DashboardLayout = ({
                   {mentorProfile?.first_name} {mentorProfile?.last_name}
                 </h3>
               </div>
-              <p className="text-sm text-gray-600 font-medium mt-1">Mentor</p>
+              {isVerifiedMentor ? (
+                <div className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-green-300 bg-green-200 px-3 py-1 text-xs font-medium text-black shadow-sm">
+                  <img
+                    src="/lovable-uploads/verifiedremovebg.png"
+                    alt="Verified mentor"
+                    className="h-6 w-6"
+                  />
+                  <span>Verified Mentor</span>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600 font-medium mt-1">Mentor</p>
+              )}
               <p className="text-xs text-gray-500 mt-0.5">
                 @{mentorProfile?.username}
               </p>

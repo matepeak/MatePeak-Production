@@ -20,6 +20,9 @@ import {
   maskAccountNumber,
   MIN_WITHDRAWAL_AMOUNT,
   saveAndVerifyPayoutAccount,
+  COMMISSION_RATE,
+  calculateNetEarnings,
+  calculateCommissionAmount,
   type EarningsSnapshot,
   type PayoutMethod,
   type VerificationStatus,
@@ -57,6 +60,22 @@ const BANK_OPTIONS = [
 
 const ACCOUNT_NUMBER_REGEX = /^\d{9,18}$/;
 const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+const UPI_REGEX = /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z]{2,64}$/;
+
+const sanitizeVerificationMessage = (message?: string | null): string => {
+  const raw = String(message || "").trim();
+  if (!raw) return "";
+
+  if (
+    /access to requested resource not available|edge function returned a non-2xx status code|failed to send a request to the edge function|network request failed|razorpay credentials are not configured|missing razorpayx_account_number/i.test(
+      raw
+    )
+  ) {
+    return "Payout details are saved. Automatic verification is temporarily unavailable, but you can still request withdrawals for admin review.";
+  }
+
+  return raw;
+};
 
 const statusMeta: Record<
   VerificationStatus,
@@ -202,9 +221,20 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
   const verification = statusMeta[verificationStatus];
   const VerificationIcon = verification.icon;
 
+  const hasPayoutDetails = useMemo(() => {
+    const account = snapshot?.payoutAccount;
+    if (!account) return false;
+
+    if (account.payout_method === "bank") {
+      return Boolean(account.account_holder_name && account.account_number && account.ifsc_code);
+    }
+
+    return Boolean(account.upi_id);
+  }, [snapshot?.payoutAccount]);
+
   const canRequestWithdrawal = useMemo(() => {
-    return wallet.balance >= MIN_WITHDRAWAL_AMOUNT && verificationStatus === "verified";
-  }, [wallet.balance, verificationStatus]);
+    return wallet.balance >= MIN_WITHDRAWAL_AMOUNT && hasPayoutDetails;
+  }, [wallet.balance, hasPayoutDetails]);
 
   const validatePayoutFields = () => {
     if (method === "bank") {
@@ -225,6 +255,9 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
     }
 
     if (!upiId.trim()) return "UPI ID is required";
+    if (!UPI_REGEX.test(upiId.trim())) {
+      return "Invalid UPI ID format (example: name@upi)";
+    }
     return null;
   };
 
@@ -261,10 +294,15 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
       return;
     }
 
+    // Always show success variant when save operation succeeds
+    const toastTitle = result.verified 
+      ? "Account details verified successfully" 
+      : "Account details saved successfully";
+    
     toast({
-      title: result.verified ? "Bank details verified" : "Details saved as unverified",
+      title: toastTitle,
       description: result.message,
-      variant: result.verified ? "default" : "destructive",
+      variant: "default",
     });
 
     await loadSnapshot();
@@ -292,10 +330,10 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
       return;
     }
 
-    if (verificationStatus !== "verified") {
+    if (!hasPayoutDetails) {
       toast({
-        title: "Verification required",
-        description: "Please verify payout details before requesting withdrawal.",
+        title: "Payout details required",
+        description: "Please save payout details before requesting withdrawal.",
         variant: "destructive",
       });
       return;
@@ -334,7 +372,7 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between mb-2">
@@ -342,13 +380,7 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
               <Wallet className="h-4 w-4 text-rose-400" />
             </div>
             <p className="text-2xl font-bold text-gray-900">{formatINR(wallet.balance)}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-gray-600 mb-2">Total Earned</p>
-            <p className="text-2xl font-bold text-gray-900">{formatINR(wallet.total_earned)}</p>
+            <p className="text-xs text-gray-500 mt-2">Ready to withdraw</p>
           </CardContent>
         </Card>
 
@@ -356,9 +388,48 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
           <CardContent className="pt-6">
             <p className="text-sm text-gray-600 mb-2">Total Withdrawn</p>
             <p className="text-2xl font-bold text-gray-900">{formatINR(wallet.total_withdrawn)}</p>
+            <p className="text-xs text-gray-500 mt-2">Lifetime amount</p>
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Earnings Breakdown</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="border-l-4 border-blue-500 pl-4">
+              <p className="text-xs text-gray-600 font-semibold uppercase">Gross Earnings</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{formatINR(wallet.total_earned)}</p>
+              <p className="text-xs text-gray-500 mt-1">Total booking revenue</p>
+            </div>
+
+            <div className="border-l-4 border-orange-500 pl-4">
+              <p className="text-xs text-gray-600 font-semibold uppercase">Platform Commission</p>
+              <p className="text-2xl font-bold text-orange-600 mt-1">{formatINR(calculateCommissionAmount(wallet.total_earned))}</p>
+              <p className="text-xs text-gray-500 mt-1">{(COMMISSION_RATE * 100).toFixed(0)}% deducted</p>
+            </div>
+
+            <div className="border-l-4 border-green-500 pl-4">
+              <p className="text-xs text-gray-600 font-semibold uppercase">Net Earnings</p>
+              <p className="text-2xl font-bold text-green-600 mt-1">{formatINR(calculateNetEarnings(wallet.total_earned))}</p>
+              <p className="text-xs text-gray-500 mt-1">After commission</p>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 rounded-lg p-4 mt-4">
+            <p className="text-sm text-blue-900">
+              <span className="font-semibold">How it works:</span> When a session is successfully booked and paid, MatePeak retains {(COMMISSION_RATE * 100).toFixed(0)}% as platform commission. Your net earnings (after commission) are credited to your available balance.
+            </p>
+          </div>
+          <div className="bg-blue-50 rounded-lg p-4 mt-4">
+            <p className="text-sm text-blue-900">
+              <span className="font-semibold">How it works:</span> When a session is successfully booked and paid, MatePeak retains {(COMMISSION_RATE * 100).toFixed(0)}% as platform commission. Your net earnings (after commission) are credited to your available balance.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -366,7 +437,7 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="text-sm text-gray-600">Withdrawal is available only after balance reaches ₹500</div>
+            <div className="text-sm text-gray-600">Withdrawal is available only after balance reaches ₹{MIN_WITHDRAWAL_AMOUNT}</div>
             <Badge className={verification.className}>
               <VerificationIcon className="h-3.5 w-3.5 mr-1" />
               {verification.label}
@@ -374,7 +445,7 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
           </div>
 
           {!!snapshot?.payoutAccount?.verification_message && (
-            <p className="text-sm text-gray-600">{snapshot.payoutAccount.verification_message}</p>
+            <p className="text-sm text-gray-600">{sanitizeVerificationMessage(snapshot.payoutAccount.verification_message)}</p>
           )}
 
           <Tabs value={method} onValueChange={(value) => setMethod(value as PayoutMethod)}>
@@ -502,7 +573,7 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
             <div className="text-sm text-red-600">
               {wallet.balance < MIN_WITHDRAWAL_AMOUNT
                 ? `You need at least ₹${MIN_WITHDRAWAL_AMOUNT} balance to withdraw.`
-                : "Verify payout details before requesting withdrawal."}
+                : "Save payout details before requesting withdrawal."}
             </div>
           )}
 

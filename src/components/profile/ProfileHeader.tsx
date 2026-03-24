@@ -36,6 +36,7 @@ import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useMentorLiveStatus } from "@/hooks/useMentorPresence";
 import PresenceDot from "@/components/PresenceDot";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ProfileHeaderProps {
   mentor: any;
@@ -62,11 +63,24 @@ export default function ProfileHeader({
     mentor?.id,
     mentor?.last_seen
   );
+  const isVerifiedMentor =
+    mentor?.mentor_tier === "verified" ||
+    mentor?.mentor_tier === "top" ||
+    mentor?.verification_status === "verified" ||
+    Boolean(mentor?.is_verified);
 
   const handleBookingClick = async () => {
     setIsCheckingAuth(true);
 
     try {
+      if (mentor?.id) {
+        await supabase.rpc("track_mentor_analytics_event", {
+          p_mentor_id: mentor.id,
+          p_event_type: "booking_click",
+          p_metadata: { source: "profile_header" },
+        });
+      }
+
       // Check if user is authenticated
       const {
         data: { user },
@@ -184,10 +198,29 @@ export default function ProfileHeader({
 
           {/* Name and Username */}
           <div className="text-center mb-4 space-y-1">
-            <div className="flex items-center justify-center gap-2">
-              <h1 className="text-lg font-bold text-gray-900">
+            <div className="flex items-center justify-center gap-1.5">
+              <h1 className="text-lg font-bold text-gray-900 leading-tight">
                 {mentor.full_name}
               </h1>
+              {isVerifiedMentor && (
+                <TooltipProvider delayDuration={120}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <img
+                        src="/lovable-uploads/verifiedremovebg.png"
+                        alt="Verified mentor"
+                        className="h-7 w-7"
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="top"
+                      className="rounded-full border-green-300 bg-green-200 px-3 py-1 text-xs font-medium text-black shadow-lg"
+                    >
+                      Verified Mentor
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
             {mentor.headline && (
               <p className="text-sm text-gray-600 leading-tight">

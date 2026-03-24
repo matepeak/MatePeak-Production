@@ -41,7 +41,6 @@ import AdminUserManagement from "./pages/AdminUserManagement";
 import AdminWithdrawals from "./pages/AdminWithdrawals";
 import AdminReviewModeration from "./pages/AdminReviewModeration";
 import AdminLogin from "./pages/AdminLogin";
-import PayoutRequestTest from "./pages/PayoutRequestTest";
 import { AdminAuthProvider } from "./contexts/AdminAuthContext";
 import { ProtectedAdminRoute } from "./components/ProtectedAdminRoute";
 import GlobalMentorPresence from "./components/GlobalMentorPresence";
@@ -112,7 +111,6 @@ const App = () => {
               <Route path="/expert/dashboard" element={<ExpertDashboard />} />
               <Route path="/mentor/dashboard" element={<MentorDashboard />} />
               <Route path="/dashboard/:username" element={<MentorDashboard />} />
-              <Route path="/mentor/payout-test" element={<PayoutRequestTest />} />
               
               {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLogin />} />

@@ -7,6 +7,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useMentorLiveStatus } from "@/hooks/useMentorPresence";
 import PresenceDot from "@/components/PresenceDot";
 import { SERVICE_CONFIG, normalizeServiceType } from "@/config/serviceConfig";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export interface MentorServiceOption {
   name: string;
@@ -31,6 +32,8 @@ export interface MentorProfile {
   expertise_tags?: string[];
   tagline?: string; // Generated tagline like "Senior @ IIT Delhi | Computer Science"
   mentor_tier?: 'basic' | 'verified' | 'top'; // Mentor tier badge
+  verification_status?: string;
+  is_verified?: boolean;
   is_profile_live?: boolean;
   last_seen?: string | null;
 }
@@ -53,6 +56,11 @@ const MentorCard = ({
   const isMentorOnline =
     isOnlineOverride === undefined ? isMentorOnlineFromHook : isOnlineOverride;
   const isMentorLive = Boolean(mentor.is_profile_live) && isMentorOnline;
+  const isVerifiedMentor =
+    mentor.mentor_tier === 'verified' ||
+    mentor.mentor_tier === 'top' ||
+    mentor.verification_status === 'verified' ||
+    Boolean(mentor.is_verified);
 
   const nameParts = mentor.name.split(" ");
   const initials =
@@ -132,6 +140,25 @@ const MentorCard = ({
               <h3 className="font-bold text-gray-900 text-base line-clamp-1 pr-1">
                 {mentor.name}
               </h3>
+              {isVerifiedMentor && (
+                <TooltipProvider delayDuration={120}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <img
+                        src="/lovable-uploads/verifiedremovebg.png"
+                        alt="Verified mentor"
+                        className="h-6 w-6 flex-shrink-0"
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="top"
+                      className="rounded-full border-green-300 bg-green-200 px-3 py-1 text-xs font-medium text-black shadow-lg"
+                    >
+                      Verified Mentor
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
 
             {/* Tagline */}
