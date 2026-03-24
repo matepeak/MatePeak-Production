@@ -174,12 +174,12 @@ export default function BookingConfirmation({
             </p>
           </div>
           {isFreeBooking ? (
-            <div className="bg-green-500 text-white rounded-xl px-4 py-2 shadow-sm">
+            <div className="bg-matepeak-primary text-white rounded-xl px-4 py-2 shadow-sm">
               <p className="text-xl font-bold">FREE</p>
               <p className="text-xs opacity-90">No payment required</p>
             </div>
           ) : (
-            <div className="bg-green-600 text-white rounded-xl px-4 py-2 shadow-sm text-right">
+            <div className="bg-matepeak-primary text-white rounded-xl px-4 py-2 shadow-sm text-right">
               {discountPrice ? (
                 <>
                   <p className="text-xl font-bold">₹{total.toLocaleString("en-IN")}</p>
@@ -384,7 +384,7 @@ export default function BookingConfirmation({
         <Button
           type="submit"
           disabled={!isFormValid || isSubmitting || bookingLimitReached}
-          className="group/confirm bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-2.5 px-8 text-sm font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
+          className="group/confirm bg-gradient-to-r from-matepeak-primary to-matepeak-secondary hover:from-matepeak-secondary hover:to-matepeak-primary text-white py-2.5 px-8 text-sm font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
           title={bookingLimitReached ? "This mentor has reached their weekly booking limit" : undefined}
         >
           {isSubmitting ? (

@@ -57,7 +57,10 @@ export default function ServiceSelection({
 
   // Get all enabled services
   const enabledServices = Object.entries(servicePricing)
-    .filter(([_, value]: [string, any]) => isServiceEnabled(value?.enabled))
+    .filter(
+      ([_, value]: [string, any]) =>
+        isServiceEnabled(value?.enabled) && value?.deleted !== true
+    )
     .filter(([key]) => (oneOnOneOnly ? key === "oneOnOneSession" : true))
     .map(([key, value]) => ({ key, ...value }));
 
@@ -239,22 +242,22 @@ export default function ServiceSelection({
                 {/* Free Demo Toggle - Only show if service has free demo */}
                 {service.hasFreeDemo && (
                   <div
-                    className="flex items-center justify-between bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4.5"
+                    className="flex items-center justify-between bg-white rounded-lg p-3.5 border border-gray-100"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="flex-1 flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
-                        <Sparkles className="w-4 h-4 text-green-600" />
+                    <div className="flex-1 flex items-center gap-3">
+                      <div className="w-5 h-5 rounded bg-white flex items-center justify-center shadow-sm flex-shrink-0">
+                        <Sparkles className="w-3.5 h-3.5 text-matepeak-primary" />
                       </div>
                       <div>
                         <Label
                           htmlFor={`free-demo-${serviceKey}`}
-                          className="text-sm font-semibold text-green-800 cursor-pointer block"
+                          className="text-sm font-medium text-gray-700 cursor-pointer block"
                         >
                           Try Free Demo
                         </Label>
                         {isFreeDemo && (
-                          <p className="text-xs text-green-700 mt-0.5">
+                          <p className="text-xs text-gray-500 mt-0.5">
                             Session duration may vary
                           </p>
                         )}
@@ -266,7 +269,7 @@ export default function ServiceSelection({
                       onCheckedChange={(checked) =>
                         toggleFreeDemo(serviceKey, checked)
                       }
-                      className="data-[state=checked]:bg-green-600"
+                      className="scale-90 origin-right data-[state=checked]:bg-matepeak-primary"
                     />
                   </div>
                 )}
@@ -327,7 +330,7 @@ export default function ServiceSelection({
                     }}
                     className={cn(
                       "font-semibold transition-all rounded-lg px-4 py-2 h-auto text-sm group/button shrink-0",
-                      "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
+                      "bg-gradient-to-r from-matepeak-primary to-matepeak-secondary hover:from-matepeak-secondary hover:to-matepeak-primary text-white"
                     )}
                   >
                     {isFreeDemo ? "Try Free" : "Select"}
