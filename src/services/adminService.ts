@@ -119,6 +119,35 @@ export async function rejectMentor(
   }
 }
 
+export async function setPhase2MaxAttempts(
+  mentorProfileId: string,
+  maxAttempts: number,
+  notes?: string
+): Promise<AdminActionResponse> {
+  try {
+    const { data, error } = await supabase.rpc('admin_set_phase2_max_attempts', {
+      mentor_profile_id: mentorProfileId,
+      max_attempts: maxAttempts,
+      notes: notes || null,
+    });
+
+    if (error) throw error;
+
+    return {
+      success: true,
+      message: data?.message || 'Max attempts updated successfully',
+      data,
+    };
+  } catch (error: any) {
+    console.error('Error updating phase 2 max attempts:', error);
+    return {
+      success: false,
+      message: 'Failed to update max attempts',
+      error: error.message,
+    };
+  }
+}
+
 // =====================================================
 // WITHDRAWAL MANAGEMENT
 // =====================================================
@@ -218,22 +247,65 @@ export async function moderateReview(
 
 export async function getPendingMentorVerifications() {
   try {
-    const { data, error } = await supabase
+    const pendingFilter = 'verification_status.eq.under_review,phase2_review_status.eq.under_review,profile_status.eq.pending_review';
+
+    const primary = await supabase
       .from('expert_profiles')
       .select(`
         *,
-        profiles!expert_profiles_user_id_fkey (
+        profiles (
           email,
           full_name,
           avatar_url
         )
       `)
-      .in('profile_status', ['pending_review', 'draft'])
+      .or(pendingFilter)
       .eq('is_verified', false)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    return { data, error: null };
+    if (!primary.error) {
+      return { data: primary.data, error: null };
+    }
+
+    const fallback = await supabase
+      .from('expert_profiles')
+      .select('*')
+      .or('verification_status.eq.under_review,profile_status.eq.pending_review')
+      .eq('is_verified', false)
+      .order('created_at', { ascending: false });
+
+    if (fallback.error) throw fallback.error;
+
+    const rows = fallback.data || [];
+    const userIds = Array.from(new Set(rows.map((row: any) => row.user_id).filter(Boolean)));
+
+    let profileMap = new Map<string, { email: string | null; full_name: string | null; avatar_url: string | null }>();
+    if (userIds.length > 0) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id,email,full_name,avatar_url')
+        .in('id', userIds);
+
+      if (!profilesError && profiles) {
+        profileMap = new Map(
+          profiles.map((profile: any) => [
+            profile.id,
+            {
+              email: profile.email ?? null,
+              full_name: profile.full_name ?? null,
+              avatar_url: profile.avatar_url ?? null,
+            },
+          ])
+        );
+      }
+    }
+
+    const enrichedRows = rows.map((row: any) => ({
+      ...row,
+      profiles: profileMap.get(row.user_id) || null,
+    }));
+
+    return { data: enrichedRows, error: null };
   } catch (error: any) {
     console.error('Error fetching pending verifications:', error);
     return { data: null, error };
@@ -242,19 +314,96 @@ export async function getPendingMentorVerifications() {
 
 export async function getPendingWithdrawals() {
   try {
-    const { data, error } = await supabase
+    const { data: withdrawals, error } = await supabase
       .from('withdrawal_requests')
-      .select(`
-        *,
-        profiles!withdrawal_requests_mentor_id_fkey (
-          email,
-          full_name
-        )
-      `)
-      .eq('status', 'pending')
+      .select('*')
       .order('requested_at', { ascending: false });
 
     if (error) throw error;
+
+    const mentorIds = Array.from(
+      new Set((withdrawals || []).map((item: any) => item.mentor_id).filter(Boolean)),
+    );
+
+    let profilesById = new Map<string, { email: string | null; full_name: string | null }>();
+    let payoutAccountsByMentorId = new Map<string, any>();
+    let legacyPayoutProfilesByMentorId = new Map<string, any>();
+    let paymentProfilesByMentorId = new Map<string, any>();
+    if (mentorIds.length > 0) {
+      const { data: profileRows, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id,email,full_name')
+        .in('id', mentorIds);
+
+      if (profilesError) throw profilesError;
+
+      const { data: payoutRows, error: payoutError } = await supabase
+        .from('mentor_payout_accounts')
+        .select('mentor_id,payout_method,account_holder_name,account_number,ifsc_code,bank_name,upi_id,is_active,updated_at')
+        .in('mentor_id', mentorIds)
+        .eq('is_active', true)
+        .order('updated_at', { ascending: false });
+
+      const payoutRowsSafe = payoutError ? [] : payoutRows || [];
+
+      const { data: legacyPayoutRows, error: legacyPayoutError } = await supabase
+        .from('mentor_payout_profiles')
+        .select('mentor_id,payout_method,account_holder_name,account_number,ifsc_code,upi_id,is_active,updated_at')
+        .in('mentor_id', mentorIds)
+        .eq('is_active', true)
+        .order('updated_at', { ascending: false });
+
+      const legacyPayoutRowsSafe = legacyPayoutError ? [] : legacyPayoutRows || [];
+
+      const { data: paymentProfileRows, error: paymentProfileError } = await supabase
+        .from('mentor_payment_profiles')
+        .select('mentor_id,payout_method,account_holder_name,account_number,ifsc_code,upi_id,is_active,updated_at')
+        .in('mentor_id', mentorIds)
+        .eq('is_active', true)
+        .order('updated_at', { ascending: false });
+
+      const paymentProfileRowsSafe = paymentProfileError ? [] : paymentProfileRows || [];
+
+      profilesById = new Map(
+        (profileRows || []).map((profile: any) => [
+          profile.id,
+          {
+            email: profile.email || null,
+            full_name: profile.full_name || null,
+          },
+        ]),
+      );
+
+      for (const payoutRow of payoutRowsSafe) {
+        if (!payoutAccountsByMentorId.has(payoutRow.mentor_id)) {
+          payoutAccountsByMentorId.set(payoutRow.mentor_id, payoutRow);
+        }
+      }
+
+      for (const legacyPayoutRow of legacyPayoutRowsSafe) {
+        if (!legacyPayoutProfilesByMentorId.has(legacyPayoutRow.mentor_id)) {
+          legacyPayoutProfilesByMentorId.set(legacyPayoutRow.mentor_id, legacyPayoutRow);
+        }
+      }
+
+      for (const paymentProfileRow of paymentProfileRowsSafe) {
+        if (!paymentProfilesByMentorId.has(paymentProfileRow.mentor_id)) {
+          paymentProfilesByMentorId.set(paymentProfileRow.mentor_id, paymentProfileRow);
+        }
+      }
+    }
+
+    const data = (withdrawals || []).map((withdrawal: any) => ({
+      ...withdrawal,
+      profiles: profilesById.get(withdrawal.mentor_id) || {
+        email: null,
+        full_name: null,
+      },
+      payout_account: payoutAccountsByMentorId.get(withdrawal.mentor_id) || null,
+      payout_profile: legacyPayoutProfilesByMentorId.get(withdrawal.mentor_id) || null,
+      payment_profile: paymentProfilesByMentorId.get(withdrawal.mentor_id) || null,
+    }));
+
     return { data, error: null };
   } catch (error: any) {
     console.error('Error fetching pending withdrawals:', error);

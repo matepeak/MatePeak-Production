@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { MentorProfile } from '@/components/MentorCard';
-import { toast } from 'sonner';
+import { toast } from "@/components/ui/sonner";
 
 export function useAISearch() {
   const [isLoading, setIsLoading] = useState(false);

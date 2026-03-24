@@ -13,6 +13,7 @@ import {
   CheckCircle,
   XCircle,
   Settings,
+  X,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,7 @@ import { SERVICE_CONFIG } from "@/config/serviceConfig";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 
 type TimePeriod = "today" | "week" | "month" | "all";
 
@@ -57,7 +58,6 @@ const DashboardOverview = ({
   const SUCCESSFUL_BOOKING_STATUSES = new Set(["confirmed", "completed"]);
 
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [stats, setStats] = useState<Stats>({
     totalSessions: 0,
     upcomingSessions: 0,
@@ -79,6 +79,7 @@ const DashboardOverview = ({
   const [conversionFunnel, setConversionFunnel] = useState<{ views: number; clicks: number; bookings: number; viewToClick: number; clickToBooking: number }>({ views: 0, clicks: 0, bookings: 0, viewToClick: 0, clickToBooking: 0 });
   const [keyInsights, setKeyInsights] = useState<string[]>([]);
   const [utilizationMetrics, setUtilizationMetrics] = useState<{ totalSlots: number; bookedSlots: number; utilizationRate: number }>({ totalSlots: 0, bookedSlots: 0, utilizationRate: 0 });
+  const [hidePhase2StatusCard, setHidePhase2StatusCard] = useState(false);
 
   const chartColors = ["#3b82f6", "#f97316", "#8b5cf6", "#22c55e", "#06b6d4"];
 
@@ -582,6 +583,22 @@ const DashboardOverview = ({
     }
   };
 
+  const isPhase2UnderReview = mentorProfile?.verification_status === "under_review";
+
+  const shouldShowPhase2StatusCard =
+    mentorProfile?.onboarding_version === "v2" &&
+    mentorProfile?.phase_1_complete === true &&
+    (mentorProfile?.phase_2_complete !== true || isPhase2UnderReview) &&
+    !hidePhase2StatusCard;
+
+  const phase2Progress = Number(mentorProfile?.phase2_progress || 0);
+  const phase2Status =
+    mentorProfile?.verification_status === "under_review"
+      ? "Under Review"
+      : mentorProfile?.verification_status === "verified"
+      ? "Verified"
+      : "Pending";
+
   return (
     <div className="space-y-6">
       {/* Clean Welcome Section - No Background */}
@@ -599,6 +616,53 @@ const DashboardOverview = ({
           </p>
         </div>
       </div>
+
+      {shouldShowPhase2StatusCard && (
+        <Card className="border border-rose-200 bg-rose-50/50 rounded-2xl shadow-none">
+          <CardContent className="p-5 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  {isPhase2UnderReview ? "Phase 2 Verification Under Review" : "Complete Phase 2 Onboarding"}
+                </p>
+                <p className="text-xs text-gray-600 mt-1">
+                  {isPhase2UnderReview
+                    ? "You have submitted Phase 2. Your verification is under review."
+                    : "Unlock verified badge, faster trust, and unlimited booking after admin approval."}
+                </p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-xs font-medium px-2 py-1 rounded-md bg-white border border-gray-200 text-gray-700">
+                  Status: {phase2Status}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Dismiss phase 2 status"
+                  onClick={() => setHidePhase2StatusCard(true)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {!isPhase2UnderReview && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs text-gray-600">
+                  <span>Progress</span>
+                  <span>{Math.min(Math.max(phase2Progress, 0), 4)}/4</span>
+                </div>
+                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gray-900 transition-all duration-300"
+                    style={{ width: `${(Math.min(Math.max(phase2Progress, 0), 4) / 4) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Time Period Filters - Improved Design */}
       <div className="flex items-center gap-2 pb-2">
@@ -717,342 +781,77 @@ const DashboardOverview = ({
             })}
       </div>
 
-      {/* Earnings Summary + Booking Trend & Earnings Graphs */}
-      <div className="space-y-4">
-        {/* Summary Cards */}
-        <Card className="bg-gray-100 border-0 rounded-2xl shadow-none">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-700">
-                Earnings Overview
-              </h3>
-              {/* Time Period Filter for Graphs */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setTimePeriod("today")}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                    timePeriod === "today"
-                      ? "bg-gray-900 text-white shadow-sm"
-                      : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  14 Days
-                </button>
-                <button
-                  onClick={() => setTimePeriod("week")}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                    timePeriod === "week"
-                      ? "bg-gray-900 text-white shadow-sm"
-                      : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  8 Weeks
-                </button>
-                <button
-                  onClick={() => setTimePeriod("month")}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                    timePeriod === "month"
-                      ? "bg-gray-900 text-white shadow-sm"
-                      : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  12 Months
-                </button>
-                <button
-                  onClick={() => setTimePeriod("all")}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
-                    timePeriod === "all"
-                      ? "bg-gray-900 text-white shadow-sm"
-                      : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  All Time
-                </button>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="rounded-xl border border-gray-200 bg-white p-3">
-                <p className="text-xs text-gray-500">Total Earnings</p>
-                <p className="text-lg font-bold text-gray-900 mt-1">
-                  Rs. {stats.totalEarnings.toLocaleString("en-IN")}
-                </p>
-              </div>
-              <div className="rounded-xl border border-gray-200 bg-white p-3">
-                <p className="text-xs text-gray-500">Pending Payouts</p>
-                <p className="text-lg font-bold text-gray-900 mt-1">
-                  Rs. {pendingPayouts.toLocaleString("en-IN")}
-                </p>
-              </div>
-              <div className="rounded-xl border border-gray-200 bg-white p-3">
-                <p className="text-xs text-gray-500">Lifetime Earnings</p>
-                <p className="text-lg font-bold text-gray-900 mt-1">
-                  Rs. {lifetimeEarnings.toLocaleString("en-IN")}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Two Graphs Side by Side */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Booking Trend Graph */}
-          <Card className="bg-white border border-gray-200 rounded-2xl shadow-none">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900">
-                    Booking Trend
-                  </h3>
-                  <p className="text-xs text-gray-500">Sessions booked over time</p>
-                </div>
-                <span className="text-xs text-gray-500">
-                  {timePeriod === "today"
-                    ? "14 days"
-                    : timePeriod === "week"
-                    ? "8 weeks"
-                    : timePeriod === "month"
-                    ? "12 months"
-                    : "All time"}
-                </span>
-              </div>
-
-              {/* Comparison Badge */}
-              {bookingComparison.current > 0 && (
-                <div className="mb-3 flex items-center gap-2 rounded-lg bg-green-50 p-2.5 border border-green-200">
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">
-                      {bookingComparison.current}
-                    </p>
-                    <p className={`text-xs font-medium ${bookingComparison.change >= 0 ? "text-green-600" : "text-red-600"}`}>
-                      {bookingComparison.change >= 0 ? "+" : ""}{bookingComparison.change.toFixed(0)} sessions ({bookingComparison.percentChange >= 0 ? "+" : ""}{bookingComparison.percentChange.toFixed(1)}%)
-                    </p>
-                  </div>
-                  <div className={`ml-auto text-sm font-bold ${bookingComparison.change >= 0 ? "text-green-600" : "text-red-600"}`}>
-                    {bookingComparison.change >= 0 ? "↑" : "↓"}
-                  </div>
-                </div>
-              )}
-
-              <div className="h-56">
-                {trendData.length === 0 ? (
-                  <div className="flex h-full items-center justify-center text-xs text-gray-500">
-                    No booking data available yet.
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trendData}>
-                      <CartesianGrid strokeDasharray="4 4" stroke="#e5e7eb" />
-                      <XAxis
-                        dataKey="date"
-                        minTickGap={10}
-                        tick={{ fontSize: 10, fill: "#6b7280" }}
-                      />
-                      <YAxis
-                        tick={{ fontSize: 10, fill: "#6b7280" }}
-                        allowDecimals={false}
-                      />
-                      <Tooltip />
-                      <Legend wrapperStyle={{ fontSize: 11 }} />
-                      <Line
-                        type="monotone"
-                        dataKey="bookedSessions"
-                        name="Sessions Booked"
-                        stroke="#22c55e"
-                        strokeWidth={2.5}
-                        dot={{ r: 2 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Earnings Graph */}
-          <Card className="bg-white border border-gray-200 rounded-2xl shadow-none">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900">
-                    Earnings Trend
-                  </h3>
-                  <p className="text-xs text-gray-500">Total & average earnings</p>
-                </div>
-                <span className="text-xs text-gray-500">
-                  {timePeriod === "today"
-                    ? "14 days"
-                    : timePeriod === "week"
-                    ? "8 weeks"
-                    : timePeriod === "month"
-                    ? "12 months"
-                    : "All time"}
-                </span>
-              </div>
-
-              {/* Comparison Badge */}
-              {earningsComparison.current > 0 && (
-                <div className="mb-3 flex items-center gap-2 rounded-lg bg-blue-50 p-2.5 border border-blue-200">
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">
-                      Rs. {earningsComparison.current.toLocaleString("en-IN")}
-                    </p>
-                    <p className={`text-xs font-medium ${earningsComparison.change >= 0 ? "text-green-600" : "text-red-600"}`}>
-                      {earningsComparison.change >= 0 ? "+" : ""}Rs. {earningsComparison.change.toLocaleString("en-IN")} ({earningsComparison.percentChange >= 0 ? "+" : ""}{earningsComparison.percentChange.toFixed(1)}%)
-                    </p>
-                  </div>
-                  <div className={`ml-auto text-sm font-bold ${earningsComparison.change >= 0 ? "text-green-600" : "text-red-600"}`}>
-                    {earningsComparison.change >= 0 ? "↑" : "↓"}
-                  </div>
-                </div>
-              )}
-
-              <div className="h-56">
-                {trendData.length === 0 ? (
-                  <div className="flex h-full items-center justify-center text-xs text-gray-500">
-                    No earnings data available yet.
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trendData}>
-                      <CartesianGrid strokeDasharray="4 4" stroke="#e5e7eb" />
-                      <XAxis
-                        dataKey="date"
-                        minTickGap={10}
-                        tick={{ fontSize: 10, fill: "#6b7280" }}
-                      />
-                      <YAxis tick={{ fontSize: 10, fill: "#6b7280" }} />
-                      <Tooltip formatter={(value: number) => [`Rs. ${value.toLocaleString("en-IN")}`, ""]} />
-                      <Legend wrapperStyle={{ fontSize: 11 }} />
-                      <Line
-                        type="monotone"
-                        dataKey="totalEarnings"
-                        name="Total Earnings"
-                        stroke="#3b82f6"
-                        strokeWidth={2.5}
-                        dot={{ r: 2 }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="avgEarnings"
-                        name="Avg per Session"
-                        stroke="#f97316"
-                        strokeWidth={2.5}
-                        dot={{ r: 2 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* Actionable Insights Section - Game Changer */}
-      <Card className="bg-gradient-to-br from-indigo-50 to-blue-50 border-0 rounded-2xl shadow-none">
+      {/* Quick Actions - Compact Design */}
+      <Card className="bg-gray-100 border-0 rounded-2xl shadow-none">
         <CardContent className="p-5">
-          <h3 className="text-sm font-bold text-gray-900 mb-4">
-            💡 Actionable Insights
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">
+            Quick Actions
           </h3>
-
-          {/* Key Insights Row */}
-          {keyInsights.length > 0 && (
-            <div className="mb-4 space-y-2">
-              <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                Recent Patterns
-              </p>
-              <div className="space-y-1.5">
-                {keyInsights.map((insight, idx) => (
-                  <div
-                    key={idx}
-                    className="text-sm text-gray-800 flex items-start gap-2 p-2 rounded-lg bg-white bg-opacity-70"
-                  >
-                    <span className="text-indigo-600 flex-shrink-0 mt-0.5">→</span>
-                    <span>{insight}</span>
-                  </div>
-                ))}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {/* Update Availability */}
+            <button
+              onClick={() => {
+                if (onNavigate) {
+                  onNavigate("availability");
+                } else {
+                  toast({
+                    title: "Error",
+                    description: "Navigation function not available",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              className="flex items-center gap-3 p-3 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-rose-300 transition-all text-left group cursor-pointer"
+            >
+              <div className="p-2 rounded-lg bg-gray-100 group-hover:bg-rose-50 transition-colors">
+                <Edit className="h-4 w-4 text-rose-400" />
               </div>
-            </div>
-          )}
-
-          {/* Service Breakdown + Time Insights Side by Side */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Service Breakdown */}
-            {serviceBreakdown.length > 0 && (
-              <div className="rounded-xl border border-indigo-200 bg-white p-3">
-                <p className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
-                  Service Performance
-                </p>
-                <div className="space-y-2">
-                  {serviceBreakdown.slice(0, 3).map((service, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-sm">
-                      <div>
-                        <p className="font-medium text-gray-900">{service.service}</p>
-                        <p className="text-xs text-gray-500">
-                          {service.bookings} bookings • Rs. {service.revenue.toLocaleString("en-IN")}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-100 to-blue-100 flex items-center justify-center">
-                          <span className="text-sm font-bold text-indigo-600">
-                            {service.percentage.toFixed(0)}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Time-Based & Utilization */}
-            <div className="rounded-xl border border-indigo-200 bg-white p-3 space-y-3">
-              {/* Best Day/Time */}
-              <div>
-                <p className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
-                  Optimal Timing
-                </p>
-                <div className="space-y-1.5">
-                  {timeInsights.bestDay !== "N/A" && (
-                    <div className="text-sm">
-                      <p className="text-gray-600">Best Day</p>
-                      <p className="font-bold text-gray-900">{timeInsights.bestDay}</p>
-                    </div>
-                  )}
-                  {timeInsights.bestTime !== "N/A" && (
-                    <div className="text-sm">
-                      <p className="text-gray-600">Peak Time</p>
-                      <p className="font-bold text-gray-900">{timeInsights.bestTime}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Utilization */}
-              <div>
-                <p className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
-                  Utilization (14 days)
-                </p>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full transition-all ${
-                      utilizationMetrics.utilizationRate >= 70
-                        ? "bg-green-500"
-                        : utilizationMetrics.utilizationRate >= 40
-                        ? "bg-yellow-500"
-                        : "bg-orange-500"
-                    }`}
-                    style={{ width: `${Math.min(utilizationMetrics.utilizationRate, 100)}%` }}
-                  />
-                </div>
-                <p className="text-xs text-gray-600 mt-1">
-                  {utilizationMetrics.bookedSlots} of {utilizationMetrics.totalSlots} slots booked
-                  <span className="font-bold text-gray-900 ml-1">
-                    ({utilizationMetrics.utilizationRate.toFixed(0)}%)
-                  </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">
+                  Update Availability
                 </p>
               </div>
-            </div>
+            </button>
+
+            {/* Profile Management */}
+            <button
+              onClick={() => {
+                if (onNavigate) {
+                  onNavigate("profile");
+                } else {
+                  toast({
+                    title: "Error",
+                    description: "Navigation function not available",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              className="flex items-center gap-3 p-3 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-rose-300 transition-all text-left group cursor-pointer"
+            >
+              <div className="p-2 rounded-lg bg-gray-100 group-hover:bg-rose-50 transition-colors">
+                <Settings className="h-4 w-4 text-rose-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">
+                  Profile Management
+                </p>
+              </div>
+            </button>
+
+            {/* Message Support */}
+            <a
+              href="mailto:support@matepeak.com"
+              className="flex items-center gap-3 p-3 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-rose-300 transition-all text-left group"
+            >
+              <div className="p-2 rounded-lg bg-gray-100 group-hover:bg-rose-50 transition-colors">
+                <MessageCircle className="h-4 w-4 text-rose-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">
+                  Get Support
+                </p>
+              </div>
+            </a>
           </div>
         </CardContent>
       </Card>

@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getPendingMentorVerifications, verifyMentor, rejectMentor } from '@/services/adminService';
+import { getPendingMentorVerifications, verifyMentor, rejectMentor, setPhase2MaxAttempts } from '@/services/adminService';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, Check, X, Eye, FileText, Award, Calendar, Mail, User, GraduationCap, Globe, Languages as LanguagesIcon, Banknote, Shield } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MentorProfile {
   id: string;
@@ -32,6 +34,15 @@ interface MentorProfile {
   service_pricing: any;
   profile_status: string;
   verification_status: string;
+  onboarding_version?: string;
+  phase2_liveness_photo_url?: string | null;
+  phase2_intro_video_url?: string | null;
+  phase2_proofs?: any[];
+  phase2_attempt_count?: number;
+  phase2_max_attempts?: number;
+  phase2_locked?: boolean;
+  phase2_rejection_reason?: string | null;
+  phase2_review_status?: string | null;
   verification_photo_url: string | null;
   profile_picture_url: string | null;
   social_links: any;
@@ -45,7 +56,6 @@ interface MentorProfile {
 
 const AdminMentorVerification = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [mentors, setMentors] = useState<MentorProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMentor, setSelectedMentor] = useState<MentorProfile | null>(null);
@@ -54,6 +64,28 @@ const AdminMentorVerification = () => {
   const [notes, setNotes] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [attemptDrafts, setAttemptDrafts] = useState<Record<string, number>>({});
+
+  const formatBadgeLabel = (value: any): string => {
+    if (value == null) return '';
+    if (typeof value === 'string' || typeof value === 'number') return String(value);
+    if (typeof value === 'object') {
+      if (typeof value.language === 'string' && typeof value.level === 'string') {
+        return `${value.language} (${value.level})`;
+      }
+      if (typeof value.language === 'string') {
+        return value.language;
+      }
+      if (typeof value.name === 'string') {
+        return value.name;
+      }
+      return Object.values(value)
+        .filter((v) => typeof v === 'string' || typeof v === 'number')
+        .map(String)
+        .join(' • ');
+    }
+    return String(value);
+  };
 
   useEffect(() => {
     loadPendingMentors();
@@ -64,11 +96,7 @@ const AdminMentorVerification = () => {
     const { data, error } = await getPendingMentorVerifications();
     
     if (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load pending verifications',
-        variant: 'destructive'
-      });
+      toast.error(error.message || 'Failed to load pending verifications');
     } else {
       setMentors(data || []);
     }
@@ -82,30 +110,28 @@ const AdminMentorVerification = () => {
     const result = await verifyMentor(selectedMentor.id, notes);
     
     if (result.success) {
-      toast({
-        title: 'Success',
-        description: 'Mentor verified successfully',
-      });
+      toast.success('Mentor verified successfully');
+      if (selectedMentor?.profiles?.email) {
+        await supabase.functions.invoke('send-email', {
+          body: {
+            to: selectedMentor.profiles.email,
+            subject: 'Your mentor verification is approved',
+            html: `<p>Hi ${selectedMentor.profiles?.full_name || 'Mentor'},</p><p>Your Phase 2 verification has been approved. Your account is now verified.</p>`,
+          },
+        });
+      }
       setShowVerifyDialog(false);
       setNotes('');
       loadPendingMentors();
     } else {
-      toast({
-        title: 'Error',
-        description: result.error || 'Failed to verify mentor',
-        variant: 'destructive'
-      });
+      toast.error(result.error || 'Failed to verify mentor');
     }
     setProcessing(false);
   };
 
   const handleReject = async () => {
     if (!selectedMentor || !rejectionReason.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please provide a rejection reason',
-        variant: 'destructive'
-      });
+      toast.error('Please provide a rejection reason');
       return;
     }
     
@@ -113,21 +139,40 @@ const AdminMentorVerification = () => {
     const result = await rejectMentor(selectedMentor.id, rejectionReason);
     
     if (result.success) {
-      toast({
-        title: 'Success',
-        description: 'Mentor verification rejected',
-      });
+      toast.success('Mentor verification rejected');
+      if (selectedMentor?.profiles?.email) {
+        await supabase.functions.invoke('send-email', {
+          body: {
+            to: selectedMentor.profiles.email,
+            subject: 'Your mentor verification needs changes',
+            html: `<p>Hi ${selectedMentor.profiles?.full_name || 'Mentor'},</p><p>Your Phase 2 verification was not approved.</p><p><strong>Reason:</strong> ${rejectionReason}</p><p>Please update and resubmit your verification.</p>`,
+          },
+        });
+      }
       setShowRejectDialog(false);
       setRejectionReason('');
       loadPendingMentors();
     } else {
-      toast({
-        title: 'Error',
-        description: result.error || 'Failed to reject mentor',
-        variant: 'destructive'
-      });
+      toast.error(result.error || 'Failed to reject mentor');
     }
     setProcessing(false);
+  };
+
+  const handleSetMaxAttempts = async (mentorId: string) => {
+    const nextMax = attemptDrafts[mentorId];
+    if (!nextMax || Number.isNaN(nextMax) || nextMax < 1) {
+      toast.error('Enter a valid max attempts value (1 or higher)');
+      return;
+    }
+
+    const result = await setPhase2MaxAttempts(mentorId, nextMax, 'Updated from admin panel');
+    if (!result.success) {
+      toast.error(result.error || result.message);
+      return;
+    }
+
+    toast.success('Max attempts updated');
+    loadPendingMentors();
   };
 
   return (
@@ -209,12 +254,55 @@ const AdminMentorVerification = () => {
                           <Badge variant="outline" className="bg-orange-100 text-orange-700 border-orange-300">
                             {mentor.profile_status}
                           </Badge>
+                          <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
+                            Verification: {mentor.verification_status || 'pending'}
+                          </Badge>
+                          {mentor.onboarding_version && (
+                            <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-300">
+                              {mentor.onboarding_version}
+                            </Badge>
+                          )}
                           {mentor.verification_photo_url && (
                             <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
                               <Shield className="h-3 w-3 mr-1" />
                               ID Verified
                             </Badge>
                           )}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="rounded-lg border bg-white p-3">
+                          <p className="text-xs text-gray-500">Attempt Count</p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {mentor.phase2_attempt_count || 0} / {mentor.phase2_max_attempts || 3}
+                          </p>
+                          {mentor.phase2_locked && (
+                            <p className="text-xs text-red-600 mt-1">Locked</p>
+                          )}
+                        </div>
+                        <div className="rounded-lg border bg-white p-3 md:col-span-2">
+                          <p className="text-xs text-gray-500 mb-2">Change max attempts</p>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              min={1}
+                              value={attemptDrafts[mentor.id] ?? mentor.phase2_max_attempts ?? 3}
+                              onChange={(e) =>
+                                setAttemptDrafts((prev) => ({
+                                  ...prev,
+                                  [mentor.id]: Number(e.target.value),
+                                }))
+                              }
+                              className="max-w-[120px]"
+                            />
+                            <Button
+                              variant="outline"
+                              onClick={() => handleSetMaxAttempts(mentor.id)}
+                            >
+                              Save
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -265,7 +353,7 @@ const AdminMentorVerification = () => {
                                 <p className="text-sm font-semibold text-gray-700 mb-2">Categories</p>
                                 <div className="flex flex-wrap gap-1.5">
                                   {mentor.categories.map((cat, idx) => (
-                                    <Badge key={idx} variant="secondary" className="text-xs">{cat}</Badge>
+                                    <Badge key={idx} variant="secondary" className="text-xs">{formatBadgeLabel(cat)}</Badge>
                                   ))}
                                 </div>
                               </div>
@@ -279,7 +367,7 @@ const AdminMentorVerification = () => {
                                 </p>
                                 <div className="flex flex-wrap gap-1.5">
                                   {mentor.languages.map((lang, idx) => (
-                                    <Badge key={idx} variant="outline" className="text-xs">{lang}</Badge>
+                                    <Badge key={idx} variant="outline" className="text-xs">{formatBadgeLabel(lang)}</Badge>
                                   ))}
                                 </div>
                               </div>
@@ -291,7 +379,7 @@ const AdminMentorVerification = () => {
                               <p className="text-sm font-semibold text-gray-700 mb-2">Expertise Tags</p>
                               <div className="flex flex-wrap gap-1.5">
                                 {mentor.expertise_tags.map((tag, idx) => (
-                                  <Badge key={idx} variant="outline" className="text-xs">{tag}</Badge>
+                                  <Badge key={idx} variant="outline" className="text-xs">{formatBadgeLabel(tag)}</Badge>
                                 ))}
                               </div>
                             </div>
@@ -382,6 +470,55 @@ const AdminMentorVerification = () => {
 
                         {/* Verification Tab */}
                         <TabsContent value="verification" className="space-y-4 mt-4">
+                          {mentor.phase2_liveness_photo_url && (
+                            <div>
+                              <p className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
+                                <Shield className="h-4 w-4" />
+                                Phase 2 Liveness Selfie
+                              </p>
+                              <img
+                                src={mentor.phase2_liveness_photo_url}
+                                alt="Phase 2 liveness"
+                                className="max-w-md rounded-lg border-2 border-gray-300"
+                              />
+                            </div>
+                          )}
+
+                          {mentor.phase2_intro_video_url && (
+                            <div>
+                              <p className="text-sm font-semibold text-gray-700 mb-2">Intro Video</p>
+                              <a
+                                href={mentor.phase2_intro_video_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-blue-600 hover:underline break-all"
+                              >
+                                {mentor.phase2_intro_video_url}
+                              </a>
+                            </div>
+                          )}
+
+                          {mentor.phase2_proofs && mentor.phase2_proofs.length > 0 && (
+                            <div>
+                              <p className="text-sm font-semibold text-gray-700 mb-2">Proofs</p>
+                              <div className="space-y-2">
+                                {mentor.phase2_proofs.map((proof: any) => (
+                                  <div key={proof.id || proof.url} className="rounded-lg border p-3 bg-gray-50">
+                                    <p className="text-xs text-gray-500">{proof.type || 'proof'}</p>
+                                    <a
+                                      href={proof.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm text-blue-600 hover:underline break-all"
+                                    >
+                                      {proof.label || proof.url}
+                                    </a>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
                           {mentor.verification_photo_url && (
                             <div>
                               <p className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">

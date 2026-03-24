@@ -20,6 +20,8 @@ import {
   Settings,
   Eye,
   PackageOpen,
+  CreditCard,
+  HandCoins,
   Wallet,
   CalendarPlus,
 } from "lucide-react";
@@ -34,7 +36,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { NotificationBell } from "./NotificationBell";
 
 type DashboardView =
@@ -47,6 +49,8 @@ type DashboardView =
   | "students"
   | "requests"
   | "services"
+  | "payments"
+  | "payouts"
   | "earnings";
 
 interface DashboardLayoutProps {
@@ -68,7 +72,6 @@ const DashboardLayout = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   // Grouped navigation structure for better organization
   const navigationGroups = [
@@ -157,6 +160,23 @@ const DashboardLayout = ({
         },
       ],
     },
+    {
+      label: "Finance",
+      items: [
+        {
+          id: "payments" as DashboardView,
+          label: "Payments",
+          icon: CreditCard,
+          badge: null,
+        },
+        {
+          id: "payouts" as DashboardView,
+          label: "Payouts",
+          icon: HandCoins,
+          badge: null,
+        },
+      ],
+    },
   ];
 
   // Keyboard shortcut for command palette
@@ -176,17 +196,12 @@ const DashboardLayout = ({
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
 
-      toast({
-        title: "Signed out successfully",
-        description: "You have been signed out of your account",
-      });
+      toast.success("Signed out successfully");
       navigate("/");
     } catch (error) {
       console.error("Error signing out:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to sign out. Please try again.",
-        variant: "destructive",
       });
     }
   };

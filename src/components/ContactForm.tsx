@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/components/ui/sonner";
 
 const ContactForm = () => {
   const [name, setName] = useState("");
@@ -17,11 +17,8 @@ const ContactForm = () => {
     // In a real application, this would send the form data to a server
     console.log({ name, email, subject, message });
     
-    // Show success toast
-    toast({
-      title: "Message sent!",
-      description: "We'll get back to you as soon as possible.",
-    });
+    // Show success toast as concise title-only message
+    toast.success("Message sent!");
     
     // Reset form
     setName("");

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { format } from "date-fns";
 import {
   Calendar as CalendarIcon,
@@ -63,7 +63,6 @@ interface BookedSession {
 }
 
 const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
-  const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [availabilitySlots, setAvailabilitySlots] = useState<
     AvailabilitySlot[]
@@ -124,6 +123,10 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
     const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
+
+  const minBulkDateString = getLocalDateString(new Date());
+  const hasInvalidBulkRange =
+    !!bulkBlockStart && !!bulkBlockEnd && bulkBlockEnd < bulkBlockStart;
 
   const formatTimeWithAmPm = (time: string): string => {
     const normalizedTime = time.length >= 5 ? time.slice(0, 5) : time;
@@ -1455,18 +1458,22 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
                   </Label>
                   <input
                     type="date"
-                    min={getLocalDateString(new Date())}
+                    min={minBulkDateString}
                     className="w-full px-3.5 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white transition-all hover:border-gray-300"
                     value={
                       bulkBlockStart ? getLocalDateString(bulkBlockStart) : ""
                     }
-                    onChange={(e) =>
-                      setBulkBlockStart(
-                        e.target.value
-                          ? new Date(e.target.value + "T00:00:00")
-                          : null
-                      )
-                    }
+                    onChange={(e) => {
+                      const nextStart = e.target.value
+                        ? new Date(e.target.value + "T00:00:00")
+                        : null;
+
+                      setBulkBlockStart(nextStart);
+
+                      if (nextStart && bulkBlockEnd && bulkBlockEnd < nextStart) {
+                        setBulkBlockEnd(null);
+                      }
+                    }}
                   />
                 </div>
                 <div>
@@ -1475,7 +1482,11 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
                   </Label>
                   <input
                     type="date"
-                    min={getLocalDateString(new Date())}
+                    min={
+                      bulkBlockStart
+                        ? getLocalDateString(bulkBlockStart)
+                        : minBulkDateString
+                    }
                     className="w-full px-3.5 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent bg-white transition-all hover:border-gray-300"
                     value={bulkBlockEnd ? getLocalDateString(bulkBlockEnd) : ""}
                     onChange={(e) =>
@@ -1491,7 +1502,7 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
               <Button
                 onClick={handleBulkBlockDates}
                 className="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3 rounded-xl shadow-sm transition-all hover:shadow-md disabled:bg-gray-300 disabled:cursor-not-allowed"
-                disabled={!bulkBlockStart || !bulkBlockEnd}
+                disabled={!bulkBlockStart || !bulkBlockEnd || hasInvalidBulkRange}
               >
                 <CalendarIcon className="h-4 w-4 mr-2" />
                 Block{" "}
@@ -1503,6 +1514,11 @@ const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
                   : ""}{" "}
                 Dates
               </Button>
+              {hasInvalidBulkRange && (
+                <p className="text-xs text-red-600">
+                  End date cannot be before the start date.
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

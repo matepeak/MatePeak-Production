@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { Loader2, Wallet, Landmark, CircleCheck, CircleX, Clock3 } from "lucide-react";
 import {
   createWithdrawalRequest,
@@ -57,6 +57,22 @@ const BANK_OPTIONS = [
 
 const ACCOUNT_NUMBER_REGEX = /^\d{9,18}$/;
 const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+const UPI_REGEX = /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z]{2,64}$/;
+
+const sanitizeVerificationMessage = (message?: string | null): string => {
+  const raw = String(message || "").trim();
+  if (!raw) return "";
+
+  if (
+    /access to requested resource not available|edge function returned a non-2xx status code|failed to send a request to the edge function|network request failed|razorpay credentials are not configured|missing razorpayx_account_number/i.test(
+      raw
+    )
+  ) {
+    return "Payout details are saved. Automatic verification is temporarily unavailable, but you can still request withdrawals for admin review.";
+  }
+
+  return raw;
+};
 
 const statusMeta: Record<
   VerificationStatus,
@@ -85,7 +101,6 @@ const statusMeta: Record<
 };
 
 export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [savingDetails, setSavingDetails] = useState(false);
   const [requesting, setRequesting] = useState(false);
@@ -203,9 +218,20 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
   const verification = statusMeta[verificationStatus];
   const VerificationIcon = verification.icon;
 
+  const hasPayoutDetails = useMemo(() => {
+    const account = snapshot?.payoutAccount;
+    if (!account) return false;
+
+    if (account.payout_method === "bank") {
+      return Boolean(account.account_holder_name && account.account_number && account.ifsc_code);
+    }
+
+    return Boolean(account.upi_id);
+  }, [snapshot?.payoutAccount]);
+
   const canRequestWithdrawal = useMemo(() => {
-    return wallet.balance >= MIN_WITHDRAWAL_AMOUNT && verificationStatus === "verified";
-  }, [wallet.balance, verificationStatus]);
+    return wallet.balance >= MIN_WITHDRAWAL_AMOUNT && hasPayoutDetails;
+  }, [wallet.balance, hasPayoutDetails]);
 
   const validatePayoutFields = () => {
     if (method === "bank") {
@@ -226,6 +252,9 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
     }
 
     if (!upiId.trim()) return "UPI ID is required";
+    if (!UPI_REGEX.test(upiId.trim())) {
+      return "Invalid UPI ID format (example: name@upi)";
+    }
     return null;
   };
 
@@ -262,10 +291,15 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
       return;
     }
 
+    // Always show success variant when save operation succeeds
+    const toastTitle = result.verified 
+      ? "Account details verified successfully" 
+      : "Account details saved successfully";
+    
     toast({
-      title: result.verified ? "Bank details verified" : "Details saved as unverified",
+      title: toastTitle,
       description: result.message,
-      variant: result.verified ? "default" : "destructive",
+      variant: "default",
     });
 
     await loadSnapshot();
@@ -293,10 +327,10 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
       return;
     }
 
-    if (verificationStatus !== "verified") {
+    if (!hasPayoutDetails) {
       toast({
-        title: "Verification required",
-        description: "Please verify payout details before requesting withdrawal.",
+        title: "Payout details required",
+        description: "Please save payout details before requesting withdrawal.",
         variant: "destructive",
       });
       return;
@@ -367,7 +401,7 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="text-sm text-gray-600">Withdrawal is available only after balance reaches ₹500</div>
+            <div className="text-sm text-gray-600">Withdrawal is available only after balance reaches ₹{MIN_WITHDRAWAL_AMOUNT}</div>
             <Badge className={verification.className}>
               <VerificationIcon className="h-3.5 w-3.5 mr-1" />
               {verification.label}
@@ -375,7 +409,7 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
           </div>
 
           {!!snapshot?.payoutAccount?.verification_message && (
-            <p className="text-sm text-gray-600">{snapshot.payoutAccount.verification_message}</p>
+            <p className="text-sm text-gray-600">{sanitizeVerificationMessage(snapshot.payoutAccount.verification_message)}</p>
           )}
 
           <Tabs value={method} onValueChange={(value) => setMethod(value as PayoutMethod)}>
@@ -503,7 +537,7 @@ export default function MentorEarnings({ mentorProfile }: MentorEarningsProps) {
             <div className="text-sm text-red-600">
               {wallet.balance < MIN_WITHDRAWAL_AMOUNT
                 ? `You need at least ₹${MIN_WITHDRAWAL_AMOUNT} balance to withdraw.`
-                : "Verify payout details before requesting withdrawal."}
+                : "Save payout details before requesting withdrawal."}
             </div>
           )}
 

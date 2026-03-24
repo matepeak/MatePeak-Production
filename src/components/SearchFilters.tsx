@@ -7,7 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useAISearch } from "@/hooks/useAISearch";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 interface SearchFiltersProps {
   onSearch: (filters: any) => void;

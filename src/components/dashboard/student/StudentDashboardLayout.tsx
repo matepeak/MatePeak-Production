@@ -3,20 +3,15 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   User,
-  Calendar,
   Menu,
   X,
   LogOut,
   ChevronDown,
-  Star,
-  CalendarCheck,
   MessageSquare,
   Users,
   BookOpen,
   Search,
   Settings,
-  GraduationCap,
-  Clock,
   CalendarPlus,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -29,9 +24,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
-type StudentView = "overview" | "sessions" | "time-request" | "messages" | "mentors" | "reviews" | "profile";
+type StudentView = "overview" | "sessions" | "time-request" | "messages" | "mentors" | "profile";
 
 interface StudentDashboardLayoutProps {
   activeView: StudentView;
@@ -95,12 +90,6 @@ const StudentDashboardLayout = ({
           id: "messages" as StudentView,
           label: "Priority DM",
           icon: MessageSquare,
-          badge: null,
-        },
-        {
-          id: "reviews" as StudentView,
-          label: "Reviews",
-          icon: Star,
           badge: null,
         },
       ],

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import {
   Users,
   Search,
@@ -42,7 +42,6 @@ interface StudentDirectoryProps {
 }
 
 const StudentDirectory = ({ mentorProfile }: StudentDirectoryProps) => {
-  const { toast } = useToast();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -199,10 +198,8 @@ const StudentDirectory = ({ mentorProfile }: StudentDirectoryProps) => {
       setStudents(sortedStudents);
     } catch (error: any) {
       console.error("Error fetching students:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to load students",
-        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -224,19 +221,14 @@ const StudentDirectory = ({ mentorProfile }: StudentDirectoryProps) => {
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Notes saved successfully",
-      });
+      toast.success("Notes saved successfully");
 
       setEditingNotes(null);
       fetchStudents();
     } catch (error: any) {
       console.error("Error saving notes:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to save notes",
-        variant: "destructive",
       });
     } finally {
       setSavingNotes(false);

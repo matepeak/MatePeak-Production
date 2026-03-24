@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { Mail } from "lucide-react";
 
 const GetInTouch: React.FC = () => {
@@ -30,9 +30,7 @@ const GetInTouch: React.FC = () => {
     e.preventDefault();
     setSubmitting(true);
     setTimeout(() => {
-      toast({
-        title: "Thanks! We'll get back to you soon.",
-      });
+      toast.success("Thanks! We'll get back to you soon.");
       setSubmitting(false);
       setForm({
         name: "",

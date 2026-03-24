@@ -31,6 +31,7 @@ import ExpertOnboardingPhase2 from "./pages/ExpertOnboardingPhase2";
 import ExpertDashboard from "./pages/ExpertDashboard";
 import MentorDashboard from "./pages/MentorDashboard";
 import StudentDashboard from "./pages/StudentDashboard";
+import StudentSupport from "./pages/StudentSupport";
 import MigrateAvailability from "./pages/MigrateAvailability";
 import AuthCallback from "./pages/AuthCallback";
 import ResetPassword from "./pages/ResetPassword";
@@ -40,6 +41,8 @@ import AdminUserManagement from "./pages/AdminUserManagement";
 import AdminWithdrawals from "./pages/AdminWithdrawals";
 import AdminReviewModeration from "./pages/AdminReviewModeration";
 import AdminLogin from "./pages/AdminLogin";
+import PayoutRequestTest from "./pages/PayoutRequestTest";
+import PhoneOtpTest from "./pages/PhoneOtpTest";
 import { AdminAuthProvider } from "./contexts/AdminAuthContext";
 import { ProtectedAdminRoute } from "./components/ProtectedAdminRoute";
 import GlobalMentorPresence from "./components/GlobalMentorPresence";
@@ -89,6 +92,9 @@ const App = () => {
               <Route path="/booking-success" element={<BookingSuccess />} />
               <Route path="/dashboard" element={<StudentDashboard />} />
               <Route path="/student/dashboard" element={<StudentDashboard />} />
+              <Route path="/student/support" element={<StudentSupport />} />
+              <Route path="/mentor/support" element={<StudentSupport />} />
+              <Route path="/support" element={<StudentSupport />} />
               <Route path="/how-it-works" element={<HowItWorks />} />
               <Route path="/about-us" element={<AboutUs />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
@@ -107,6 +113,12 @@ const App = () => {
               <Route path="/expert/dashboard" element={<ExpertDashboard />} />
               <Route path="/mentor/dashboard" element={<MentorDashboard />} />
               <Route path="/dashboard/:username" element={<MentorDashboard />} />
+              {(import.meta.env.DEV || import.meta.env.VITE_ENABLE_PAYOUT_TEST_PAGE === "true") && (
+                <Route path="/mentor/payout-test" element={<PayoutRequestTest />} />
+              )}
+              {(import.meta.env.DEV || import.meta.env.VITE_ENABLE_PHONE_OTP_TEST_PAGE === "true") && (
+                <Route path="/test/phone-otp" element={<PhoneOtpTest />} />
+              )}
               
               {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLogin />} />

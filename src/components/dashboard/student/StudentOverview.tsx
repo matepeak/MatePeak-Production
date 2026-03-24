@@ -16,7 +16,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 interface StudentOverviewProps {
   studentProfile: any;
@@ -226,7 +226,7 @@ export default function StudentOverview({
 
             {/* Get Support */}
             <button
-              onClick={() => onNavigate?.("messages")}
+              onClick={() => navigate("/student/support")}
               className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-gray-50 rounded-xl transition-colors text-left border border-gray-200 group"
             >
               <div className="bg-rose-50 p-2 rounded-lg group-hover:bg-rose-100 transition-colors">
