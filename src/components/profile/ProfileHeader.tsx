@@ -73,6 +73,14 @@ export default function ProfileHeader({
     setIsCheckingAuth(true);
 
     try {
+      if (mentor?.id) {
+        await supabase.rpc("track_mentor_analytics_event", {
+          p_mentor_id: mentor.id,
+          p_event_type: "booking_click",
+          p_metadata: { source: "profile_header" },
+        });
+      }
+
       // Check if user is authenticated
       const {
         data: { user },

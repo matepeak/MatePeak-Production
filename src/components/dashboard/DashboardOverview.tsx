@@ -4,7 +4,6 @@ import {
   Star,
   TrendingUp,
   Clock,
-  Edit,
   Eye,
   MessageCircle,
   ArrowRight,
@@ -12,7 +11,6 @@ import {
   User,
   CheckCircle,
   XCircle,
-  Settings,
   X,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +20,8 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -32,11 +32,11 @@ import {
 import { SERVICE_CONFIG } from "@/config/serviceConfig";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
 import confetti from "canvas-confetti";
 
 type TimePeriod = "today" | "week" | "month" | "all";
+type FunnelPeriod = "7d" | "30d" | "90d" | "all";
 
 interface DashboardOverviewProps {
   mentorProfile: any;
@@ -58,7 +58,6 @@ const DashboardOverview = ({
   const SUCCESSFUL_PAYMENT_STATUSES = new Set(["paid", "completed"]);
   const SUCCESSFUL_BOOKING_STATUSES = new Set(["confirmed", "completed"]);
 
-  const navigate = useNavigate();
   const [stats, setStats] = useState<Stats>({
     totalSessions: 0,
     upcomingSessions: 0,
@@ -69,6 +68,8 @@ const DashboardOverview = ({
   const [loading, setLoading] = useState(true);
   const [upcomingSessions, setUpcomingSessions] = useState<any[]>([]);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("all");
+  const [funnelPeriod, setFunnelPeriod] = useState<FunnelPeriod>("30d");
+  const [utilizationPeriod, setUtilizationPeriod] = useState<FunnelPeriod>("30d");
   const [timeRequests, setTimeRequests] = useState<any[]>([]);
   const [pendingPayouts, setPendingPayouts] = useState<number>(0);
   const [lifetimeEarnings, setLifetimeEarnings] = useState<number>(0);
@@ -78,11 +79,72 @@ const DashboardOverview = ({
   const [serviceBreakdown, setServiceBreakdown] = useState<Array<{ service: string; bookings: number; revenue: number; percentage: number }>>([]);
   const [timeInsights, setTimeInsights] = useState<{ bestDay: string; bestTime: string; peakBookingTime: string }>({ bestDay: "", bestTime: "", peakBookingTime: "" });
   const [conversionFunnel, setConversionFunnel] = useState<{ views: number; clicks: number; bookings: number; viewToClick: number; clickToBooking: number }>({ views: 0, clicks: 0, bookings: 0, viewToClick: 0, clickToBooking: 0 });
+  const [funnelLoading, setFunnelLoading] = useState(false);
+  const [availabilityUtilizationData, setAvailabilityUtilizationData] = useState<Array<{ slot: string; available: number; booked: number; wasted: number }>>([]);
+  const [utilizationLoading, setUtilizationLoading] = useState(false);
   const [keyInsights, setKeyInsights] = useState<string[]>([]);
   const [utilizationMetrics, setUtilizationMetrics] = useState<{ totalSlots: number; bookedSlots: number; utilizationRate: number }>({ totalSlots: 0, bookedSlots: 0, utilizationRate: 0 });
+  const [utilizationInsights, setUtilizationInsights] = useState<{ peakDemandSlot: string; peakDemandCount: number; wastedSlot: string; wastedCount: number }>({
+    peakDemandSlot: "N/A",
+    peakDemandCount: 0,
+    wastedSlot: "N/A",
+    wastedCount: 0,
+  });
   const [hidePhase2StatusCard, setHidePhase2StatusCard] = useState(false);
 
   const chartColors = ["#3b82f6", "#f97316", "#8b5cf6", "#22c55e", "#06b6d4"];
+  const funnelPeriodDays =
+    funnelPeriod === "7d" ? 7 : funnelPeriod === "30d" ? 30 : funnelPeriod === "90d" ? 90 : 3650;
+  const funnelPeriodLabel =
+    funnelPeriod === "7d"
+      ? "last 7 days"
+      : funnelPeriod === "30d"
+      ? "last 30 days"
+      : funnelPeriod === "90d"
+      ? "last 90 days"
+      : "all time";
+  const utilizationPeriodDays =
+    utilizationPeriod === "7d" ? 7 : utilizationPeriod === "30d" ? 30 : utilizationPeriod === "90d" ? 90 : 3650;
+  const utilizationPeriodLabel =
+    utilizationPeriod === "7d"
+      ? "last 7 days"
+      : utilizationPeriod === "30d"
+      ? "last 30 days"
+      : utilizationPeriod === "90d"
+      ? "last 90 days"
+      : "all time";
+  const overallFunnelConversion =
+    conversionFunnel.views > 0
+      ? (conversionFunnel.bookings / conversionFunnel.views) * 100
+      : 0;
+  const viewToClickDropOff = Math.max(
+    conversionFunnel.views - conversionFunnel.clicks,
+    0
+  );
+  const clickToBookingDropOff = Math.max(
+    conversionFunnel.clicks - conversionFunnel.bookings,
+    0
+  );
+  const biggestDropOff =
+    viewToClickDropOff >= clickToBookingDropOff
+      ? {
+          stage: "View → Click",
+          count: viewToClickDropOff,
+        }
+      : {
+          stage: "Click → Booking",
+          count: clickToBookingDropOff,
+        };
+  const strongestStep =
+    conversionFunnel.viewToClick >= conversionFunnel.clickToBooking
+      ? {
+          stage: "View → Click",
+          rate: conversionFunnel.viewToClick,
+        }
+      : {
+          stage: "Click → Booking",
+          rate: conversionFunnel.clickToBooking,
+        };
 
   useEffect(() => {
     fetchDashboardData();
@@ -95,6 +157,198 @@ const DashboardOverview = ({
 
     return () => clearInterval(refreshInterval);
   }, [mentorProfile, timePeriod]);
+
+  useEffect(() => {
+    fetchConversionFunnelData();
+  }, [mentorProfile?.id, funnelPeriod]);
+
+  useEffect(() => {
+    fetchUtilizationData();
+  }, [mentorProfile?.id, utilizationPeriod]);
+
+  const fetchConversionFunnelData = async () => {
+    if (!mentorProfile?.id) return;
+
+    try {
+      setFunnelLoading(true);
+      const { data: funnelRows, error: funnelError } = await supabase.rpc(
+        "get_mentor_funnel_metrics",
+        {
+          p_mentor_id: mentorProfile.id,
+          p_days: funnelPeriodDays,
+        }
+      );
+
+      if (funnelError) throw funnelError;
+
+      const row = Array.isArray(funnelRows) && funnelRows.length > 0 ? (funnelRows[0] as { views?: number; clicks?: number; bookings?: number }) : null;
+      const views = Number(row?.views || 0);
+      const clicks = Number(row?.clicks || 0);
+      const bookings = Number(row?.bookings || 0);
+
+      setConversionFunnel({
+        views,
+        clicks,
+        bookings,
+        viewToClick: views > 0 ? (clicks / views) * 100 : 0,
+        clickToBooking: clicks > 0 ? (bookings / clicks) * 100 : 0,
+      });
+    } catch {
+      setConversionFunnel({
+        views: 0,
+        clicks: 0,
+        bookings: 0,
+        viewToClick: 0,
+        clickToBooking: 0,
+      });
+    } finally {
+      setFunnelLoading(false);
+    }
+  };
+
+  const fetchUtilizationData = async () => {
+    if (!mentorProfile?.id) return;
+
+    try {
+      setUtilizationLoading(true);
+
+      const now = new Date();
+      const rangeStart = new Date(now);
+      rangeStart.setDate(now.getDate() - (utilizationPeriodDays - 1));
+
+      const toDateString = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      };
+
+      const rangeStartString = toDateString(rangeStart);
+      const rangeEndString = toDateString(now);
+
+      const { data: bookingsData, error: bookingsError } = await supabase
+        .from("bookings")
+        .select("scheduled_date, scheduled_time, status")
+        .eq("expert_id", mentorProfile.id)
+        .in("status", ["confirmed", "completed"])
+        .gte("scheduled_date", rangeStartString)
+        .lte("scheduled_date", rangeEndString);
+
+      if (bookingsError) throw bookingsError;
+
+      const bookedByHour = new Map<number, number>();
+      (bookingsData || []).forEach((booking) => {
+        const hour = Number(String(booking.scheduled_time || "").split(":")[0]);
+        if (!Number.isFinite(hour)) return;
+        bookedByHour.set(hour, (bookedByHour.get(hour) || 0) + 1);
+      });
+
+      const { data: specificSlotsData, error: specificSlotsError } = await supabase
+        .from("availability_slots")
+        .select("start_time")
+        .eq("expert_id", mentorProfile.id)
+        .eq("is_recurring", false)
+        .gte("specific_date", rangeStartString)
+        .lte("specific_date", rangeEndString);
+
+      if (specificSlotsError) throw specificSlotsError;
+
+      const availableByHour = new Map<number, number>();
+      (specificSlotsData || []).forEach((slot: any) => {
+        const hour = Number(String(slot.start_time || "").split(":")[0]);
+        if (!Number.isFinite(hour)) return;
+        availableByHour.set(hour, (availableByHour.get(hour) || 0) + 1);
+      });
+
+      if ((specificSlotsData || []).length === 0) {
+        const { data: recurringSlotsData, error: recurringSlotsError } = await supabase
+          .from("availability_slots")
+          .select("day_of_week, start_time")
+          .eq("expert_id", mentorProfile.id)
+          .eq("is_recurring", true);
+
+        if (recurringSlotsError) throw recurringSlotsError;
+
+        const countWeekdayOccurrences = (start: Date, end: Date, targetDow: number) => {
+          const first = new Date(start);
+          const delta = (targetDow - first.getDay() + 7) % 7;
+          first.setDate(first.getDate() + delta);
+          if (first > end) return 0;
+          const diffDays = Math.floor((end.getTime() - first.getTime()) / (1000 * 60 * 60 * 24));
+          return Math.floor(diffDays / 7) + 1;
+        };
+
+        (recurringSlotsData || []).forEach((slot: any) => {
+          const hour = Number(String(slot.start_time || "").split(":")[0]);
+          const dayOfWeek = Number(slot.day_of_week);
+          if (!Number.isFinite(hour) || !Number.isFinite(dayOfWeek)) return;
+
+          const occurrences = countWeekdayOccurrences(rangeStart, now, dayOfWeek);
+          if (occurrences <= 0) return;
+
+          availableByHour.set(hour, (availableByHour.get(hour) || 0) + occurrences);
+        });
+      }
+
+      const allHours = Array.from(new Set([...availableByHour.keys(), ...bookedByHour.keys()])).sort((a, b) => a - b);
+      const fullUtilizationData = allHours.map((hour) => {
+        const available = availableByHour.get(hour) || 0;
+        const booked = bookedByHour.get(hour) || 0;
+        const wasted = Math.max(available - booked, 0);
+        return {
+          hour,
+          slot: `${String(hour).padStart(2, "0")}:00`,
+          available,
+          booked,
+          wasted,
+          volume: available + booked,
+        };
+      });
+
+      const topUtilizationData = fullUtilizationData
+        .filter((item) => item.volume > 0)
+        .sort((a, b) => b.volume - a.volume)
+        .slice(0, 8)
+        .sort((a, b) => a.hour - b.hour)
+        .map(({ slot, available, booked, wasted }) => ({ slot, available, booked, wasted }));
+
+      setAvailabilityUtilizationData(topUtilizationData);
+
+      const totalAvailableSlots = Array.from(availableByHour.values()).reduce((sum, count) => sum + count, 0);
+      const totalBookedSlots = Array.from(bookedByHour.values()).reduce((sum, count) => sum + count, 0);
+      const effectiveTotalSlots = totalAvailableSlots > 0 ? totalAvailableSlots : totalBookedSlots;
+      const effectiveBookedSlots = Math.min(totalBookedSlots, effectiveTotalSlots);
+      const utilizationRate = effectiveTotalSlots > 0 ? (effectiveBookedSlots / effectiveTotalSlots) * 100 : 0;
+
+      setUtilizationMetrics({
+        totalSlots: effectiveTotalSlots,
+        bookedSlots: effectiveBookedSlots,
+        utilizationRate: Math.min(utilizationRate, 100),
+      });
+
+      const peakDemand = topUtilizationData.reduce(
+        (best, row) => (row.booked > best.booked ? { slot: row.slot, booked: row.booked } : best),
+        { slot: "N/A", booked: 0 }
+      );
+      const highestWasted = topUtilizationData.reduce(
+        (best, row) => (row.wasted > best.wasted ? { slot: row.slot, wasted: row.wasted } : best),
+        { slot: "N/A", wasted: 0 }
+      );
+
+      setUtilizationInsights({
+        peakDemandSlot: peakDemand.slot,
+        peakDemandCount: peakDemand.booked,
+        wastedSlot: highestWasted.slot,
+        wastedCount: highestWasted.wasted,
+      });
+    } catch {
+      setAvailabilityUtilizationData([]);
+      setUtilizationMetrics({ totalSlots: 0, bookedSlots: 0, utilizationRate: 0 });
+      setUtilizationInsights({ peakDemandSlot: "N/A", peakDemandCount: 0, wastedSlot: "N/A", wastedCount: 0 });
+    } finally {
+      setUtilizationLoading(false);
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -449,23 +703,6 @@ const DashboardOverview = ({
 
       setKeyInsights(insights);
 
-      // Set utilization metrics (estimate based on average availability)
-      const estimatedSlotsPerDay = 8; // Assume mentor can do 8 sessions per day
-      const recentDays = mentorSessions?.filter((s) => {
-        const date = new Date(s.scheduled_date);
-        const daysDiff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-        return daysDiff <= 14;
-      }).length || 0;
-
-      const estimatedTotalSlots = estimatedSlotsPerDay * 14;
-      const utilisationRate = estimatedTotalSlots > 0 ? (recentDays / estimatedTotalSlots) * 100 : 0;
-
-      setUtilizationMetrics({
-        totalSlots: estimatedTotalSlots,
-        bookedSlots: recentDays,
-        utilizationRate: Math.min(utilisationRate, 100),
-      });
-
       // Set upcoming sessions for calendar
       setUpcomingSessions(upcoming.slice(0, 5));
     } catch (error) {
@@ -560,6 +797,20 @@ const DashboardOverview = ({
     },
   ];
 
+  const getStatCardNavigationTarget = (title: string) => {
+    switch (title) {
+      case "Total Sessions":
+      case "Upcoming":
+        return "sessions";
+      case "Earnings":
+        return "payments";
+      case "Average Rating":
+        return "reviews";
+      default:
+        return null;
+    }
+  };
+
   const getServiceDisplayName = (sessionType: string): string => {
     if (mentorProfile?.service_pricing?.[sessionType]?.name) {
       return mentorProfile.service_pricing[sessionType].name;
@@ -646,14 +897,16 @@ const DashboardOverview = ({
           <p className="text-gray-600 text-sm">
             Here's what's happening with your mentoring sessions
           </p>
-          <div className="mt-2">
-            <Badge
-              variant="outline"
-              className={isMentorVerified ? "border-emerald-300 text-emerald-700 bg-emerald-50" : "border-gray-300 text-gray-700 bg-white"}
-            >
-              Status: {isMentorVerified ? "Verified" : "Pending"}
-            </Badge>
-          </div>
+          {!isMentorVerified && (
+            <div className="mt-2">
+              <Badge
+                variant="outline"
+                className="border-gray-300 text-gray-700 bg-white"
+              >
+                Pending
+              </Badge>
+            </div>
+          )}
         </div>
       </div>
 
@@ -769,11 +1022,28 @@ const DashboardOverview = ({
             ))
           : statCards.map((stat, index) => {
               const Icon = stat.icon;
+              const targetView = getStatCardNavigationTarget(stat.title);
+              const isNavigable = Boolean(targetView);
               return (
                 <Card
                   key={index}
+                  onClick={() => {
+                    if (isNavigable && targetView) {
+                      onNavigate?.(targetView);
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (!isNavigable || !targetView) return;
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      onNavigate?.(targetView);
+                    }
+                  }}
+                  role={isNavigable ? "button" : undefined}
+                  tabIndex={isNavigable ? 0 : undefined}
                   className={`
                     group bg-gray-100 border-0 rounded-2xl shadow-none hover:shadow-md transition-all duration-200 h-[116px]
+                    ${isNavigable ? "cursor-pointer" : ""}
                     ${stat.isComingSoon ? "relative overflow-hidden" : ""}
                   `}
                 >
@@ -821,80 +1091,218 @@ const DashboardOverview = ({
             })}
       </div>
 
-      {/* Quick Actions - Compact Design */}
-      <Card className="bg-gray-100 border-0 rounded-2xl shadow-none">
-        <CardContent className="p-5">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">
-            Quick Actions
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {/* Update Availability */}
-            <button
-              onClick={() => {
-                if (onNavigate) {
-                  onNavigate("availability");
-                } else {
-                  toast({
-                    title: "Error",
-                    description: "Navigation function not available",
-                    variant: "destructive",
-                  });
-                }
-              }}
-              className="flex items-center gap-3 p-3 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-rose-300 transition-all text-left group cursor-pointer"
-            >
-              <div className="p-2 rounded-lg bg-gray-100 group-hover:bg-rose-50 transition-colors">
-                <Edit className="h-4 w-4 text-rose-400" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="bg-white border border-gray-200 rounded-2xl shadow-none hover:shadow-sm transition-shadow">
+          <div className="p-5 border-b border-gray-200">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Conversion Funnel</h3>
+                <p className="text-sm text-gray-600 mt-1">Views → Clicks → Bookings ({funnelPeriodLabel})</p>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">
-                  Update Availability
-                </p>
+              <div className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1">
+                {([
+                  { key: "7d", label: "7D" },
+                  { key: "30d", label: "30D" },
+                  { key: "90d", label: "90D" },
+                  { key: "all", label: "All" },
+                ] as Array<{ key: FunnelPeriod; label: string }>).map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    onClick={() => setFunnelPeriod(option.key)}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                      funnelPeriod === option.key
+                        ? "bg-gray-900 text-white"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
               </div>
-            </button>
-
-            {/* Profile Management */}
-            <button
-              onClick={() => {
-                if (onNavigate) {
-                  onNavigate("profile");
-                } else {
-                  toast({
-                    title: "Error",
-                    description: "Navigation function not available",
-                    variant: "destructive",
-                  });
-                }
-              }}
-              className="flex items-center gap-3 p-3 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-rose-300 transition-all text-left group cursor-pointer"
-            >
-              <div className="p-2 rounded-lg bg-gray-100 group-hover:bg-rose-50 transition-colors">
-                <Settings className="h-4 w-4 text-rose-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">
-                  Profile Management
-                </p>
-              </div>
-            </button>
-
-            {/* Message Support */}
-            <a
-              href="mailto:support@matepeak.com"
-              className="flex items-center gap-3 p-3 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-rose-300 transition-all text-left group"
-            >
-              <div className="p-2 rounded-lg bg-gray-100 group-hover:bg-rose-50 transition-colors">
-                <MessageCircle className="h-4 w-4 text-rose-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">
-                  Get Support
-                </p>
-              </div>
-            </a>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+          <CardContent className="p-5 space-y-4">
+            {funnelLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-12 w-full max-w-xl mx-auto" />
+                <Skeleton className="h-4 w-5 mx-auto" />
+                <Skeleton className="h-12 w-[82%] mx-auto" />
+                <Skeleton className="h-4 w-5 mx-auto" />
+                <Skeleton className="h-12 w-[66%] mx-auto" />
+              </div>
+            ) : (
+            (() => {
+              const stages = [
+                { key: "views", label: "profile views", value: conversionFunnel.views },
+                { key: "clicks", label: "booking clicks", value: conversionFunnel.clicks },
+                { key: "bookings", label: "bookings", value: conversionFunnel.bookings },
+              ];
+              const stageWidths = [100, 82, 66];
+
+              return (
+                <div className="space-y-2 max-w-xl mx-auto">
+                  {stages.map((stage, index) => {
+                    const prevValue = index > 0 ? stages[index - 1].value : stage.value;
+                    const leftPct =
+                      index > 0 && prevValue > 0
+                        ? Math.max(0, (1 - stage.value / prevValue) * 100)
+                        : 0;
+                    const showLeftChip = index > 0 && leftPct > 0;
+
+                    return (
+                      <div key={stage.key}>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1">
+                            <div
+                              className="mx-auto h-12 bg-gray-100 text-gray-900 border border-gray-200"
+                              style={{
+                                width: `${stageWidths[index]}%`,
+                                clipPath: "polygon(6% 0, 94% 0, 100% 100%, 0% 100%)",
+                              }}
+                            >
+                              <div className="h-full w-full flex items-center justify-center gap-2 px-3 text-base font-semibold">
+                                <span className="text-orange-400 text-lg font-extrabold">{stage.value}</span>
+                                <span className="text-gray-900 text-base">{stage.label}</span>
+                              </div>
+                            </div>
+                          </div>
+                          {showLeftChip && (
+                            <div className="rounded-full border border-green-300 bg-green-100 px-2.5 py-1 text-xs font-semibold text-gray-800 whitespace-nowrap">
+                              {leftPct.toFixed(1)}% left
+                            </div>
+                          )}
+                        </div>
+
+                        {index < stages.length - 1 && (
+                          <div className="flex justify-center py-1 text-green-500 text-lg leading-none">↓</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()
+            )}
+
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                <p className="text-gray-600">View → Click</p>
+                <p className="text-gray-900 font-semibold">{conversionFunnel.viewToClick.toFixed(1)}%</p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                <p className="text-gray-600">Click → Booking</p>
+                <p className="text-gray-900 font-semibold">{conversionFunnel.clickToBooking.toFixed(1)}%</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                <p className="text-gray-600">Biggest Drop-off</p>
+                <p className="text-gray-900 font-semibold">
+                  {biggestDropOff.stage} ({biggestDropOff.count} users)
+                </p>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                <p className="text-gray-600">Strongest Step</p>
+                <p className="text-gray-900 font-semibold">
+                  {strongestStep.stage} ({strongestStep.rate.toFixed(1)}%) · Overall {overallFunnelConversion.toFixed(1)}%
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border border-gray-200 rounded-2xl shadow-none hover:shadow-sm transition-shadow">
+          <div className="p-5 border-b border-gray-200">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Availability vs Booking Utilization</h3>
+                <p className="text-sm text-gray-600 mt-1">Booked vs wasted slots by time ({utilizationPeriodLabel})</p>
+              </div>
+              <div className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1">
+                {([
+                  { key: "7d", label: "7D" },
+                  { key: "30d", label: "30D" },
+                  { key: "90d", label: "90D" },
+                  { key: "all", label: "All" },
+                ] as Array<{ key: FunnelPeriod; label: string }>).map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    onClick={() => setUtilizationPeriod(option.key)}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                      utilizationPeriod === option.key
+                        ? "bg-gray-900 text-white"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <CardContent className="p-5 space-y-4">
+            {utilizationLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-64 w-full" />
+                <div className="grid grid-cols-3 gap-3">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              </div>
+            ) : availabilityUtilizationData.length > 0 ? (
+              <>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={availabilityUtilizationData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="slot" tick={{ fontSize: 11 }} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="booked" name="Booked" stackId="slots" fill="#10b981" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="wasted" name="Wasted" stackId="slots" fill="#d1d5db" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 text-sm">
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                    <p className="text-gray-600">Total Slots</p>
+                    <p className="text-gray-900 font-semibold">{utilizationMetrics.totalSlots}</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                    <p className="text-gray-600">Booked Slots</p>
+                    <p className="text-gray-900 font-semibold">{utilizationMetrics.bookedSlots}</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                    <p className="text-gray-600">Utilization</p>
+                    <p className="text-gray-900 font-semibold">{utilizationMetrics.utilizationRate.toFixed(1)}%</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                    <p className="text-gray-600">Peak Demand Slot</p>
+                    <p className="text-gray-900 font-semibold">{utilizationInsights.peakDemandSlot} ({utilizationInsights.peakDemandCount} bookings)</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                    <p className="text-gray-600">Most Wasted Slot</p>
+                    <p className="text-gray-900 font-semibold">{utilizationInsights.wastedSlot} ({utilizationInsights.wastedCount} unused)</p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="h-64 rounded-lg border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-sm text-gray-500">
+                No availability or booking slot data for {utilizationPeriodLabel}.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Two Column Layout for Sessions and Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
