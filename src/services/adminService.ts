@@ -119,6 +119,35 @@ export async function rejectMentor(
   }
 }
 
+export async function setPhase2MaxAttempts(
+  mentorProfileId: string,
+  maxAttempts: number,
+  notes?: string
+): Promise<AdminActionResponse> {
+  try {
+    const { data, error } = await supabase.rpc('admin_set_phase2_max_attempts', {
+      mentor_profile_id: mentorProfileId,
+      max_attempts: maxAttempts,
+      notes: notes || null,
+    });
+
+    if (error) throw error;
+
+    return {
+      success: true,
+      message: data?.message || 'Max attempts updated successfully',
+      data,
+    };
+  } catch (error: any) {
+    console.error('Error updating phase 2 max attempts:', error);
+    return {
+      success: false,
+      message: 'Failed to update max attempts',
+      error: error.message,
+    };
+  }
+}
+
 // =====================================================
 // WITHDRAWAL MANAGEMENT
 // =====================================================
@@ -218,22 +247,65 @@ export async function moderateReview(
 
 export async function getPendingMentorVerifications() {
   try {
-    const { data, error } = await supabase
+    const pendingFilter = 'verification_status.eq.under_review,phase2_review_status.eq.under_review,profile_status.eq.pending_review';
+
+    const primary = await supabase
       .from('expert_profiles')
       .select(`
         *,
-        profiles!expert_profiles_user_id_fkey (
+        profiles (
           email,
           full_name,
           avatar_url
         )
       `)
-      .in('profile_status', ['pending_review', 'draft'])
+      .or(pendingFilter)
       .eq('is_verified', false)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    return { data, error: null };
+    if (!primary.error) {
+      return { data: primary.data, error: null };
+    }
+
+    const fallback = await supabase
+      .from('expert_profiles')
+      .select('*')
+      .or('verification_status.eq.under_review,profile_status.eq.pending_review')
+      .eq('is_verified', false)
+      .order('created_at', { ascending: false });
+
+    if (fallback.error) throw fallback.error;
+
+    const rows = fallback.data || [];
+    const userIds = Array.from(new Set(rows.map((row: any) => row.user_id).filter(Boolean)));
+
+    let profileMap = new Map<string, { email: string | null; full_name: string | null; avatar_url: string | null }>();
+    if (userIds.length > 0) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id,email,full_name,avatar_url')
+        .in('id', userIds);
+
+      if (!profilesError && profiles) {
+        profileMap = new Map(
+          profiles.map((profile: any) => [
+            profile.id,
+            {
+              email: profile.email ?? null,
+              full_name: profile.full_name ?? null,
+              avatar_url: profile.avatar_url ?? null,
+            },
+          ])
+        );
+      }
+    }
+
+    const enrichedRows = rows.map((row: any) => ({
+      ...row,
+      profiles: profileMap.get(row.user_id) || null,
+    }));
+
+    return { data: enrichedRows, error: null };
   } catch (error: any) {
     console.error('Error fetching pending verifications:', error);
     return { data: null, error };
