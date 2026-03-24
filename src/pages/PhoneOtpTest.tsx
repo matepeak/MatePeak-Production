@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 const PhoneOtpTest = () => {
-  const [phone, setPhone] = useState("+91");
+  const [phone, setPhone] = useState("91");
   const [otp, setOtp] = useState("");
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -152,7 +152,7 @@ const PhoneOtpTest = () => {
           <div>
             <h1 className="text-2xl font-semibold">Phone OTP Test Console</h1>
             <p className="text-sm text-muted-foreground">
-              Send and verify OTP using Twilio Verify via Supabase Edge Function.
+              Send and verify OTP using MSG91 WhatsApp template via Supabase Edge Function.
             </p>
           </div>
           <Button asChild variant="secondary">
@@ -162,7 +162,7 @@ const PhoneOtpTest = () => {
 
         <Alert>
           <AlertDescription>
-            Enter a phone number in E.164 format (example: +919876543210). In trial mode, Twilio may only send OTP to verified recipient numbers.
+            Enter phone number with country code digits (example: 919876543210). OTP is sent over WhatsApp template.
           </AlertDescription>
         </Alert>
 
@@ -173,12 +173,12 @@ const PhoneOtpTest = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number (E.164)</Label>
+              <Label htmlFor="phone">Phone Number (with country code)</Label>
               <Input
                 id="phone"
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
-                placeholder="+919876543210"
+                placeholder="919876543210"
                 disabled={sending || verifying}
               />
             </div>

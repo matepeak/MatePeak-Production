@@ -43,6 +43,7 @@ import AdminReviewModeration from "./pages/AdminReviewModeration";
 import AdminLogin from "./pages/AdminLogin";
 import PayoutRequestTest from "./pages/PayoutRequestTest";
 import PhoneOtpTest from "./pages/PhoneOtpTest";
+import Msg91WhatsAppTest from "./pages/Msg91WhatsAppTest";
 import { AdminAuthProvider } from "./contexts/AdminAuthContext";
 import { ProtectedAdminRoute } from "./components/ProtectedAdminRoute";
 import GlobalMentorPresence from "./components/GlobalMentorPresence";
@@ -118,6 +119,9 @@ const App = () => {
               )}
               {(import.meta.env.DEV || import.meta.env.VITE_ENABLE_PHONE_OTP_TEST_PAGE === "true") && (
                 <Route path="/test/phone-otp" element={<PhoneOtpTest />} />
+              )}
+              {(import.meta.env.DEV || import.meta.env.VITE_ENABLE_MSG91_WHATSAPP_TEST_PAGE === "true") && (
+                <Route path="/test/msg91-whatsapp" element={<Msg91WhatsAppTest />} />
               )}
               
               {/* Admin Routes */}

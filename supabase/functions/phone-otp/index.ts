@@ -11,6 +11,7 @@ interface PhoneOtpRequest {
   action: "send" | "verify";
   phone: string;
   otp?: string;
+  componentValues?: string[];
 }
 
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -18,6 +19,7 @@ const MAX_SEND_ATTEMPTS_PER_WINDOW = 2;
 const SEND_WINDOW_MINUTES = 30;
 const MAX_FAILED_VERIFY_ATTEMPTS = 2;
 const LOCKOUT_MINUTES = 15;
+const OTP_EXPIRY_SECONDS = 300;
 
 const jsonResponse = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), {
@@ -28,48 +30,151 @@ const jsonResponse = (status: number, body: Record<string, unknown>) =>
 const normalizePhone = (phone: string) =>
   String(phone || "")
     .trim()
-    .replace(/[\s\-().]/g, "");
+    .replace(/[^\d+]/g, "")
+    .replace(/^\+/, "");
 
-const isValidE164 = (phone: string): boolean => {
-  // E.164 max length is 15 digits and must start with +.
-  return /^\+[1-9]\d{7,14}$/.test(phone);
+const isValidIntlPhone = (phone: string): boolean => /^\d{8,15}$/.test(phone);
+
+const toHex = (buffer: ArrayBuffer): string =>
+  Array.from(new Uint8Array(buffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+const sha256Hex = async (value: string): Promise<string> => {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return toHex(digest);
 };
 
-const toFormUrlEncoded = (payload: Record<string, string>) => {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(payload)) {
-    params.append(key, value);
+const generateOtp = (): string => {
+  const bytes = new Uint32Array(1);
+  crypto.getRandomValues(bytes);
+  return (bytes[0] % 1000000).toString().padStart(6, "0");
+};
+
+const normalizePath = (path: string): string => {
+  const value = String(path || "").trim();
+  if (!value) return "";
+  return value.startsWith("/") ? value : `/${value}`;
+};
+
+const extractFirstHttpUrl = (value: string): string => {
+  const match = String(value || "").match(/https?:\/\/[^\s'"`]+/i);
+  return match ? match[0] : "";
+};
+
+const resolveBaseUrl = (value: string, fallback: string): string => {
+  const raw = String(value || "").trim();
+  const candidate = raw ? extractFirstHttpUrl(raw) || raw : fallback;
+
+  try {
+    const parsed = new URL(candidate);
+    if (!/^https?:$/i.test(parsed.protocol)) {
+      throw new Error("Unsupported protocol");
+    }
+    return `${parsed.protocol}//${parsed.host}`;
+  } catch {
+    return fallback;
   }
-  return params.toString();
 };
 
-const fetchTwilioVerify = async (
-  method: "send" | "verify",
-  payload: Record<string, string>,
-  accountSid: string,
-  authToken: string,
-  serviceSid: string,
-) => {
-  const base = `https://verify.twilio.com/v2/Services/${serviceSid}`;
-  const endpoint = method === "send" ? `${base}/Verifications` : `${base}/VerificationCheck`;
+const ensureValidMsg91Path = (path: string, envName: string): string => {
+  const raw = String(path || "").trim();
+  const matchedPath = raw.match(/\/api\/[A-Za-z0-9._\/-]+/);
+  const value = matchedPath ? matchedPath[0] : raw;
+  if (!value) {
+    throw new Error(`Missing ${envName}`);
+  }
 
-  const auth = btoa(`${accountSid}:${authToken}`);
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${auth}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: toFormUrlEncoded(payload),
+  if (/\s|file:\/\//i.test(value)) {
+    throw new Error(
+      `Invalid ${envName}. Expected path like /api/v5/whatsapp/..., got malformed value.`
+    );
+  }
+
+  const normalized = normalizePath(value);
+  if (!normalized.startsWith("/api/")) {
+    throw new Error(`Invalid ${envName}. Path must start with /api/.`);
+  }
+
+  return normalized;
+};
+
+const normalizeBaseUrl = (baseUrl: string): string => String(baseUrl || "").replace(/\/$/, "");
+
+const buildOtpComponents = (otp: string, componentValues: string[] = []) => {
+  const values = componentValues.length ? componentValues : [otp];
+  const components: Record<string, { type: "text"; value: string }> = {};
+
+  values.forEach((value, index) => {
+    components[`body_${index + 1}`] = {
+      type: "text",
+      value: index === 0 ? otp : String(value || ""),
+    };
   });
 
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const message = (data as any)?.message || (data as any)?.detail || "Twilio Verify request failed";
-    throw new Error(`Twilio Verify failed (${response.status}): ${message}`);
+  return components;
+};
+
+const sendMsg91OtpTemplate = async (params: {
+  authKey: string;
+  baseUrl: string;
+  templatePath: string;
+  integratedNumber: string;
+  recipientNumber: string;
+  templateName: string;
+  languageCode: string;
+  componentValues?: string[];
+  otp: string;
+}) => {
+  const url = new URL(`${normalizeBaseUrl(params.baseUrl)}${params.templatePath}`);
+  const body = {
+    integrated_number: params.integratedNumber,
+    content_type: "template",
+    payload: {
+      type: "template",
+      template: {
+        name: params.templateName,
+        language: {
+          code: params.languageCode,
+          policy: "deterministic",
+        },
+        to_and_components: [
+          {
+            to: [params.recipientNumber],
+            components: buildOtpComponents(params.otp, params.componentValues || []),
+          },
+        ],
+      },
+      messaging_product: "whatsapp",
+    },
+  };
+
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      authkey: params.authKey,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const text = await response.text();
+  let payload: any = null;
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = { raw: text };
+    }
   }
 
-  return data as any;
+  if (!response.ok) {
+    const message = String(payload?.message || payload?.error || text || "MSG91 request failed").trim();
+    throw new Error(`MSG91 WhatsApp template failed (${response.status}): ${message}`);
+  }
+
+  return payload || {};
 };
 
 const secondsBetween = (futureIso: string, now: Date): number => {
@@ -157,16 +262,26 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(405, { success: false, message: "Method not allowed" });
   }
 
-  const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID") ?? "";
-  const authToken = Deno.env.get("TWILIO_AUTH_TOKEN") ?? "";
-  const verifyServiceSid = Deno.env.get("TWILIO_VERIFY_SERVICE_SID") ?? "";
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const msg91AuthKey = Deno.env.get("MSG91_AUTH_KEY") ?? "";
+  const msg91BaseUrl = resolveBaseUrl(
+    Deno.env.get("MSG91_BASE_URL") ?? "",
+    "https://control.msg91.com"
+  );
+  const msg91IntegratedNumber = Deno.env.get("MSG91_OTP_INTEGRATED_NUMBER") ?? "";
+  const msg91TemplateName = Deno.env.get("MSG91_OTP_TEMPLATE_NAME") ?? "";
+  const msg91LanguageCode = Deno.env.get("MSG91_OTP_TEMPLATE_LANGUAGE") ?? "en";
+  const msg91TemplatePath = ensureValidMsg91Path(
+    Deno.env.get("MSG91_WHATSAPP_TEMPLATE_SEND_PATH") || "/api/v5/whatsapp/whatsapp-outbound-message/bulk/",
+    "MSG91_WHATSAPP_TEMPLATE_SEND_PATH"
+  );
 
-  if (!accountSid || !authToken || !verifyServiceSid) {
+  if (!msg91AuthKey || !msg91IntegratedNumber || !msg91TemplateName) {
     return jsonResponse(500, {
       success: false,
-      message: "Missing Twilio Verify secrets. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_VERIFY_SERVICE_SID.",
+      message:
+        "Missing MSG91 OTP secrets. Set MSG91_AUTH_KEY, MSG91_OTP_INTEGRATED_NUMBER, MSG91_OTP_TEMPLATE_NAME.",
     });
   }
 
@@ -191,10 +306,10 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    if (!isValidE164(phone)) {
+    if (!isValidIntlPhone(phone)) {
       return jsonResponse(400, {
         success: false,
-        message: "Phone must be in E.164 format (example: +919876543210).",
+        message: "Phone must include country code digits (example: 919876543210).",
       });
     }
 
@@ -238,23 +353,32 @@ Deno.serve(async (req: Request) => {
           });
         }
       }
+      const otp = generateOtp();
+      const otpHash = await sha256Hex(otp);
 
-      const result = await fetchTwilioVerify(
-        "send",
-        {
-          To: phone,
-          Channel: "sms",
-        },
-        accountSid,
-        authToken,
-        verifyServiceSid,
-      );
+      const result = await sendMsg91OtpTemplate({
+        authKey: msg91AuthKey,
+        baseUrl: msg91BaseUrl,
+        templatePath: msg91TemplatePath,
+        integratedNumber: msg91IntegratedNumber,
+        recipientNumber: phone,
+        templateName: msg91TemplateName,
+        languageCode: msg91LanguageCode,
+        componentValues: Array.isArray(body?.componentValues)
+          ? body.componentValues.map((item) => String(item || ""))
+          : undefined,
+        otp,
+      });
 
       const { data: updatedState, error: updateError } = await supabase
         .from("phone_otp_attempts")
         .update({
           otp_requests_count: Number(attemptState.otp_requests_count || 0) + 1,
           last_otp_requested_at: now.toISOString(),
+          otp_hash: otpHash,
+          otp_expires_at: new Date(now.getTime() + OTP_EXPIRY_SECONDS * 1000).toISOString(),
+          failed_verify_attempts: 0,
+          locked_until: null,
           updated_at: now.toISOString(),
         })
         .eq("id", attemptState.id)
@@ -267,12 +391,13 @@ Deno.serve(async (req: Request) => {
 
       return jsonResponse(200, {
         success: true,
-        message: "OTP sent successfully",
-        status: result?.status || "pending",
-        to: result?.to || phone,
-        channel: result?.channel || "sms",
-        sid: result?.sid || null,
+        message: "OTP sent successfully on WhatsApp",
+        status: "sent",
+        to: phone,
+        channel: "whatsapp_template",
+        provider_response: result,
         resend_available_in_seconds: RESEND_COOLDOWN_SECONDS,
+        expires_in_seconds: OTP_EXPIRY_SECONDS,
         send_attempts_used: updatedState.otp_requests_count,
         send_attempts_limit: MAX_SEND_ATTEMPTS_PER_WINDOW,
         send_attempts_remaining: Math.max(0, MAX_SEND_ATTEMPTS_PER_WINDOW - Number(updatedState.otp_requests_count || 0)),
@@ -280,27 +405,45 @@ Deno.serve(async (req: Request) => {
     }
 
     const otp = String(body?.otp || "").trim();
-    if (!/^\d{4,10}$/.test(otp)) {
+    if (!/^\d{6}$/.test(otp)) {
       return jsonResponse(400, {
         success: false,
-        message: "OTP must be numeric (4-10 digits).",
+        message: "OTP must be exactly 6 digits.",
       });
     }
 
-    const result = await fetchTwilioVerify(
-      "verify",
-      {
-        To: phone,
-        Code: otp,
-      },
-      accountSid,
-      authToken,
-      verifyServiceSid,
-    );
+    const currentHash = String(attemptState?.otp_hash || "").trim();
+    const currentExpiry = String(attemptState?.otp_expires_at || "").trim();
 
-    const approved = String(result?.status || "").toLowerCase() === "approved";
+    if (!currentHash || !currentExpiry) {
+      return jsonResponse(400, {
+        success: false,
+        message: "No active OTP found. Please send OTP again.",
+      });
+    }
 
-    if (!approved) {
+    if (new Date(currentExpiry).getTime() <= now.getTime()) {
+      const { error: expireUpdateError } = await supabase
+        .from("phone_otp_attempts")
+        .update({
+          otp_hash: null,
+          otp_expires_at: null,
+          updated_at: now.toISOString(),
+        })
+        .eq("id", attemptState.id);
+
+      if (expireUpdateError) {
+        throw new Error(`Failed to clear expired OTP state: ${expireUpdateError.message}`);
+      }
+
+      return jsonResponse(400, {
+        success: false,
+        message: "OTP expired. Please request a new OTP.",
+      });
+    }
+
+    const otpHash = await sha256Hex(otp);
+    if (otpHash !== currentHash) {
       const nextFailedAttempts = Number(attemptState.failed_verify_attempts || 0) + 1;
       const lockedUntil =
         nextFailedAttempts >= MAX_FAILED_VERIFY_ATTEMPTS
@@ -327,9 +470,8 @@ Deno.serve(async (req: Request) => {
           nextFailedAttempts >= MAX_FAILED_VERIFY_ATTEMPTS
             ? `Too many failed attempts. Locked for ${LOCKOUT_MINUTES} minutes.`
             : "OTP verification failed",
-        status: result?.status || "unknown",
-        to: result?.to || phone,
-        sid: result?.sid || null,
+        status: "invalid_otp",
+        to: phone,
         failed_attempts_used: nextFailedAttempts,
         failed_attempts_limit: MAX_FAILED_VERIFY_ATTEMPTS,
         locked_until: lockedUntil,
@@ -342,6 +484,8 @@ Deno.serve(async (req: Request) => {
         failed_verify_attempts: 0,
         locked_until: null,
         otp_requests_count: 0,
+        otp_hash: null,
+        otp_expires_at: null,
         request_window_started_at: now.toISOString(),
         verified_at: now.toISOString(),
         updated_at: now.toISOString(),
@@ -356,9 +500,8 @@ Deno.serve(async (req: Request) => {
       success: true,
       verified: true,
       message: "Phone number verified successfully",
-      status: result?.status || "unknown",
-      to: result?.to || phone,
-      sid: result?.sid || null,
+      status: "verified",
+      to: phone,
       errors: [],
     });
   } catch (error) {
