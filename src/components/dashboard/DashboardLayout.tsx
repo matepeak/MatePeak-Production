@@ -20,8 +20,6 @@ import {
   Settings,
   Eye,
   PackageOpen,
-  CreditCard,
-  HandCoins,
   Wallet,
   CalendarPlus,
 } from "lucide-react";
@@ -49,8 +47,6 @@ type DashboardView =
   | "students"
   | "requests"
   | "services"
-  | "payments"
-  | "payouts"
   | "earnings";
 
 interface DashboardLayoutProps {
@@ -114,7 +110,7 @@ const DashboardLayout = ({
       items: [
         {
           id: "earnings" as DashboardView,
-          label: "Earnings (Under Development)",
+          label: "Earnings",
           icon: Wallet,
           badge: null,
         },
@@ -156,23 +152,6 @@ const DashboardLayout = ({
           id: "services" as DashboardView,
           label: "Services",
           icon: PackageOpen,
-          badge: null,
-        },
-      ],
-    },
-    {
-      label: "Finance",
-      items: [
-        {
-          id: "payments" as DashboardView,
-          label: "Payments",
-          icon: CreditCard,
-          badge: null,
-        },
-        {
-          id: "payouts" as DashboardView,
-          label: "Payouts",
-          icon: HandCoins,
           badge: null,
         },
       ],

@@ -7,6 +7,121 @@ export interface AdminActionResponse {
   data?: any;
 }
 
+interface WithdrawalEmailContext {
+  mentorEmail?: string | null;
+  mentorName?: string | null;
+  amount?: number | null;
+  requestedAt?: string | null;
+  transactionRef?: string | null;
+  notes?: string | null;
+  rejectionReason?: string | null;
+}
+
+const formatAmountINR = (amount?: number | null) => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 2,
+  }).format(Number(amount || 0));
+};
+
+const buildApprovalEmailHtml = (
+  withdrawalId: string,
+  context: WithdrawalEmailContext
+) => {
+  const mentorName = context.mentorName || 'Mentor';
+  const amount = formatAmountINR(context.amount);
+  const requestedAt = context.requestedAt
+    ? new Date(context.requestedAt).toLocaleString('en-IN')
+    : '-';
+  const approvedAt = new Date().toLocaleString('en-IN');
+  const decisionNote = context.notes?.trim() || 'Approved after admin review.';
+
+  return `
+    <div style="font-family: Arial, Helvetica, sans-serif; max-width: 640px; margin: 0 auto; color: #111827; line-height: 1.6;">
+      <h2 style="margin: 0 0 12px; color: #111827;">Withdrawal Request Approved</h2>
+      <p style="margin: 0 0 14px;">Hi ${mentorName},</p>
+      <p style="margin: 0 0 18px;">Your withdrawal request has been approved by the admin team.</p>
+
+      <table style="width: 100%; border-collapse: collapse; margin: 0 0 18px;">
+        <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Request ID</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${withdrawalId}</td></tr>
+        <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Amount</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${amount}</td></tr>
+        <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Requested On</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${requestedAt}</td></tr>
+        <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Approved On</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${approvedAt}</td></tr>
+        <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Transaction Reference</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${context.transactionRef || '-'}</td></tr>
+      </table>
+
+      <p style="margin: 0 0 8px;"><strong>Admin Note:</strong></p>
+      <p style="margin: 0 0 18px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px;">${decisionNote}</p>
+
+      <p style="margin: 0; color: #6b7280; font-size: 13px;">This is an automated email from MatePeak.</p>
+    </div>
+  `;
+};
+
+const buildRejectionEmailHtml = (
+  withdrawalId: string,
+  context: WithdrawalEmailContext
+) => {
+  const mentorName = context.mentorName || 'Mentor';
+  const amount = formatAmountINR(context.amount);
+  const requestedAt = context.requestedAt
+    ? new Date(context.requestedAt).toLocaleString('en-IN')
+    : '-';
+  const rejectedAt = new Date().toLocaleString('en-IN');
+  const rejectionReason = context.rejectionReason?.trim() || 'Rejected by admin review.';
+
+  return `
+    <div style="font-family: Arial, Helvetica, sans-serif; max-width: 640px; margin: 0 auto; color: #111827; line-height: 1.6;">
+      <h2 style="margin: 0 0 12px; color: #b91c1c;">Withdrawal Request Rejected</h2>
+      <p style="margin: 0 0 14px;">Hi ${mentorName},</p>
+      <p style="margin: 0 0 18px;">Your withdrawal request has been rejected by the admin team. The reserved amount has been restored to your wallet.</p>
+
+      <table style="width: 100%; border-collapse: collapse; margin: 0 0 18px;">
+        <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Request ID</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${withdrawalId}</td></tr>
+        <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Amount</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${amount}</td></tr>
+        <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Requested On</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${requestedAt}</td></tr>
+        <tr><td style="padding: 8px 10px; border: 1px solid #e5e7eb;"><strong>Rejected On</strong></td><td style="padding: 8px 10px; border: 1px solid #e5e7eb;">${rejectedAt}</td></tr>
+      </table>
+
+      <p style="margin: 0 0 8px;"><strong>Reason:</strong></p>
+      <p style="margin: 0 0 18px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 10px;">${rejectionReason}</p>
+
+      <p style="margin: 0; color: #6b7280; font-size: 13px;">This is an automated email from MatePeak.</p>
+    </div>
+  `;
+};
+
+const sendWithdrawalDecisionEmail = async (
+  type: 'approved' | 'rejected',
+  withdrawalId: string,
+  context: WithdrawalEmailContext
+) => {
+  const mentorEmail = String(context.mentorEmail || '').trim();
+  if (!mentorEmail) return;
+
+  const subject =
+    type === 'approved'
+      ? `Withdrawal Approved - ${formatAmountINR(context.amount)}`
+      : `Withdrawal Rejected - ${formatAmountINR(context.amount)}`;
+  const html =
+    type === 'approved'
+      ? buildApprovalEmailHtml(withdrawalId, context)
+      : buildRejectionEmailHtml(withdrawalId, context);
+
+  try {
+    await supabase.functions.invoke('send-email', {
+      body: {
+        to: mentorEmail,
+        subject,
+        html,
+      },
+    });
+  } catch (emailError) {
+    console.error('Failed to send withdrawal decision email:', emailError);
+  }
+};
+
 // =====================================================
 // USER SUSPENSION
 // =====================================================
@@ -155,7 +270,8 @@ export async function setPhase2MaxAttempts(
 export async function approveWithdrawal(
   withdrawalId: string,
   transactionRef?: string,
-  notes?: string
+  notes?: string,
+  emailContext?: WithdrawalEmailContext
 ): Promise<AdminActionResponse> {
   try {
     const { data, error } = await supabase.rpc('admin_approve_withdrawal', {
@@ -165,6 +281,12 @@ export async function approveWithdrawal(
     });
 
     if (error) throw error;
+
+    await sendWithdrawalDecisionEmail('approved', withdrawalId, {
+      ...emailContext,
+      transactionRef: transactionRef || null,
+      notes: notes || null,
+    });
 
     return {
       success: true,
@@ -183,7 +305,8 @@ export async function approveWithdrawal(
 
 export async function rejectWithdrawal(
   withdrawalId: string,
-  reason: string
+  reason: string,
+  emailContext?: WithdrawalEmailContext
 ): Promise<AdminActionResponse> {
   try {
     const { data, error } = await supabase.rpc('admin_reject_withdrawal', {
@@ -192,6 +315,11 @@ export async function rejectWithdrawal(
     });
 
     if (error) throw error;
+
+    await sendWithdrawalDecisionEmail('rejected', withdrawalId, {
+      ...emailContext,
+      rejectionReason: reason,
+    });
 
     return {
       success: true,

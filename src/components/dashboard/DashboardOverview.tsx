@@ -30,6 +30,7 @@ import {
   Legend,
 } from "recharts";
 import { SERVICE_CONFIG } from "@/config/serviceConfig";
+import { calculateNetEarnings, calculateCommissionAmount, COMMISSION_RATE } from "@/services/mentorEarningsService";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/sonner";
@@ -784,7 +785,7 @@ const DashboardOverview = ({
     },
     {
       title: "Earnings",
-      value: `Rs. ${stats.totalEarnings.toLocaleString("en-IN")}`,
+      value: `Rs. ${calculateNetEarnings(stats.totalEarnings).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
       icon: IndianRupee,
       iconColor: "text-rose-400",
     },
