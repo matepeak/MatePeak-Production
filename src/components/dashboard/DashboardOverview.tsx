@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Calendar,
   Star,
@@ -56,6 +57,7 @@ const DashboardOverview = ({
   mentorProfile,
   onNavigate,
 }: DashboardOverviewProps) => {
+  const navigate = useNavigate();
   const SUCCESSFUL_PAYMENT_STATUSES = new Set(["paid", "completed"]);
   const SUCCESSFUL_BOOKING_STATUSES = new Set(["confirmed", "completed"]);
 
@@ -941,16 +943,29 @@ const DashboardOverview = ({
             </div>
 
             {!isPhase2UnderReview && (
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-xs text-gray-600">
-                  <span>Progress</span>
-                  <span>{Math.min(Math.max(phase2Progress, 0), 4)}/4</span>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-xs text-gray-600">
+                    <span>Progress</span>
+                    <span>{Math.min(Math.max(phase2Progress, 0), 4)}/4</span>
+                  </div>
+                  <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gray-900 transition-all duration-300"
+                      style={{ width: `${(Math.min(Math.max(phase2Progress, 0), 4) / 4) * 100}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gray-900 transition-all duration-300"
-                    style={{ width: `${(Math.min(Math.max(phase2Progress, 0), 4) / 4) * 100}%` }}
-                  />
+
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => navigate("/expert/onboarding/phase-2")}
+                    className="h-8 rounded-md bg-gray-900 px-3 text-xs font-semibold text-white hover:bg-gray-800"
+                  >
+                    {phase2Progress > 0 ? "Continue Phase 2" : "Start Phase 2"}
+                  </Button>
                 </div>
               </div>
             )}
