@@ -161,44 +161,44 @@ const MentorPaymentsSetup = ({ mentorProfile }: MentorPaymentsSetupProps) => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold text-gray-900">Settings</h1>
-          <p className="text-gray-600 mt-1">Configure payout preferences and KYC details for successful withdrawals.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Settings</h1>
+          <p className="text-sm text-gray-600 mt-1">Configure payout preferences and KYC details for successful withdrawals.</p>
         </div>
-        <div className="flex items-center gap-2 rounded-full border border-gray-200 px-4 py-2 bg-white">
+        <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-3.5 py-1.5 bg-white">
           <Landmark className="h-4 w-4 text-gray-700" />
-          <span className="text-sm font-semibold text-gray-800">
+          <span className="text-xs font-semibold text-gray-800">
             {isSetupComplete ? "Payout setup complete" : "Payout setup pending"}
           </span>
           {isSetupComplete && <CheckCircle2 className="h-4 w-4 text-green-600" />}
         </div>
       </div>
 
-      <Card className="border-gray-200 rounded-3xl shadow-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-4xl font-black text-gray-900">Payment Settings</CardTitle>
-          <p className="text-gray-600 text-lg">Manage your payment preferences and payout methods.</p>
+      <Card className="border-gray-200 rounded-2xl shadow-sm">
+        <CardHeader className="pb-1">
+          <CardTitle className="text-2xl font-bold tracking-tight text-gray-900">Payment Settings</CardTitle>
+          <p className="text-sm text-gray-600">Manage your payment preferences and payout methods.</p>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6">
-              <p className="text-3xl font-black text-gray-900 mb-2">Currency</p>
-              <p className="text-2xl font-semibold text-gray-700">
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-5">
+              <p className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-1.5">Currency</p>
+              <p className="text-2xl font-semibold text-gray-800">
                 {currency === "INR" ? "INR (₹)" : currency}
               </p>
             </div>
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6">
-              <p className="text-3xl font-black text-gray-900 mb-2">Country</p>
-              <p className="text-2xl font-semibold text-gray-700">{countryCode}</p>
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-5">
+              <p className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-1.5">Country</p>
+              <p className="text-2xl font-semibold text-gray-800">{countryCode}</p>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
-              <p className="text-4xl font-black text-gray-900">Payout Method</p>
-              <p className="text-xl text-gray-600 mt-2">
+              <p className="text-2xl font-bold text-gray-900">Payout Method</p>
+              <p className="text-sm text-gray-600 mt-1.5">
                 {loading
                   ? "Loading..."
                   : isSetupComplete
@@ -207,7 +207,7 @@ const MentorPaymentsSetup = ({ mentorProfile }: MentorPaymentsSetupProps) => {
               </p>
             </div>
             <Button
-              className="h-12 rounded-xl px-8 text-lg font-bold"
+              className="h-11 rounded-lg px-6 text-sm font-semibold"
               onClick={() => setOpenPreferenceModal(true)}
               disabled={loading}
             >
@@ -219,10 +219,10 @@ const MentorPaymentsSetup = ({ mentorProfile }: MentorPaymentsSetupProps) => {
       </Card>
 
       <Dialog open={openPreferenceModal} onOpenChange={setOpenPreferenceModal}>
-        <DialogContent className="sm:max-w-xl rounded-3xl">
+        <DialogContent className="sm:max-w-xl rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-5xl font-black text-gray-800">Payout preference</DialogTitle>
-            <p className="text-gray-500 text-2xl">
+            <DialogTitle className="text-2xl font-bold text-gray-800">Payout preference</DialogTitle>
+            <p className="text-sm text-gray-500">
               Please confirm the currency and country you want to receive your payout in.
             </p>
           </DialogHeader>
@@ -253,7 +253,7 @@ const MentorPaymentsSetup = ({ mentorProfile }: MentorPaymentsSetupProps) => {
             </div>
 
             <Button
-              className="w-full h-12 rounded-xl text-lg font-bold mt-2"
+              className="w-full h-11 rounded-lg text-sm font-semibold mt-2"
               onClick={() => {
                 setOpenPreferenceModal(false);
                 setOpenKycModal(true);
@@ -266,9 +266,9 @@ const MentorPaymentsSetup = ({ mentorProfile }: MentorPaymentsSetupProps) => {
       </Dialog>
 
       <Dialog open={openKycModal} onOpenChange={setOpenKycModal}>
-        <DialogContent className="sm:max-w-2xl rounded-3xl">
+        <DialogContent className="sm:max-w-2xl rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-4xl font-black text-gray-800">Bank Account Details</DialogTitle>
+            <DialogTitle className="text-2xl font-bold text-gray-800">Bank Account Details</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
@@ -365,7 +365,7 @@ const MentorPaymentsSetup = ({ mentorProfile }: MentorPaymentsSetupProps) => {
               </div>
             </div>
 
-            <Button className="w-full h-12 text-lg font-bold" onClick={submitProfile} disabled={saving}>
+            <Button className="w-full h-11 text-sm font-semibold" onClick={submitProfile} disabled={saving}>
               {saving ? "Saving..." : "Save Changes"}
             </Button>
           </div>

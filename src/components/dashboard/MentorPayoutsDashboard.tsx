@@ -39,6 +39,28 @@ const getPayoutAmount = (earning: any) => {
   return Number(fallbackNet.toFixed(2));
 };
 
+const formatServiceTypeLabel = (value: string) => {
+  const labels: Record<string, string> = {
+    oneOnOneSession: "1-on-1 Session",
+    priorityDm: "Priority DM",
+    digitalProducts: "Digital Product",
+  };
+
+  if (labels[value]) return labels[value];
+
+  const normalized = value
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .trim();
+
+  if (!normalized) return "Service";
+
+  return normalized
+    .split(" ")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+};
+
 const MentorPayoutsDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [withdrawing, setWithdrawing] = useState(false);
@@ -120,27 +142,27 @@ const MentorPayoutsDashboard = () => {
 
   return (
     <TooltipProvider>
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-5xl font-black tracking-tight text-gray-900">Payments</h1>
-        <div className="flex items-center gap-2 border rounded-full bg-white px-4 py-2">
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Payouts</h1>
+        <div className="inline-flex items-center gap-2 border rounded-full bg-white px-3.5 py-1.5">
           <Building2 className="h-4 w-4 text-gray-700" />
-          <span className="text-sm font-semibold text-emerald-700">Payout via Indian Bank Connected</span>
+          <span className="text-xs font-semibold text-emerald-700">Payout via Indian Bank Connected</span>
         </div>
       </div>
 
-      <Card className="rounded-2xl border-gray-200">
+      <Card className="rounded-2xl border-gray-200 shadow-sm">
         <CardContent className="p-5">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="rounded-2xl bg-stone-100 p-5">
+            <div className="rounded-xl bg-stone-100 p-5 border border-gray-200">
               <p className="text-sm text-gray-600 font-semibold">Balance</p>
-              <p className="text-4xl font-black mt-2">{formatINR(wallet.balance)}</p>
+              <p className="text-3xl font-bold mt-2 text-gray-900">{formatINR(wallet.balance)}</p>
             </div>
-            <div className="rounded-2xl border p-5">
+            <div className="rounded-xl border border-gray-200 p-5">
               <p className="text-sm text-gray-600 font-semibold">Lifetime earnings</p>
-              <p className="text-4xl font-black mt-2">{formatINR(lifetimeEarnings)}</p>
+              <p className="text-3xl font-bold mt-2 text-gray-900">{formatINR(lifetimeEarnings)}</p>
             </div>
-            <div className="rounded-2xl border p-5">
+            <div className="rounded-xl border border-gray-200 p-5">
               <div className="flex items-center gap-2">
                 <p className="text-sm text-gray-600 font-semibold">Pending payout</p>
                 <Tooltip>
@@ -158,19 +180,19 @@ const MentorPayoutsDashboard = () => {
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <p className="text-4xl font-black mt-2">{formatINR(wallet.pendingWithdrawal)}</p>
+              <p className="text-3xl font-bold mt-2 text-gray-900">{formatINR(wallet.pendingWithdrawal)}</p>
             </div>
-            <div className="rounded-2xl border p-5">
+            <div className="rounded-xl border border-gray-200 p-5">
               <p className="text-sm text-gray-600 font-semibold">In withdrawal</p>
-              <p className="text-4xl font-black mt-2">{formatINR(wallet.totalWithdrawn)}</p>
+              <p className="text-3xl font-bold mt-2 text-gray-900">{formatINR(wallet.totalWithdrawn)}</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="rounded-2xl border-gray-200">
+      <Card className="rounded-2xl border-gray-200 shadow-sm">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-xl">
+          <CardTitle className="flex items-center gap-2 text-xl font-bold tracking-tight">
             <Wallet className="h-5 w-5" />
             Request Withdrawal
           </CardTitle>
@@ -187,7 +209,7 @@ const MentorPayoutsDashboard = () => {
               value={withdrawNote}
               onChange={(e) => setWithdrawNote(e.target.value)}
             />
-            <Button onClick={submitWithdrawal} disabled={withdrawing}>
+            <Button onClick={submitWithdrawal} disabled={withdrawing} className="h-11 text-sm font-semibold">
               {withdrawing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <IndianRupee className="h-4 w-4 mr-2" />}
               Withdraw
             </Button>
@@ -197,7 +219,7 @@ const MentorPayoutsDashboard = () => {
       </Card>
 
       <Tabs defaultValue="summary" className="space-y-4">
-        <TabsList>
+        <TabsList className="bg-gray-100 rounded-lg p-1">
           <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
           <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
@@ -237,7 +259,7 @@ const MentorPayoutsDashboard = () => {
                 <tbody>
                   <tr className="border-b">
                     <td className="px-4 py-3">Mentoring Sessions</td>
-                    <td className="px-4 py-3">oneOnOneSession</td>
+                    <td className="px-4 py-3">{formatServiceTypeLabel("oneOnOneSession")}</td>
                     <td className="px-4 py-3">{earnings.length}</td>
                     <td className="px-4 py-3">{formatINR(totalNetPayoutInSummary)}</td>
                   </tr>

@@ -285,7 +285,7 @@ export default function BookingConfirmation({
                   ? "Tell us about your goals..."
                   : "Briefly describe what you'd like to discuss"
               }
-              className="mt-1.5 min-h-[120px]"
+              className="mt-1.5 h-[120px] resize-none"
               required
             />
           </div>
