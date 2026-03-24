@@ -143,6 +143,25 @@ export default function MentorPublicProfile() {
     }
   }, [username]);
 
+  useEffect(() => {
+    if (!mentor?.id || isOwnProfile) return;
+
+    const dateKey = new Date().toISOString().slice(0, 10);
+    const storageKey = `mentor-profile-view:${mentor.id}:${dateKey}`;
+    if (sessionStorage.getItem(storageKey)) return;
+
+    sessionStorage.setItem(storageKey, "1");
+
+    void supabase.rpc("track_mentor_analytics_event", {
+      p_mentor_id: mentor.id,
+      p_event_type: "profile_view",
+      p_metadata: {
+        source: "mentor_public_profile",
+        path: window.location.pathname,
+      },
+    });
+  }, [mentor?.id, isOwnProfile]);
+
   const fetchMentorProfile = async () => {
     try {
       setLoading(true);

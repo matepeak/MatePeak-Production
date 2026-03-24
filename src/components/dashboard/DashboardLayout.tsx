@@ -36,7 +36,6 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { NotificationBell } from "./NotificationBell";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type DashboardView =
   | "overview"
@@ -375,29 +374,19 @@ const DashboardLayout = ({
                 <h3 className="text-base font-bold text-gray-900">
                   {mentorProfile?.first_name} {mentorProfile?.last_name}
                 </h3>
-                {isVerifiedMentor && (
-                  <TooltipProvider delayDuration={120}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <img
-                          src="/lovable-uploads/verifiedremovebg.png"
-                          alt="Verified mentor"
-                          className="h-7 w-7"
-                        />
-                      </TooltipTrigger>
-                      <TooltipContent
-                        side="top"
-                        className="rounded-full border-green-300 bg-green-200 px-3 py-1 text-xs font-medium text-black shadow-lg"
-                      >
-                        Verified Mentor
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
               </div>
-              <p className="text-sm text-gray-600 font-medium mt-1">
-                {isVerifiedMentor ? "Verified Mentor" : "Mentor"}
-              </p>
+              {isVerifiedMentor ? (
+                <div className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-green-300 bg-green-200 px-3 py-1 text-xs font-medium text-black shadow-sm">
+                  <img
+                    src="/lovable-uploads/verifiedremovebg.png"
+                    alt="Verified mentor"
+                    className="h-6 w-6"
+                  />
+                  <span>Verified Mentor</span>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600 font-medium mt-1">Mentor</p>
+              )}
               <p className="text-xs text-gray-500 mt-0.5">
                 @{mentorProfile?.username}
               </p>

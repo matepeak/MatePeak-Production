@@ -169,16 +169,18 @@ const AdminMentorVerification = () => {
 
   const handleVerify = async () => {
     if (!selectedMentor) return;
+    const mentorEmail = selectedMentor?.profiles?.email?.trim();
     
     setProcessing(true);
     const result = await verifyMentor(selectedMentor.id, notes);
     
     if (result.success) {
       toast.success('Mentor verified successfully');
-      if (selectedMentor?.profiles?.email) {
+      if (mentorEmail) {
         await supabase.functions.invoke('send-email', {
           body: {
-            to: selectedMentor.profiles.email,
+            to: mentorEmail,
+            from: 'MatePeak <support@matepeak.com>',
             subject: 'You are now a verified mentor on MatePeak 🎉',
             html: `
               <p>Hi ${selectedMentor.profiles?.full_name || 'Mentor'},</p>
@@ -195,6 +197,8 @@ const AdminMentorVerification = () => {
             `,
           },
         });
+      } else {
+        toast.warning('Mentor verified, but email was not sent because mentor email is missing.');
       }
       setShowVerifyDialog(false);
       setNotes('');
@@ -210,20 +214,24 @@ const AdminMentorVerification = () => {
       toast.error('Please provide a rejection reason');
       return;
     }
+    const mentorEmail = selectedMentor?.profiles?.email?.trim();
     
     setProcessing(true);
     const result = await rejectMentor(selectedMentor.id, rejectionReason);
     
     if (result.success) {
       toast.success('Mentor verification rejected');
-      if (selectedMentor?.profiles?.email) {
+      if (mentorEmail) {
         await supabase.functions.invoke('send-email', {
           body: {
-            to: selectedMentor.profiles.email,
+            to: mentorEmail,
+            from: 'MatePeak <support@matepeak.com>',
             subject: 'Your mentor verification needs changes',
             html: `<p>Hi ${selectedMentor.profiles?.full_name || 'Mentor'},</p><p>Your Phase 2 verification was not approved.</p><p><strong>Reason:</strong> ${rejectionReason}</p><p>Please update and resubmit your verification.</p>`,
           },
         });
+      } else {
+        toast.warning('Mentor rejected, but email was not sent because mentor email is missing.');
       }
       setShowRejectDialog(false);
       setRejectionReason('');
