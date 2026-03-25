@@ -108,6 +108,9 @@ export default function EmailCodeVerification() {
       const { error } = await supabase.auth.resend({
         type: "signup",
         email: email.trim(),
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
 
       if (error) throw error;

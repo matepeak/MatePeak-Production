@@ -38,7 +38,7 @@ export async function signup(data: SignupData) {
       if (error.message.includes('fetch')) {
         return { success: false, error: 'Network error. Please check your internet connection.' };
       } else if (error.message.includes('User already registered')) {
-        return { success: false, error: 'An account with this email already exists.' };
+        return { success: false, error: 'This email may already be registered. If not verified yet, use email verification to continue.' };
       } else {
         return { success: false, error: error.message };
       }

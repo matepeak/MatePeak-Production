@@ -13,6 +13,11 @@ import SEO from "@/components/SEO";
 export default function ExpertLogin() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [submitShakeKey, setSubmitShakeKey] = useState(0);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   const [isResettingPassword, setIsResettingPassword] = useState(false);
@@ -20,26 +25,49 @@ export default function ExpertLogin() {
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setIsLoading(true);
 
-    const formData = new FormData(event.currentTarget);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
+    const trimmedEmail = email.trim();
+    let hasError = false;
+
+    setEmailError("");
+    setPasswordError("");
+
+    if (!trimmedEmail) {
+      setEmailError("Please enter your email.");
+      hasError = true;
+    }
+
+    if (!password) {
+      setPasswordError("Please enter your password.");
+      hasError = true;
+    }
+
+    if (hasError) {
+      setSubmitShakeKey((prev) => prev + 1);
+      return;
+    }
+
+    setIsLoading(true);
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: trimmedEmail,
         password,
       });
 
       if (error) {
+        setSubmitShakeKey((prev) => prev + 1);
         const message = (error.message || "").toLowerCase();
         if (message.includes("email not confirmed") || message.includes("email not verified")) {
           toast.info("Please verify your email with the code sent to your inbox.");
-          navigate(`/auth/verify-code?email=${encodeURIComponent(email)}&role=mentor`);
+          navigate(`/auth/verify-code?email=${encodeURIComponent(trimmedEmail)}&role=mentor`);
           return;
         }
-        toast.error(error.message);
+        if (message.includes("invalid login credentials")) {
+          setPasswordError("Invalid email or password.");
+        } else {
+          setPasswordError("Unable to sign in. Please try again.");
+        }
         return;
       }
 
@@ -76,7 +104,8 @@ export default function ExpertLogin() {
         toast.warning("Invalid account type");
       }
     } catch (error) {
-      toast.error("An error occurred. Please try again.");
+      setSubmitShakeKey((prev) => prev + 1);
+      setPasswordError("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -113,43 +142,50 @@ export default function ExpertLogin() {
         canonicalPath="/expert/login"
         noindex
       />
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
-        <div className="text-center mb-8">
+      <div className="min-h-screen bg-[rgb(255,255,255)] flex items-center justify-center px-4 py-10">
+        <div className="w-full max-w-[390px]">
+        <div className="text-center mb-7">
           <Link to="/" className="inline-block mb-4">
             <img 
               src="/lovable-uploads/14bf0eea-1bc9-4675-9231-356df10eb82d.png" 
               alt="MatePeak Logo"
-              className="h-12 mx-auto"
+              className="h-14 mx-auto"
             />
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Welcome Back, Mentor!</h1>
-          <p className="text-gray-600 mt-2">Sign in to continue inspiring students</p>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Welcome Back, Mentor!</h1>
+          <p className="text-base font-normal text-gray-600 mt-2 leading-relaxed">Sign in to continue inspiring students</p>
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-5">
-          <div className="space-y-2">
-            <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email</Label>
+        <form onSubmit={onSubmit} noValidate className="space-y-4">
+          <div className="space-y-1.5">
             <Input
               id="email"
               name="email"
               type="email"
-              required
-              placeholder="your@email.com"
-              className="h-11 bg-gray-50 border-gray-300 focus:border-black focus:ring-black transition-all"
+              value={email}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                if (emailError) setEmailError("");
+              }}
+              placeholder="Enter Email"
+              className={`h-12 rounded-md bg-white px-5 placeholder:font-medium focus-visible:ring-1 ${emailError ? "border-red-300 focus-visible:border-red-300 focus-visible:ring-red-200" : "border-gray-300 focus-visible:border-gray-400 focus-visible:ring-gray-400"}`}
             />
+            {emailError && <p className="text-sm text-red-400 mt-1 animate-fade-in">{emailError}</p>}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password" className="text-sm font-medium text-gray-700">Password</Label>
+          <div className="space-y-1.5">
             <div className="relative">
               <Input
                 id="password"
                 name="password"
                 type={showPassword ? "text" : "password"}
-                required
-                placeholder="Enter your password"
-                className="h-11 bg-gray-50 border-gray-300 focus:border-black focus:ring-black transition-all pr-10"
+                value={password}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  if (passwordError) setPasswordError("");
+                }}
+                placeholder="Enter Password"
+                className={`h-12 rounded-md bg-white px-5 pr-10 placeholder:font-medium focus-visible:ring-1 ${passwordError ? "border-red-300 focus-visible:border-red-300 focus-visible:ring-red-200" : "border-gray-300 focus-visible:border-gray-400 focus-visible:ring-gray-400"}`}
               />
               <button
                 type="button"
@@ -159,9 +195,10 @@ export default function ExpertLogin() {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {passwordError && <p className="text-sm text-red-400 mt-1 animate-fade-in">{passwordError}</p>}
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mt-1">
             <div className="flex items-center space-x-2">
               <Checkbox 
                 id="rememberMe" 
@@ -181,7 +218,7 @@ export default function ExpertLogin() {
               <DialogTrigger asChild>
                 <button 
                   type="button"
-                  className="text-sm text-matepeak-primary hover:text-matepeak-secondary transition-colors"
+                  className="text-sm text-gray-700 hover:text-gray-900 transition-colors"
                 >
                   Forgot Password?
                 </button>
@@ -218,31 +255,32 @@ export default function ExpertLogin() {
           </div>
 
           <Button 
+            key={submitShakeKey}
             type="submit" 
-            className="w-full h-11 bg-black hover:bg-gray-800 text-white font-semibold transition-all mt-6" 
+            className={`w-full h-12 rounded-full bg-slate-950 hover:bg-slate-800 text-white font-bold transition-colors mt-2 ${submitShakeKey > 0 ? "animate-shake-button-fast" : ""}`} 
             disabled={isLoading}
           >
-            {isLoading ? "Signing in..." : "Sign In"}
+            {isLoading ? "Signing in..." : "Sign in as Mentor"}
           </Button>
         </form>
 
-        <div className="mt-6 space-y-3">
-          <p className="text-center text-sm text-gray-600">
+        <div className="mt-7 space-y-3">
+          <p className="text-center text-sm text-gray-500">
             Don't have an account?{" "}
-            <Link to="/mentor/signup" className="text-matepeak-primary hover:text-matepeak-secondary transition-colors font-medium">
+            <Link to="/mentor/signup" className="text-gray-800 hover:text-black transition-colors font-semibold">
               Sign up
             </Link>
           </p>
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+              <div className="w-full h-[0.5px] bg-gray-300"></div>
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-2 bg-white text-gray-500">or</span>
             </div>
           </div>
-          <p className="text-center text-sm text-gray-600">
-            <Link to="/student/login" className="text-matepeak-primary hover:text-matepeak-secondary transition-colors font-medium">
+          <p className="text-center text-sm text-gray-500">
+            <Link to="/student/login" className="text-gray-800 hover:text-black transition-colors font-semibold">
               Sign in as a Student instead
             </Link>
           </p>

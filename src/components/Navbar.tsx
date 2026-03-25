@@ -172,7 +172,7 @@ const Navbar = () => {
         .from("expert_profiles")
         .select("username, full_name, profile_picture_url, id")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error("Navbar - Error fetching expert profile:", error);
@@ -235,7 +235,7 @@ const Navbar = () => {
           .from("expert_profiles")
           .select("username")
           .eq("id", session.user.id)
-          .single();
+          .maybeSingle();
 
         if (expertProfile?.username) {
           navigate(`/dashboard/${expertProfile.username}`);
