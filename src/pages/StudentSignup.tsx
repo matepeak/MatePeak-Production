@@ -64,8 +64,7 @@ const StudentSignup = () => {
           data: {
             full_name: fullName,
             role: 'student'
-          },
-          emailRedirectTo: `${window.location.origin}/auth/callback`
+          }
         },
       });
 
@@ -118,31 +117,12 @@ const StudentSignup = () => {
 
       // Check if email confirmation is required
       if (data.user && !data.session) {
-        const { error: resendError } = await supabase.auth.resend({
-          type: "signup",
-          email,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
-          },
-        });
-
-        if (resendError) {
-          const resendMessage = (resendError.message || "").toLowerCase();
-          if (resendError.status === 429 || resendMessage.includes("rate limit")) {
-            toast.success("Account created. Verification email is rate-limited right now. Please wait a minute and retry from login.");
-          } else {
-            toast.success("Account created, but verification email could not be re-sent now. Please use login page to resend.");
-          }
-        }
-
-        // Email confirmation is required - show success message
-        console.log('EMAIL CONFIRMATION REQUIRED');
-        setEmailSent(true);
-        setUserEmail(email);
-        toast.success('Account created! Please check your email to verify your account.', {
+        console.log('EMAIL CODE VERIFICATION REQUIRED');
+        toast.success('Account created! Enter the verification code sent to your email.', {
           duration: 8000,
         });
-        return; // Don't navigate, show the email confirmation UI
+        navigate(`/auth/verify-code?email=${encodeURIComponent(email)}&role=student`);
+        return;
       }
 
       // If session exists, email confirmation is disabled
@@ -222,9 +202,9 @@ const StudentSignup = () => {
                 <p className="font-semibold mb-2">Next Steps:</p>
                 <ol className="list-decimal list-inside space-y-1">
                   <li>Open the email from MatePeak</li>
-                  <li>Click the "Confirm Email" button</li>
-                  <li>You'll be redirected back to login</li>
-                  <li>Sign in with your credentials</li>
+                  <li>Copy the verification code</li>
+                  <li>Enter the code on verification screen</li>
+                  <li>Continue to your dashboard</li>
                 </ol>
               </div>
             </div>

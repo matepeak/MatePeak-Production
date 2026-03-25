@@ -33,6 +33,12 @@ export default function ExpertLogin() {
       });
 
       if (error) {
+        const message = (error.message || "").toLowerCase();
+        if (message.includes("email not confirmed") || message.includes("email not verified")) {
+          toast.info("Please verify your email with the code sent to your inbox.");
+          navigate(`/auth/verify-code?email=${encodeURIComponent(email)}&role=mentor`);
+          return;
+        }
         toast.error(error.message);
         return;
       }

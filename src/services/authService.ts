@@ -27,8 +27,7 @@ export async function signup(data: SignupData) {
         data: {
           full_name: name,
           role: role
-        },
-        emailRedirectTo: `${window.location.origin}/`
+        }
       }
     });
     
@@ -47,7 +46,7 @@ export async function signup(data: SignupData) {
     
     return { 
       success: true, 
-      message: 'Signup successful! Please check your email to verify your account.',
+      message: 'Signup successful! Please enter the verification code sent to your email.',
       data: authData 
     };
   } catch (error: any) {

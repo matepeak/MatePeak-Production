@@ -388,6 +388,26 @@
   animation: shake 0.5s ease-in-out;
 }
 
+@keyframes shake-subtle {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-2px);
+  }
+  50% {
+    transform: translateX(2px);
+  }
+  75% {
+    transform: translateX(-1px);
+  }
+}
+
+.animate-shake-subtle {
+  animation: shake-subtle 0.7s ease-out;
+}
+
 @keyframes bounce-horizontal {
   0%, 100% {
     transform: translateX(0);
