@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Save, Camera, Upload, Eye, Globe, Plus, Trash2, AlertTriangle, ShieldAlert, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -65,7 +65,6 @@ const ProfileManagement = ({
   mentorProfile,
   onProfileUpdate,
 }: ProfileManagementProps) => {
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);

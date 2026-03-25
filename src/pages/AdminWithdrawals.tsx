@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, DollarSign, Check, X, Calendar, User, CreditCard } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface WithdrawalRequest {
@@ -17,6 +18,28 @@ interface WithdrawalRequest {
   amount: number;
   status: string;
   account_details: any;
+  payout_account?: {
+    payout_method?: string | null;
+    account_holder_name?: string | null;
+    account_number?: string | null;
+    ifsc_code?: string | null;
+    bank_name?: string | null;
+    upi_id?: string | null;
+  } | null;
+  payout_profile?: {
+    payout_method?: string | null;
+    account_holder_name?: string | null;
+    account_number?: string | null;
+    ifsc_code?: string | null;
+    upi_id?: string | null;
+  } | null;
+  payment_profile?: {
+    payout_method?: string | null;
+    account_holder_name?: string | null;
+    account_number?: string | null;
+    ifsc_code?: string | null;
+    upi_id?: string | null;
+  } | null;
   requested_at: string;
   profiles: {
     email: string;
@@ -24,18 +47,35 @@ interface WithdrawalRequest {
   };
 }
 
+type StatusFilter = 'pending' | 'approved' | 'rejected';
+
 const AdminWithdrawals = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalRequest | null>(null);
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending');
   const [transactionRef, setTransactionRef] = useState('');
   const [notes, setNotes] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
+
+  const pendingStatuses = new Set(['pending', 'processing']);
+  const approvedStatuses = new Set(['approved', 'completed']);
+  const rejectedStatuses = new Set(['rejected', 'failed', 'cancelled', 'canceled']);
+
+  const pendingWithdrawals = withdrawals.filter((w) => pendingStatuses.has(String(w.status || '').toLowerCase()));
+  const approvedWithdrawals = withdrawals.filter((w) => approvedStatuses.has(String(w.status || '').toLowerCase()));
+  const rejectedWithdrawals = withdrawals.filter((w) => rejectedStatuses.has(String(w.status || '').toLowerCase()));
+
+  const filteredWithdrawals =
+    statusFilter === 'approved'
+      ? approvedWithdrawals
+      : statusFilter === 'rejected'
+        ? rejectedWithdrawals
+        : pendingWithdrawals;
 
   useEffect(() => {
     loadPendingWithdrawals();
@@ -46,11 +86,7 @@ const AdminWithdrawals = () => {
     const { data, error } = await getPendingWithdrawals();
     
     if (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load pending withdrawals',
-        variant: 'destructive'
-      });
+      toast.error('Failed to load pending withdrawals');
     } else {
       setWithdrawals(data || []);
     }
@@ -64,55 +100,48 @@ const AdminWithdrawals = () => {
     const result = await approveWithdrawal(
       selectedWithdrawal.id,
       transactionRef || undefined,
-      notes || undefined
+      notes || undefined,
+      {
+        mentorEmail: selectedWithdrawal.profiles?.email || null,
+        mentorName: selectedWithdrawal.profiles?.full_name || null,
+        amount: selectedWithdrawal.amount,
+        requestedAt: selectedWithdrawal.requested_at,
+      }
     );
     
     if (result.success) {
-      toast({
-        title: 'Success',
-        description: 'Withdrawal approved successfully',
-      });
+      toast.success('Withdrawal approved successfully');
       setShowApproveDialog(false);
       setTransactionRef('');
       setNotes('');
       loadPendingWithdrawals();
     } else {
-      toast({
-        title: 'Error',
-        description: result.error || 'Failed to approve withdrawal',
-        variant: 'destructive'
-      });
+      toast.error(result.error || 'Failed to approve withdrawal');
     }
     setProcessing(false);
   };
 
   const handleReject = async () => {
     if (!selectedWithdrawal || !rejectionReason.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please provide a rejection reason',
-        variant: 'destructive'
-      });
+      toast.error('Please provide a rejection reason');
       return;
     }
     
     setProcessing(true);
-    const result = await rejectWithdrawal(selectedWithdrawal.id, rejectionReason);
+    const result = await rejectWithdrawal(selectedWithdrawal.id, rejectionReason, {
+      mentorEmail: selectedWithdrawal.profiles?.email || null,
+      mentorName: selectedWithdrawal.profiles?.full_name || null,
+      amount: selectedWithdrawal.amount,
+      requestedAt: selectedWithdrawal.requested_at,
+    });
     
     if (result.success) {
-      toast({
-        title: 'Success',
-        description: 'Withdrawal rejected and funds restored to wallet',
-      });
+      toast.success('Withdrawal rejected and funds restored to wallet');
       setShowRejectDialog(false);
       setRejectionReason('');
       loadPendingWithdrawals();
     } else {
-      toast({
-        title: 'Error',
-        description: result.error || 'Failed to reject withdrawal',
-        variant: 'destructive'
-      });
+      toast.error(result.error || 'Failed to reject withdrawal');
     }
     setProcessing(false);
   };
@@ -141,7 +170,7 @@ const AdminWithdrawals = () => {
             <DollarSign className="h-8 w-8 text-green-500" />
             <div>
               <h1 className="text-3xl font-bold">Withdrawal Requests</h1>
-              <p className="text-gray-600">Approve mentor payment withdrawals</p>
+              <p className="text-gray-600">Review mentor withdrawal requests and settle payouts manually</p>
             </div>
           </div>
         </div>
@@ -151,10 +180,27 @@ const AdminWithdrawals = () => {
       <div className="container mx-auto px-4 py-8">
         <Card>
           <CardHeader>
-            <CardTitle>Pending Withdrawals ({withdrawals.length})</CardTitle>
+            <CardTitle>
+              {statusFilter === 'approved' ? 'Approved Withdrawals' : statusFilter === 'rejected' ? 'Rejected Withdrawals' : 'Open Withdrawals'}
+              {' '}
+              (
+              {statusFilter === 'approved' ? approvedWithdrawals.length : statusFilter === 'rejected' ? rejectedWithdrawals.length : pendingWithdrawals.length}
+              )
+            </CardTitle>
             <CardDescription>
-              Withdrawal requests awaiting admin approval
+              {statusFilter === 'approved'
+                ? 'Requests already approved by admin'
+                : statusFilter === 'rejected'
+                  ? 'Requests rejected by admin'
+                  : 'Withdrawal requests awaiting admin completion or rejection'}
             </CardDescription>
+            <Tabs value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)} className="mt-2">
+              <TabsList>
+                <TabsTrigger value="pending">Pending ({pendingWithdrawals.length})</TabsTrigger>
+                <TabsTrigger value="approved">Approved ({approvedWithdrawals.length})</TabsTrigger>
+                <TabsTrigger value="rejected">Rejected ({rejectedWithdrawals.length})</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -163,15 +209,59 @@ const AdminWithdrawals = () => {
                   <Skeleton key={i} className="h-40 w-full" />
                 ))}
               </div>
-            ) : withdrawals.length === 0 ? (
+            ) : filteredWithdrawals.length === 0 ? (
               <div className="text-center py-12">
                 <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">No pending withdrawal requests</p>
+                <p className="text-gray-600">
+                  {statusFilter === 'approved'
+                    ? 'No approved withdrawal requests'
+                    : statusFilter === 'rejected'
+                      ? 'No rejected withdrawal requests'
+                      : 'No pending withdrawal requests'}
+                </p>
               </div>
             ) : (
               <div className="space-y-4">
-                {withdrawals.map((withdrawal) => (
+                {filteredWithdrawals.map((withdrawal) => (
                   <div key={withdrawal.id} className="border rounded-lg p-6 hover:border-primary transition-colors">
+                    {(() => {
+                      const accountNumber =
+                        withdrawal.account_details?.account_number ||
+                        withdrawal.payout_account?.account_number ||
+                        withdrawal.payment_profile?.account_number ||
+                        withdrawal.payout_profile?.account_number ||
+                        null;
+                      const payoutMethod =
+                        withdrawal.account_details?.payout_method ||
+                        withdrawal.payout_account?.payout_method ||
+                        withdrawal.payment_profile?.payout_method ||
+                        withdrawal.payout_profile?.payout_method ||
+                        null;
+                      const bankName =
+                        withdrawal.account_details?.bank_name ||
+                        withdrawal.payout_account?.bank_name ||
+                        null;
+                      const ifscCode =
+                        withdrawal.account_details?.ifsc_code ||
+                        withdrawal.payout_account?.ifsc_code ||
+                        withdrawal.payment_profile?.ifsc_code ||
+                        withdrawal.payout_profile?.ifsc_code ||
+                        null;
+                      const upiId =
+                        withdrawal.account_details?.upi_id ||
+                        withdrawal.payout_account?.upi_id ||
+                        withdrawal.payment_profile?.upi_id ||
+                        withdrawal.payout_profile?.upi_id ||
+                        null;
+                      const accountHolder =
+                        withdrawal.account_details?.account_holder_name ||
+                        withdrawal.payout_account?.account_holder_name ||
+                        withdrawal.payment_profile?.account_holder_name ||
+                        withdrawal.payout_profile?.account_holder_name ||
+                        null;
+
+                      return (
+                        <>
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-start gap-4">
                         <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center">
@@ -180,9 +270,10 @@ const AdminWithdrawals = () => {
                         <div>
                           <div className="flex items-center gap-2 mb-1">
                             <User className="h-4 w-4 text-gray-500" />
-                            <h3 className="font-semibold">{withdrawal.profiles?.full_name}</h3>
+                            <h3 className="font-semibold">{withdrawal.profiles?.full_name || 'Mentor'}</h3>
                           </div>
                           <p className="text-sm text-gray-600 mb-2">{withdrawal.profiles?.email}</p>
+                          <p className="text-xs text-gray-500 mb-2">Mentor ID: {withdrawal.mentor_id}</p>
                           <div className="flex items-center gap-2 text-sm text-gray-600">
                             <Calendar className="h-4 w-4" />
                             Requested: {new Date(withdrawal.requested_at).toLocaleString()}
@@ -207,28 +298,40 @@ const AdminWithdrawals = () => {
                           <p className="font-medium text-sm">Bank Account Details</p>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-sm">
-                          {withdrawal.account_details.bank_name && (
+                          {payoutMethod && (
+                            <div>
+                              <span className="text-gray-600">Method:</span>
+                              <span className="ml-2 font-medium uppercase">{payoutMethod}</span>
+                            </div>
+                          )}
+                          {bankName && (
                             <div>
                               <span className="text-gray-600">Bank:</span>
-                              <span className="ml-2 font-medium">{withdrawal.account_details.bank_name}</span>
+                              <span className="ml-2 font-medium">{bankName}</span>
                             </div>
                           )}
-                          {withdrawal.account_details.account_number && (
+                          {accountNumber && (
                             <div>
                               <span className="text-gray-600">Account:</span>
-                              <span className="ml-2 font-medium">{withdrawal.account_details.account_number}</span>
+                              <span className="ml-2 font-medium">{accountNumber}</span>
                             </div>
                           )}
-                          {withdrawal.account_details.ifsc_code && (
+                          {ifscCode && (
                             <div>
                               <span className="text-gray-600">IFSC:</span>
-                              <span className="ml-2 font-medium">{withdrawal.account_details.ifsc_code}</span>
+                              <span className="ml-2 font-medium">{ifscCode}</span>
                             </div>
                           )}
-                          {withdrawal.account_details.account_holder_name && (
+                          {upiId && (
+                            <div>
+                              <span className="text-gray-600">UPI:</span>
+                              <span className="ml-2 font-medium">{upiId}</span>
+                            </div>
+                          )}
+                          {accountHolder && (
                             <div>
                               <span className="text-gray-600">Account Holder:</span>
-                              <span className="ml-2 font-medium">{withdrawal.account_details.account_holder_name}</span>
+                              <span className="ml-2 font-medium">{accountHolder}</span>
                             </div>
                           )}
                         </div>
@@ -236,31 +339,36 @@ const AdminWithdrawals = () => {
                     )}
 
                     {/* Actions */}
-                    <div className="flex gap-2">
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700"
-                        onClick={() => {
-                          setSelectedWithdrawal(withdrawal);
-                          setShowApproveDialog(true);
-                        }}
-                      >
-                        <Check className="h-4 w-4 mr-2" />
-                        Approve & Process
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedWithdrawal(withdrawal);
-                          setShowRejectDialog(true);
-                        }}
-                      >
-                        <X className="h-4 w-4 mr-2" />
-                        Reject
-                      </Button>
-                    </div>
+                    {statusFilter === 'pending' && (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700"
+                          onClick={() => {
+                            setSelectedWithdrawal(withdrawal);
+                            setShowApproveDialog(true);
+                          }}
+                        >
+                          <Check className="h-4 w-4 mr-2" />
+                          Approve & Mark Paid
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedWithdrawal(withdrawal);
+                            setShowRejectDialog(true);
+                          }}
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Reject
+                        </Button>
+                      </div>
+                    )}
+                        </>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>

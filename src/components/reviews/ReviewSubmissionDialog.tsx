@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Star, Loader2, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 
 interface ReviewSubmissionDialogProps {
   open: boolean;
@@ -31,7 +31,6 @@ export default function ReviewSubmissionDialog({
   booking,
   onSuccess,
 }: ReviewSubmissionDialogProps) {
-  const { toast } = useToast();
   const [rating, setRating] = useState<number>(0);
   const [hoveredRating, setHoveredRating] = useState<number>(0);
   const [comment, setComment] = useState("");
@@ -39,19 +38,15 @@ export default function ReviewSubmissionDialog({
 
   const handleSubmit = async () => {
     if (rating === 0) {
-      toast({
-        title: "Rating Required",
+      toast.error("Rating Required", {
         description: "Please select a star rating before submitting.",
-        variant: "destructive",
       });
       return;
     }
 
     if (comment.trim().length < 20) {
-      toast({
-        title: "Review Too Short",
+      toast.error("Review Too Short", {
         description: "Please write at least 20 characters to make your feedback useful.",
-        variant: "destructive",
       });
       return;
     }
@@ -76,10 +71,8 @@ export default function ReviewSubmissionDialog({
         .single();
 
       if (existingReview) {
-        toast({
-          title: "Review Already Submitted",
+        toast.error("Review Already Submitted", {
           description: "You've already reviewed this session.",
-          variant: "destructive",
         });
         return;
       }
@@ -95,11 +88,7 @@ export default function ReviewSubmissionDialog({
 
       if (error) throw error;
 
-      toast({
-        title: "Review Submitted! ⭐",
-        description:
-          "Thank you for your feedback. It helps others find great mentors.",
-      });
+      toast.success("Review Submitted! ⭐");
 
       // Reset form
       setRating(0);
@@ -110,10 +99,8 @@ export default function ReviewSubmissionDialog({
       if (onSuccess) onSuccess();
     } catch (error: any) {
       console.error("Error submitting review:", error);
-      toast({
-        title: "Failed to Submit Review",
+      toast.error("Failed to Submit Review", {
         description: error.message || "Please try again later.",
-        variant: "destructive",
       });
     } finally {
       setSubmitting(false);

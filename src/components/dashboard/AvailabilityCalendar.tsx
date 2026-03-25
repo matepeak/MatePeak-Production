@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { format } from "date-fns";
 import {
   Calendar as CalendarIcon,
@@ -63,7 +63,6 @@ interface BookedSession {
 }
 
 const AvailabilityCalendar = ({ mentorProfile }: AvailabilityCalendarProps) => {
-  const { toast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [availabilitySlots, setAvailabilitySlots] = useState<
     AvailabilitySlot[]

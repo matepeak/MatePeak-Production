@@ -25,7 +25,7 @@ import {
   Loader2,
   CheckCircle2
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from "@/components/ui/sonner";
 import { useNavigate } from 'react-router-dom';
 import ImageEditor from '@/components/onboarding/ImageEditor';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';

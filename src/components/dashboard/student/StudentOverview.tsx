@@ -16,7 +16,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 interface StudentOverviewProps {
   studentProfile: any;

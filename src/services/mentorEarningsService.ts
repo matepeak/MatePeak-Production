@@ -1,6 +1,25 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export const MIN_WITHDRAWAL_AMOUNT = 500;
+export const COMMISSION_RATE = 0.1; // 10% platform commission
+
+/**
+ * Calculate net earnings after platform commission
+ * @param grossEarnings - Total earnings before commission
+ * @returns Net earnings after 10% commission
+ */
+export const calculateNetEarnings = (grossEarnings: number): number => {
+  return grossEarnings * (1 - COMMISSION_RATE);
+};
+
+/**
+ * Calculate commission amount
+ * @param grossEarnings - Total earnings before commission
+ * @returns Commission amount (10% of gross)
+ */
+export const calculateCommissionAmount = (grossEarnings: number): number => {
+  return grossEarnings * COMMISSION_RATE;
+};
 
 export type PayoutMethod = "bank" | "upi";
 export type VerificationStatus = "unverified" | "pending" | "verified" | "failed";
@@ -66,6 +85,21 @@ const parseAmount = (value: unknown): number => {
   if (typeof value === "number") return value;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const NON_BLOCKING_VERIFICATION_MESSAGE =
+  "Payout details are saved. Automatic verification is temporarily unavailable, but you can still request withdrawals for admin review.";
+
+const isNonBlockingVerificationError = (message: string): boolean => {
+  return /access to requested resource not available|edge function returned a non-2xx status code|failed to send a request to the edge function|network request failed|razorpay credentials are not configured|missing razorpayx_account_number/i.test(
+    message
+  );
+};
+
+const normalizeVerificationMessage = (message: string): string => {
+  return isNonBlockingVerificationError(message)
+    ? NON_BLOCKING_VERIFICATION_MESSAGE
+    : message;
 };
 
 export async function getMentorEarningsSnapshot(
@@ -177,17 +211,36 @@ export async function saveAndVerifyPayoutAccount(
     });
 
     const verificationResponse = data || {};
+    let edgeErrorMessage = "";
+
+    if (error) {
+      const context = (error as any)?.context;
+      if (context && typeof context.json === "function") {
+        try {
+          const payload = await context.json();
+          edgeErrorMessage = String(payload?.error || payload?.message || "").trim();
+        } catch {
+          // Ignore payload parsing issues and use generic error message fallback.
+        }
+      }
+    }
 
     if (error || !verificationResponse?.success) {
-      const failureMessage =
+      const rawFailureMessage =
         verificationResponse?.message ||
+        edgeErrorMessage ||
         error?.message ||
         "Verification failed. Details are saved but remain unverified.";
+
+      const failureMessage = normalizeVerificationMessage(rawFailureMessage);
+      const failureStatus: VerificationStatus = isNonBlockingVerificationError(rawFailureMessage)
+        ? "pending"
+        : "failed";
 
       const { error: updateError } = await supabase
         .from("mentor_payout_accounts")
         .update({
-          verification_status: "failed",
+          verification_status: failureStatus,
           verification_message: failureMessage,
           verification_reference: verificationResponse?.reference_id || null,
           verified_at: null,
@@ -205,21 +258,28 @@ export async function saveAndVerifyPayoutAccount(
     }
 
     const verified = Boolean(verificationResponse?.verified);
-    const finalStatus = normalizeVerificationStatus(
+    const resolvedStatus = normalizeVerificationStatus(
       verificationResponse?.verification_status ?? (verified ? "verified" : "failed")
     );
+    const rawMessage =
+      verificationResponse?.message ||
+      (resolvedStatus === "verified"
+        ? "Payout account verified successfully"
+        : resolvedStatus === "pending"
+          ? "Verification is in progress."
+          : "Verification failed. Details are saved but remain unverified.");
+
+    const finalMessage = normalizeVerificationMessage(rawMessage);
+    const finalStatus: VerificationStatus =
+      resolvedStatus === "failed" && isNonBlockingVerificationError(rawMessage)
+        ? "pending"
+        : resolvedStatus;
 
     const { error: updateError } = await supabase
       .from("mentor_payout_accounts")
       .update({
         verification_status: finalStatus,
-        verification_message:
-          verificationResponse?.message ||
-          (finalStatus === "verified"
-            ? "Payout account verified successfully"
-            : finalStatus === "pending"
-              ? "Verification is in progress."
-              : "Verification failed. Details are saved but remain unverified."),
+        verification_message: finalMessage,
         verification_reference: verificationResponse?.reference_id || null,
         verified_at: finalStatus === "verified" ? new Date().toISOString() : null,
         last_verified_at: new Date().toISOString(),
@@ -231,13 +291,7 @@ export async function saveAndVerifyPayoutAccount(
     return {
       success: true,
       verified: finalStatus === "verified",
-      message:
-        verificationResponse?.message ||
-        (finalStatus === "verified"
-          ? "Payout account verified successfully"
-          : finalStatus === "pending"
-            ? "Verification is in progress."
-            : "Verification failed. Details are saved but remain unverified."),
+      message: finalMessage,
     };
   } catch (error: any) {
     console.error("Error saving payout account:", error);
@@ -253,15 +307,36 @@ export async function createWithdrawalRequest(
   amount: number
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const { data, error } = await supabase.rpc("mentor_create_withdrawal_request", {
-      p_amount: amount,
+    const { data, error } = await supabase.functions.invoke("wallet-withdraw", {
+      body: {
+        amount,
+        note: null,
+        test_mode: false,
+      },
     });
 
-    if (error) throw error;
+    if (error) {
+      const context = (error as any)?.context;
+      if (context && typeof context.json === "function") {
+        try {
+          const payload = await context.json();
+          const message = String(payload?.error || payload?.message || "").trim();
+          if (message) throw new Error(message);
+        } catch {
+          // Ignore JSON parsing issues and fall back to generic message.
+        }
+      }
+
+      throw new Error((error as any)?.message || "Withdrawal request failed");
+    }
+
+    if (!data?.success) {
+      throw new Error(data?.error || data?.message || "Withdrawal request failed");
+    }
 
     return {
       success: true,
-      message: data?.message || "Withdrawal request submitted successfully",
+      message: data?.message || "Withdrawal request submitted for admin review",
     };
   } catch (error: any) {
     console.error("Error creating withdrawal request:", error);

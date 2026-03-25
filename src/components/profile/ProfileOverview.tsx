@@ -247,6 +247,11 @@ export default function ProfileOverview({
 
     // Iterate through all services in service_pricing
     Object.entries(mentor.service_pricing).forEach(([key, value]: [string, any]) => {
+      if (value?.deleted === true) {
+        console.log(`   ⏭️ Skipping ${key} (deleted)`);
+        return;
+      }
+
       if (!isServiceEnabled(value?.enabled)) {
         console.log(`   ⏭️ Skipping ${key} (not enabled)`);
         return;
@@ -473,7 +478,7 @@ export default function ProfileOverview({
 
                     {/* Pricing */}
                     <div className="mt-4 pt-4 border-t border-gray-100 bg-gray-50/60 rounded-xl px-3.5 py-3">
-                      {service.discount_price ? (
+                      {service.discount_price !== undefined && service.discount_price !== null ? (
                         <div className="space-y-1.5">
                           <div className="flex items-baseline gap-2">
                             <div className="flex items-baseline gap-1">

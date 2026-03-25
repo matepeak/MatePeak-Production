@@ -14,7 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { SERVICE_CONFIG } from "@/config/serviceConfig";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import {
   FormField,
   FormItem,

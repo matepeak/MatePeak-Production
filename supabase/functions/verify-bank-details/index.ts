@@ -124,8 +124,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const keyId = Deno.env.get("RAZORPAY_KEY_ID") || "";
-    const keySecret = Deno.env.get("RAZORPAY_KEY_SECRET") || "";
+    const keyId = Deno.env.get("RAZORPAYX_KEY_ID") || Deno.env.get("RAZORPAY_KEY_ID") || "";
+    const keySecret = Deno.env.get("RAZORPAYX_KEY_SECRET") || Deno.env.get("RAZORPAY_KEY_SECRET") || "";
 
     if (!keyId || !keySecret) {
       return jsonResponse(500, {
@@ -136,7 +136,8 @@ Deno.serve(async (req) => {
     }
 
     const auth = btoa(`${keyId}:${keySecret}`);
-    const sourceAccountNumber = Deno.env.get("RAZORPAYX_SOURCE_ACCOUNT_NUMBER") || "";
+    const sourceAccountNumber =
+      Deno.env.get("RAZORPAYX_ACCOUNT_NUMBER") || Deno.env.get("RAZORPAYX_SOURCE_ACCOUNT_NUMBER") || "";
 
     if (!sourceAccountNumber) {
       return jsonResponse(500, {
@@ -144,7 +145,7 @@ Deno.serve(async (req) => {
         verified: false,
         verification_status: "failed",
         message:
-          "Missing RAZORPAYX_SOURCE_ACCOUNT_NUMBER secret. Configure your RazorpayX source account number in Supabase Edge Function secrets.",
+          "Missing RAZORPAYX_ACCOUNT_NUMBER secret. Configure your RazorpayX source account number in Supabase Edge Function secrets.",
       });
     }
 

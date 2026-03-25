@@ -96,6 +96,8 @@ interface Service {
   hasFreeDemo?: boolean;
   productLink?: string;
   duration?: number;
+  deleted?: boolean;
+  deletedAt?: string;
 }
 
 interface ServicePricing {
@@ -319,6 +321,10 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       // Iterate through all services in service_pricing
       Object.entries(pricing).forEach(([key, value]: [string, any], index) => {
         if (value && typeof value === 'object') {
+          if (value.deleted === true) {
+            return;
+          }
+
           const isCustom = !["oneOnOneSession", "priorityDm", "digitalProducts"].includes(key);
           
           allServices.push({
@@ -336,6 +342,8 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
               value.productLink || value.product_url || value.product_link || "",
             order: value.order ?? index,
             duration: value.duration,
+            deleted: value.deleted === true,
+            deletedAt: value.deletedAt,
           });
         }
       });
@@ -390,11 +398,21 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       }
 
       const updatedService = { ...service, ...editForm };
+      const normalizedPrice = Math.max(0, Number(updatedService.price) || 0);
       const normalizedDiscountPrice =
         updatedService.discount_price === undefined ||
         updatedService.discount_price === null
           ? undefined
           : Math.max(0, Number(updatedService.discount_price) || 0);
+
+      if (
+        normalizedDiscountPrice !== undefined &&
+        normalizedDiscountPrice >= normalizedPrice
+      ) {
+        toast.error("Sale price must be less than the regular price");
+        return;
+      }
+
       console.log("✏️ Updated service object:", updatedService);
 
       // Update service_pricing (works for both predefined and custom services)
@@ -405,7 +423,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
           enabled: updatedService.enabled,
           name: updatedService.name,
           description: updatedService.description,
-          price: updatedService.price,
+          price: normalizedPrice,
           discount_price: normalizedDiscountPrice,
           discountPrice: normalizedDiscountPrice,
           hasFreeDemo: updatedService.hasFreeDemo || false,
@@ -513,22 +531,14 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       const service = services.find((s) => s.id === serviceId);
       if (!service) return;
 
-      // Can't delete predefined services, only disable them
-      if (
-        ["oneOnOneSession", "priorityDm", "digitalProducts"].includes(
-          service.serviceType
-        )
-      ) {
-        toast.error(
-          "Cannot delete predefined services. You can disable them instead."
-        );
-        setDeletingService(null);
-        return;
-      }
-
-      // Delete custom service from service_pricing
+      // Soft-delete service in service_pricing so it can be restored later.
       const updatedPricing = { ...servicePricing };
-      delete updatedPricing[serviceId];
+      updatedPricing[serviceId] = {
+        ...updatedPricing[serviceId],
+        enabled: false,
+        deleted: true,
+        deletedAt: new Date().toISOString(),
+      };
 
       const { error } = await supabase
         .from("expert_profiles")
@@ -582,12 +592,27 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
         .toString(36)
         .substr(2, 9)}`;
 
+      const normalizedPrice = Math.max(0, Number(newService.price) || 0);
+      const normalizedDiscountPrice =
+        newService.discount_price === undefined ||
+        newService.discount_price === null
+          ? undefined
+          : Math.max(0, Number(newService.discount_price) || 0);
+
+      if (
+        normalizedDiscountPrice !== undefined &&
+        normalizedDiscountPrice >= normalizedPrice
+      ) {
+        toast.error("Sale price must be less than the regular price");
+        return;
+      }
+
       const service: Service = {
         id: serviceId,
         name: newService.name,
         description: newService.description,
-        price: newService.price,
-        discount_price: newService.discount_price,
+        price: normalizedPrice,
+        discount_price: normalizedDiscountPrice,
         enabled: newService.enabled ?? true,
         serviceType: newService.serviceType || "oneOnOneSession",
         hasFreeDemo: newService.hasFreeDemo ?? false,
@@ -1530,7 +1555,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
       </Dialog>
 
       {/* Services List */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
         {filteredServices.length === 0 ? (
           <Card className="lg:col-span-2">
             <CardContent className="py-12 text-center">
@@ -1550,16 +1575,10 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
         ) : (
           filteredServices.map((service, index) => {
             const Icon = serviceTypeIcons[service.serviceType] || Briefcase;
-            const isPredefined = [
-              "oneOnOneSession",
-              "priorityDm",
-              "digitalProducts",
-            ].includes(service.serviceType);
-
             return (
               <Card
                 key={service.id}
-                className={`${service.enabled ? "" : "opacity-60"} ${
+                className={`h-full ${service.enabled ? "" : "opacity-60"} ${
                   draggedService === service.id ? "opacity-50" : ""
                 }`}
                 draggable
@@ -1567,8 +1586,8 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                 onDragOver={handleDragOver}
                 onDrop={() => handleDrop(service.id)}
               >
-                <CardContent className="p-4">
-                  <div className="space-y-3">
+                <CardContent className="p-4 h-full flex flex-col">
+                  <div className="space-y-3 flex-1 flex flex-col">
                       <div className="flex items-start gap-3">
                         {/* Drag Handle */}
                         <div className="flex-shrink-0 pt-1 cursor-move">
@@ -1594,36 +1613,6 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                               <h3 className="text-base font-semibold text-gray-900 truncate">
                                 {service.name}
                               </h3>
-                              <div className="flex items-center gap-1.5 flex-wrap mt-1">
-                                {isPredefined && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {serviceTypeLabels[service.serviceType]}
-                                  </Badge>
-                                )}
-                                {service.duration && (
-                                  <Badge variant="outline" className="text-xs flex items-center gap-1">
-                                    <Clock className="h-3 w-3" />
-                                    {service.duration} min
-                                  </Badge>
-                                )}
-                                {service.hasFreeDemo && (
-                                  <Badge className="bg-green-100 text-green-700 text-xs">
-                                    Free Demo
-                                  </Badge>
-                                )}
-                                {service.enabled ? (
-                                  <Badge className="bg-green-100 text-green-700 text-xs">
-                                    Active
-                                  </Badge>
-                                ) : (
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-xs"
-                                  >
-                                    Disabled
-                                  </Badge>
-                                )}
-                              </div>
                             </div>
                             <Switch
                               checked={service.enabled}
@@ -1632,7 +1621,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                               }
                             />
                           </div>
-                          <p className="text-gray-600 mt-2 text-sm line-clamp-2">
+                          <p className="text-gray-600 mt-2 text-sm line-clamp-1">
                             {service.description}
                           </p>
                           <div className="flex items-center justify-between mt-2">
@@ -1677,7 +1666,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-2 pt-2 border-t">
+                      <div className="flex flex-wrap gap-2 pt-2 border-t mt-auto">
                         <Button
                           variant="outline"
                           size="sm"
@@ -1737,18 +1726,16 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                                 </DropdownMenuItem>
                               </>
                             )}
-                            {!isPredefined && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => setDeletingService(service.id)}
-                                  className="text-red-600 focus:text-red-600"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </>
-                            )}
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => setDeletingService(service.id)}
+                                className="text-red-600 focus:text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -2089,9 +2076,8 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Service?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This service will be permanently
-              removed from your profile. Students will no longer be able to book
-              this service.
+              This service will be removed from your profile and hidden from
+              students. Existing bookings are not deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

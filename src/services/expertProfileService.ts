@@ -99,8 +99,23 @@ export async function updateExpertProfile(data: FormValues | any) {
   if (data.is_profile_live !== undefined) profileData.is_profile_live = data.is_profile_live;
   if (data.phase_1_complete !== undefined) profileData.phase_1_complete = data.phase_1_complete;
   if (data.phase_2_complete !== undefined) profileData.phase_2_complete = data.phase_2_complete;
+  if (data.onboarding_version !== undefined) profileData.onboarding_version = data.onboarding_version;
   if (data.mentor_tier !== undefined) profileData.mentor_tier = data.mentor_tier;
   if (data.max_weekly_bookings !== undefined) profileData.max_weekly_bookings = data.max_weekly_bookings;
+  if (data.phase2_progress !== undefined) profileData.phase2_progress = data.phase2_progress;
+  if (data.phase2_draft_data !== undefined) profileData.phase2_draft_data = data.phase2_draft_data;
+  if (data.phase2_liveness_photo_url !== undefined) profileData.phase2_liveness_photo_url = data.phase2_liveness_photo_url;
+  if (data.phase2_intro_video_url !== undefined) profileData.phase2_intro_video_url = data.phase2_intro_video_url;
+  if (data.phase2_proofs !== undefined) profileData.phase2_proofs = data.phase2_proofs;
+  if (data.phase2_review_status !== undefined) profileData.phase2_review_status = data.phase2_review_status;
+  if (data.phase2_review_notes !== undefined) profileData.phase2_review_notes = data.phase2_review_notes;
+  if (data.phase2_rejection_reason !== undefined) profileData.phase2_rejection_reason = data.phase2_rejection_reason;
+  if (data.phase2_attempt_count !== undefined) profileData.phase2_attempt_count = data.phase2_attempt_count;
+  if (data.phase2_max_attempts !== undefined) profileData.phase2_max_attempts = data.phase2_max_attempts;
+  if (data.phase2_locked !== undefined) profileData.phase2_locked = data.phase2_locked;
+  if (data.phase2_submitted_at !== undefined) profileData.phase2_submitted_at = data.phase2_submitted_at;
+  if (data.phase2_reviewed_at !== undefined) profileData.phase2_reviewed_at = data.phase2_reviewed_at;
+  if (data.phase2_skipped_at !== undefined) profileData.phase2_skipped_at = data.phase2_skipped_at;
   
   // Set profile status to pending_review for admin approval when profile goes live
   if (data.is_profile_live === true && !profileData.profile_status) {

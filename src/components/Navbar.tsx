@@ -26,7 +26,7 @@ import {
 import RoleSelectionModal from "./RoleSelectionModal";
 import SignInRoleSelection from "./SignInRoleSelection";
 import FeedbackModal from "./FeedbackModal";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 const Navbar = () => {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);

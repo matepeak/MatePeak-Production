@@ -267,7 +267,7 @@ export default function MentorServiceDetail() {
                   <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5 sm:gap-4 pt-1">
                     <div className="space-y-1">
                       <p className="text-xs uppercase tracking-wide text-gray-500">Pricing</p>
-                      {serviceData.discountPrice ? (
+                      {serviceData.discountPrice !== undefined && serviceData.discountPrice !== null ? (
                         <div className="flex items-end gap-2">
                           <div className="text-3xl font-bold text-green-600 flex items-center">
                             <IndianRupee className="h-5 w-5" />

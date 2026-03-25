@@ -41,7 +41,7 @@ const RoleSelectionModal = ({ open, onOpenChange }: RoleSelectionModalProps) => 
               <div className="mx-auto mb-4 w-16 h-16 bg-matepeak-primary/10 rounded-full flex items-center justify-center">
                 <GraduationCap className="w-8 h-8 text-matepeak-primary" />
               </div>
-              <CardTitle className="text-xl">I'm a Student</CardTitle>
+              <CardTitle className="text-xl">I'm a Learner</CardTitle>
               <CardDescription className="text-sm pt-1">
                 Find mentors and book sessions
               </CardDescription>

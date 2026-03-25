@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, Flag, EyeOff, Trash2, Star, User, Calendar } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface Review {
@@ -34,7 +34,6 @@ interface Review {
 
 const AdminReviewModeration = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
@@ -52,11 +51,7 @@ const AdminReviewModeration = () => {
     const { data, error } = await getFlaggedReviews();
     
     if (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to load flagged reviews',
-        variant: 'destructive'
-      });
+      toast.error('Failed to load flagged reviews');
     } else {
       setReviews(data || []);
     }
@@ -74,19 +69,12 @@ const AdminReviewModeration = () => {
     );
     
     if (result.success) {
-      toast({
-        title: 'Success',
-        description: 'Review hidden successfully',
-      });
+      toast.success('Review hidden successfully');
       setShowHideDialog(false);
       setModerationReason('');
       loadFlaggedReviews();
     } else {
-      toast({
-        title: 'Error',
-        description: result.error || 'Failed to hide review',
-        variant: 'destructive'
-      });
+      toast.error(result.error || 'Failed to hide review');
     }
     setProcessing(false);
   };
@@ -102,19 +90,12 @@ const AdminReviewModeration = () => {
     );
     
     if (result.success) {
-      toast({
-        title: 'Success',
-        description: 'Review deleted permanently',
-      });
+      toast.success('Review deleted permanently');
       setShowDeleteDialog(false);
       setModerationReason('');
       loadFlaggedReviews();
     } else {
-      toast({
-        title: 'Error',
-        description: result.error || 'Failed to delete review',
-        variant: 'destructive'
-      });
+      toast.error(result.error || 'Failed to delete review');
     }
     setProcessing(false);
   };

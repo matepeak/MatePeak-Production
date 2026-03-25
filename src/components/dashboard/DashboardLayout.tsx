@@ -20,8 +20,6 @@ import {
   Settings,
   Eye,
   PackageOpen,
-  CreditCard,
-  HandCoins,
   Wallet,
   CalendarPlus,
 } from "lucide-react";
@@ -36,7 +34,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/components/ui/sonner";
 import { NotificationBell } from "./NotificationBell";
 
 type DashboardView =
@@ -49,8 +47,6 @@ type DashboardView =
   | "students"
   | "requests"
   | "services"
-  | "payments"
-  | "payouts"
   | "earnings";
 
 interface DashboardLayoutProps {
@@ -72,7 +68,6 @@ const DashboardLayout = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   // Grouped navigation structure for better organization
   const navigationGroups = [
@@ -115,7 +110,7 @@ const DashboardLayout = ({
       items: [
         {
           id: "earnings" as DashboardView,
-          label: "Earnings (Under Development)",
+          label: "Earnings",
           icon: Wallet,
           badge: null,
         },
@@ -161,23 +156,6 @@ const DashboardLayout = ({
         },
       ],
     },
-    {
-      label: "Finance",
-      items: [
-        {
-          id: "payments" as DashboardView,
-          label: "Payments",
-          icon: CreditCard,
-          badge: null,
-        },
-        {
-          id: "payouts" as DashboardView,
-          label: "Payouts",
-          icon: HandCoins,
-          badge: null,
-        },
-      ],
-    },
   ];
 
   // Keyboard shortcut for command palette
@@ -197,17 +175,12 @@ const DashboardLayout = ({
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
 
-      toast({
-        title: "Signed out successfully",
-        description: "You have been signed out of your account",
-      });
+      toast.success("Signed out successfully");
       navigate("/");
     } catch (error) {
       console.error("Error signing out:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to sign out. Please try again.",
-        variant: "destructive",
       });
     }
   };
@@ -217,6 +190,12 @@ const DashboardLayout = ({
     const lastName = mentorProfile?.last_name || "";
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || "M";
   };
+
+  const isVerifiedMentor =
+    mentorProfile?.mentor_tier === "verified" ||
+    mentorProfile?.mentor_tier === "top" ||
+    mentorProfile?.verification_status === "verified" ||
+    Boolean(mentorProfile?.is_verified);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -396,7 +375,18 @@ const DashboardLayout = ({
                   {mentorProfile?.first_name} {mentorProfile?.last_name}
                 </h3>
               </div>
-              <p className="text-sm text-gray-600 font-medium mt-1">Mentor</p>
+              {isVerifiedMentor ? (
+                <div className="mt-1 inline-flex items-center gap-1 rounded-full border border-green-300 bg-green-200 px-2.5 py-0.5 text-[11px] font-semibold text-black shadow-sm">
+                  <img
+                    src="/lovable-uploads/verifiedremovebg.png"
+                    alt="Verified mentor"
+                    className="h-4 w-4"
+                  />
+                  <span>Verified Mentor</span>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600 font-medium mt-1">Mentor</p>
+              )}
               <p className="text-xs text-gray-500 mt-0.5">
                 @{mentorProfile?.username}
               </p>

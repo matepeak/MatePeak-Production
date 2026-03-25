@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Clock, Calendar, CheckCircle, XCircle, Search, Filter } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import { fetchBookingRequests, type BookingRequest } from "@/services/bookingRequestService";
 
 interface StudentTimeRequestProps {

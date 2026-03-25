@@ -130,9 +130,17 @@ export default function ExpertOnboarding() {
         ...data,
         is_profile_live: true,
         phase_1_complete: true,
+        phase_2_complete: false,
+        onboarding_version: 'v2',
         mentor_tier: 'basic', // All mentors start as basic
         max_weekly_bookings: 5, // Basic tier limit
-        verification_status: 'pending', // Pending until first successful session
+        verification_status: 'pending', // Pending until Phase 2 is submitted and approved
+        phase2_progress: 0,
+        phase2_attempt_count: 0,
+        phase2_max_attempts: 3,
+        phase2_locked: false,
+        phase2_review_status: 'draft',
+        phase2_skipped_at: null,
         profile_status: 'active',
       };
       

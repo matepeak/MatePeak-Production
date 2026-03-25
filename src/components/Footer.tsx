@@ -58,11 +58,7 @@ const Footer = () => {
   ];
 
   const utilityLinks = [
-    { label: "Browse Mentors", to: "/mentors" },
-    { label: "For Students", to: "/explore" },
-    { label: "Become a Mentor", action: handleBecomeMentor },
     { label: "Privacy", to: "/privacy" },
-    { label: "About Us", to: "/about-us" },
   ];
 
   return (
@@ -134,35 +130,18 @@ const Footer = () => {
             <div className="flex flex-col gap-5 border-t border-black/5 pt-6 text-sm text-gray-600 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
                 <span>© {new Date().getFullYear()} MatePeak</span>
-                <Link
-                  to="/support"
-                  className="hover:text-matepeak-primary transition-colors"
-                >
-                  Support
-                </Link>
               </div>
 
               <div className="flex flex-wrap items-center gap-x-6 gap-y-3 lg:justify-end">
-                {utilityLinks.map((item) =>
-                  item.action ? (
-                    <button
-                      key={item.label}
-                      type="button"
-                      onClick={(e) => item.action?.(e)}
-                      className="text-left hover:text-matepeak-primary transition-colors"
-                    >
-                      {item.label}
-                    </button>
-                  ) : item.to ? (
-                    <Link
-                      key={item.label}
-                      to={item.to}
-                      className="hover:text-matepeak-primary transition-colors"
-                    >
-                      {item.label}
-                    </Link>
-                  ) : null
-                )}
+                {utilityLinks.map((item) => (
+                  <Link
+                    key={item.label}
+                    to={item.to}
+                    className="hover:text-matepeak-primary transition-colors"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
               </div>
             </div>
           </div>

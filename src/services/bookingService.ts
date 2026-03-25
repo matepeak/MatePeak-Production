@@ -66,20 +66,27 @@ function resolveServicePricingByType(
 ) {
   if (!servicePricing) return null;
 
+  const isServiceDeleted = (entry: any) =>
+    entry?.deleted === true ||
+    entry?.deleted === "true" ||
+    entry?.deleted === 1 ||
+    entry?.deleted === "1";
+
   // Exact lookup by the selected service key when provided.
-  if (serviceKey && servicePricing[serviceKey]) {
+  if (serviceKey && servicePricing[serviceKey] && !isServiceDeleted(servicePricing[serviceKey])) {
     return servicePricing[serviceKey];
   }
 
   // Primary lookup for canonical keys.
-  if (servicePricing[sessionType]) {
+  if (servicePricing[sessionType] && !isServiceDeleted(servicePricing[sessionType])) {
     return servicePricing[sessionType];
   }
 
   const targetType = normalizeServiceType(sessionType) || sessionType;
 
   // Fallback lookup for legacy keys that normalize to the same type.
-  const byNormalizedKey = Object.entries(servicePricing).find(([key]) => {
+  const byNormalizedKey = Object.entries(servicePricing).find(([key, entry]) => {
+    if (isServiceDeleted(entry)) return false;
     const normalizedKeyType = normalizeServiceType(key) || key;
     return normalizedKeyType === targetType;
   });
@@ -90,6 +97,7 @@ function resolveServicePricingByType(
 
   // Fallback lookup for custom keys storing canonical type in value.type.
   const matchedEntry = Object.values(servicePricing).find((entry: any) => {
+    if (isServiceDeleted(entry)) return false;
     const entryType = normalizeServiceType(entry?.type || "") || entry?.type;
     return entryType === targetType;
   });
@@ -99,6 +107,11 @@ function resolveServicePricingByType(
 
 function isServiceEnabled(value: any): boolean {
   return value === true || value === "true" || value === 1 || value === "1";
+}
+
+function normalizePrice(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
 /**
@@ -139,8 +152,14 @@ async function validateBookingPrice(
       };
     }
 
-    // Calculate expected price
-    let basePrice = servicePricing.price || 0;
+    // Calculate expected price using effective configured amount.
+    // If a sale is set, discount_price is authoritative for booking validation.
+    const configuredDiscountPrice =
+      servicePricing.discount_price ?? servicePricing.discountPrice;
+    const basePrice =
+      configuredDiscountPrice !== undefined && configuredDiscountPrice !== null
+        ? normalizePrice(configuredDiscountPrice)
+        : normalizePrice(servicePricing.price);
 
     // For oneOnOneSession, price might vary by duration
     // Currently using same price regardless of duration
