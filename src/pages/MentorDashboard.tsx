@@ -90,10 +90,10 @@ const MentorDashboard = () => {
         return;
       }
 
-      // Fetch email from profiles table
+      // Fetch contact/avatar fallback data from profiles table
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("email")
+        .select("email, avatar_url")
         .eq("id", session.user.id)
         .maybeSingle();
 
@@ -101,6 +101,12 @@ const MentorDashboard = () => {
       const profileWithEmail = {
         ...profile,
         email: profileData?.email || session.user.email || "",
+        avatar_url:
+          profile?.avatar_url ||
+          profileData?.avatar_url ||
+          session.user.user_metadata?.avatar_url ||
+          session.user.user_metadata?.picture ||
+          "",
       };
 
       // Check if accessing via old route (/mentor/dashboard or /expert/dashboard)
@@ -133,11 +139,13 @@ const MentorDashboard = () => {
   };
 
   const handleProfileUpdate = (updatedProfile: any) => {
-    // Preserve the email when updating the profile
-    setMentorProfile({
+    // Merge updates to avoid dropping existing fallback fields.
+    setMentorProfile((prev: any) => ({
+      ...prev,
       ...updatedProfile,
-      email: mentorProfile?.email || updatedProfile.email,
-    });
+      email: updatedProfile?.email || prev?.email || "",
+      avatar_url: updatedProfile?.avatar_url || prev?.avatar_url || "",
+    }));
   };
 
   if (loading) {

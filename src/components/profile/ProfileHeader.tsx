@@ -20,6 +20,7 @@ import {
   MapPin,
   Calendar,
   Linkedin,
+  Instagram,
   Twitter,
   Globe,
   Share2,
@@ -31,6 +32,7 @@ import {
   Code,
   BookOpen,
   TrendingUp,
+  type LucideIcon,
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,7 +41,26 @@ import PresenceDot from "@/components/PresenceDot";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ProfileHeaderProps {
-  mentor: any;
+  mentor: {
+    id: string;
+    full_name: string;
+    username: string;
+    created_at: string;
+    mentor_tier?: string;
+    verification_status?: string;
+    is_verified?: boolean;
+    is_profile_live?: boolean;
+    last_seen?: string | null;
+    profile_picture_url?: string | null;
+    avatar_url?: string | null;
+    profiles?: { avatar_url?: string | null };
+    headline?: string | null;
+    experience?: number;
+    categories?: string[];
+    skills?: string[];
+    expertise_tags?: string[];
+    social_links?: Record<string, string | undefined> | null;
+  };
   stats: {
     averageRating: number;
     reviewCount: number;
@@ -68,6 +89,19 @@ export default function ProfileHeader({
     mentor?.mentor_tier === "top" ||
     mentor?.verification_status === "verified" ||
     Boolean(mentor?.is_verified);
+
+  const getValidImageUrl = (value?: string | null) => {
+    const normalized = String(value || "").trim();
+    if (!normalized) return "";
+    if (normalized.toLowerCase() === "null") return "";
+    if (normalized.toLowerCase() === "undefined") return "";
+    return normalized;
+  };
+
+  const profileImageUrl =
+    getValidImageUrl(mentor.profile_picture_url) ||
+    getValidImageUrl(mentor.avatar_url) ||
+    getValidImageUrl(mentor.profiles?.avatar_url);
 
   const handleBookingClick = async () => {
     setIsCheckingAuth(true);
@@ -155,7 +189,7 @@ export default function ProfileHeader({
   });
 
   // Map categories to their icons
-  const categoryIcons: Record<string, any> = {
+  const categoryIcons: Record<string, LucideIcon> = {
     "Mental Health": Heart,
     "Creative Arts": Palette,
     "Career Coaching": Briefcase,
@@ -166,7 +200,7 @@ export default function ProfileHeader({
     "Leadership & Development": Users,
   };
 
-  const getIconForCategory = (category: string) => {
+  const getIconForCategory = (category: string): LucideIcon => {
     return categoryIcons[category] || Briefcase;
   };
 
@@ -179,9 +213,7 @@ export default function ProfileHeader({
             <div className="relative">
               <Avatar className="h-28 w-28 border-2 border-gray-100">
                 <AvatarImage
-                  src={
-                    mentor.profile_picture_url || mentor.profiles?.avatar_url
-                  }
+                  src={profileImageUrl}
                   alt={mentor.full_name}
                   className="object-cover"
                 />
@@ -395,6 +427,17 @@ export default function ProfileHeader({
                       title="Twitter"
                     >
                       <Twitter className="h-4 w-4 text-gray-600" />
+                    </a>
+                  )}
+                  {mentor.social_links.instagram && (
+                    <a
+                      href={mentor.social_links.instagram}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+                      title="Instagram"
+                    >
+                      <Instagram className="h-4 w-4 text-gray-600" />
                     </a>
                   )}
                   {mentor.social_links.website && (

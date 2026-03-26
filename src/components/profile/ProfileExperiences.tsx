@@ -12,7 +12,13 @@ import {
 } from "lucide-react";
 
 interface ProfileExperiencesProps {
-  mentor: any;
+  mentor: {
+    education?: unknown[];
+    teaching_certifications?: unknown[];
+    experience?: number;
+    teaching_experience?: string;
+    has_no_certificate?: boolean;
+  };
 }
 
 export default function ProfileExperiences({ mentor }: ProfileExperiencesProps) {
@@ -31,6 +37,54 @@ export default function ProfileExperiences({ mentor }: ProfileExperiencesProps) 
   };
 
   const experienceLevel = getExperienceLevel(yearsOfExperience);
+
+  const getRecord = (
+    value: unknown
+  ): Record<string, unknown> | undefined => {
+    if (value && typeof value === "object") {
+      return value as Record<string, unknown>;
+    }
+    return undefined;
+  };
+
+  const getEducationInstitution = (edu: unknown) => {
+    const value = getRecord(edu);
+    return value?.institution || value?.university || "Institution";
+  };
+
+  const getEducationField = (edu: unknown) => {
+    const value = getRecord(edu);
+    return value?.field || value?.subject || "";
+  };
+
+  const getEducationYearLabel = (edu: unknown) => {
+    const value = getRecord(edu);
+    if (value?.year) return String(value.year);
+    if (value?.yearFrom && value?.yearTo) return `${value.yearFrom} - ${value.yearTo}`;
+    if (value?.yearFrom && value?.currentlyStudying) {
+      return `${value.yearFrom} - Present`;
+    }
+    if (value?.yearFrom) return String(value.yearFrom);
+    return "";
+  };
+
+  const getCertificationName = (cert: unknown) => {
+    const value = getRecord(cert);
+    return value?.name || value?.certificateName || value?.title || "Certification";
+  };
+
+  const getCertificationIssuer = (cert: unknown) => {
+    const value = getRecord(cert);
+    return value?.issuer || value?.issuedBy || "";
+  };
+
+  const getCertificationYear = (cert: unknown) => {
+    const value = getRecord(cert);
+    if (value?.year) return String(value.year);
+    if (value?.yearFrom && value?.yearTo) return `${value.yearFrom} - ${value.yearTo}`;
+    if (value?.yearFrom) return String(value.yearFrom);
+    return "";
+  };
 
   return (
     <div className="space-y-6">
@@ -83,7 +137,7 @@ export default function ProfileExperiences({ mentor }: ProfileExperiencesProps) 
             </div>
 
             <div className="space-y-6">
-              {education.map((edu: any, index: number) => (
+              {education.map((edu: unknown, index: number) => (
                 <div key={index}>
                   <div className="flex items-start gap-4">
                     <div className="flex-shrink-0">
@@ -96,19 +150,19 @@ export default function ProfileExperiences({ mentor }: ProfileExperiencesProps) 
                         {edu.degree || "Degree"}
                       </h3>
                       <p className="text-gray-700 font-medium text-sm mb-2">
-                        {edu.institution || "Institution"}
+                        {getEducationInstitution(edu)}
                       </p>
-                      {edu.field && (
+                      {getEducationField(edu) && (
                         <div className="flex items-center gap-2 mb-2">
                           <Badge variant="secondary" className="bg-white border border-gray-200 text-gray-700 text-xs font-normal">
-                            {edu.field}
+                            {getEducationField(edu)}
                           </Badge>
                         </div>
                       )}
-                      {edu.year && (
+                      {getEducationYearLabel(edu) && (
                         <div className="flex items-center gap-1 text-xs text-gray-500">
                           <Calendar className="h-3 w-3" />
-                          <span>Graduated in {edu.year}</span>
+                          <span>Graduated in {getEducationYearLabel(edu)}</span>
                         </div>
                       )}
                     </div>
@@ -133,7 +187,7 @@ export default function ProfileExperiences({ mentor }: ProfileExperiencesProps) 
             </div>
 
             <div className="grid gap-4">
-              {certifications.map((cert: any, index: number) => (
+              {certifications.map((cert: unknown, index: number) => (
                 <div
                   key={index}
                   className="p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
@@ -144,16 +198,16 @@ export default function ProfileExperiences({ mentor }: ProfileExperiencesProps) 
                     </div>
                     <div className="flex-grow">
                       <h3 className="font-semibold text-gray-900 text-sm mb-1">
-                        {cert.name || cert.title || "Certification"}
+                        {getCertificationName(cert)}
                       </h3>
-                      {cert.issuer && (
+                      {getCertificationIssuer(cert) && (
                         <p className="text-gray-600 text-sm mb-2">
-                          {cert.issuer}
+                          {getCertificationIssuer(cert)}
                         </p>
                       )}
-                      {cert.year && (
+                      {getCertificationYear(cert) && (
                         <Badge variant="outline" className="text-xs">
-                          {cert.year}
+                          {getCertificationYear(cert)}
                         </Badge>
                       )}
                     </div>

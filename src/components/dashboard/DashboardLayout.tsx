@@ -191,6 +191,9 @@ const DashboardLayout = ({
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || "M";
   };
 
+  const dashboardAvatarUrl =
+    mentorProfile?.profile_picture_url || mentorProfile?.avatar_url || "";
+
   const isVerifiedMentor =
     mentorProfile?.mentor_tier === "verified" ||
     mentorProfile?.mentor_tier === "top" ||
@@ -243,10 +246,10 @@ const DashboardLayout = ({
                     <div className="relative">
                       <Avatar
                         className="h-8 w-8 ring-2 ring-gray-200"
-                        key={mentorProfile?.profile_picture_url}
+                        key={dashboardAvatarUrl}
                       >
                         <AvatarImage
-                          src={mentorProfile?.profile_picture_url || ""}
+                          src={dashboardAvatarUrl}
                           alt={`${mentorProfile?.first_name} ${mentorProfile?.last_name}`}
                         />
                         <AvatarFallback className="bg-gray-900 text-white text-sm font-semibold">
@@ -272,10 +275,10 @@ const DashboardLayout = ({
                     <div className="flex items-center gap-3">
                       <Avatar
                         className="h-12 w-12 ring-2 ring-gray-200"
-                        key={mentorProfile?.profile_picture_url}
+                        key={dashboardAvatarUrl}
                       >
                         <AvatarImage
-                          src={mentorProfile?.profile_picture_url || ""}
+                          src={dashboardAvatarUrl}
                           alt={`${mentorProfile?.first_name} ${mentorProfile?.last_name}`}
                         />
                         <AvatarFallback className="bg-gray-900 text-white font-semibold">
@@ -360,10 +363,10 @@ const DashboardLayout = ({
             <div className="flex flex-col items-center text-center mb-4">
               <Avatar
                 className="h-20 w-20 ring-4 ring-white shadow-md mb-3"
-                key={mentorProfile?.profile_picture_url}
+                key={dashboardAvatarUrl}
               >
                 <AvatarImage
-                  src={mentorProfile?.profile_picture_url || ""}
+                  src={dashboardAvatarUrl}
                   alt={`${mentorProfile?.first_name} ${mentorProfile?.last_name}`}
                 />
                 <AvatarFallback className="bg-gray-800 text-white text-xl font-bold">
@@ -467,10 +470,10 @@ const DashboardLayout = ({
               <div className="flex flex-col items-center text-center mb-4">
                 <Avatar
                   className="h-20 w-20 ring-4 ring-white shadow-md mb-3"
-                  key={mentorProfile?.profile_picture_url}
+                  key={dashboardAvatarUrl}
                 >
                   <AvatarImage
-                    src={mentorProfile?.profile_picture_url || ""}
+                    src={dashboardAvatarUrl}
                     alt={`${mentorProfile?.first_name} ${mentorProfile?.last_name}`}
                   />
                   <AvatarFallback className="bg-gray-800 text-white text-xl font-bold">

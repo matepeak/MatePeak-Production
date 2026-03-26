@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
@@ -24,6 +24,7 @@ export type ProfileTab =
 
 interface MentorProfileData {
   id: string;
+  user_id?: string;
   full_name: string;
   username: string;
   category: string;
@@ -40,11 +41,12 @@ interface MentorProfileData {
   pricing: number;
   ispaid: boolean;
   profile_picture_url: string;
-  social_links: any;
-  services: any;
-  service_pricing: any;
-  education: any[];
-  teaching_certifications: any[];
+  avatar_url?: string;
+  social_links: Record<string, string> | null;
+  services: Record<string, unknown> | null;
+  service_pricing: Record<string, unknown> | null;
+  education: unknown[];
+  teaching_certifications: unknown[];
   has_no_certificate: boolean;
   timezone?: string;
   created_at: string;
@@ -53,6 +55,14 @@ interface MentorProfileData {
     email?: string;
   };
 }
+
+const getValidImageUrl = (value?: string | null) => {
+  const normalized = String(value || "").trim();
+  if (!normalized) return "";
+  if (normalized.toLowerCase() === "null") return "";
+  if (normalized.toLowerCase() === "undefined") return "";
+  return normalized;
+};
 
 export default function MentorPublicProfile() {
   const { username } = useParams<{ username: string }>();
@@ -131,38 +141,14 @@ export default function MentorPublicProfile() {
         url: `https://www.matepeak.com/mentor/${mentor.username}`,
         description: mentor.bio || mentor.headline || "Mentor on MatePeak",
         image:
-          mentor.profile_picture_url ||
-          mentor.profiles?.avatar_url ||
+          getValidImageUrl(mentor.profile_picture_url) ||
+          getValidImageUrl(mentor.avatar_url) ||
+          getValidImageUrl(mentor.profiles?.avatar_url) ||
           "https://www.matepeak.com/lovable-uploads/14bf0eea-1bc9-4675-9231-356df10eb82d.png",
       }
     : undefined;
 
-  useEffect(() => {
-    if (username) {
-      fetchMentorProfile();
-    }
-  }, [username]);
-
-  useEffect(() => {
-    if (!mentor?.id || isOwnProfile) return;
-
-    const dateKey = new Date().toISOString().slice(0, 10);
-    const storageKey = `mentor-profile-view:${mentor.id}:${dateKey}`;
-    if (sessionStorage.getItem(storageKey)) return;
-
-    sessionStorage.setItem(storageKey, "1");
-
-    void supabase.rpc("track_mentor_analytics_event", {
-      p_mentor_id: mentor.id,
-      p_event_type: "profile_view",
-      p_metadata: {
-        source: "mentor_public_profile",
-        path: window.location.pathname,
-      },
-    });
-  }, [mentor?.id, isOwnProfile]);
-
-  const fetchMentorProfile = async () => {
+  const fetchMentorProfile = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -172,6 +158,9 @@ export default function MentorPublicProfile() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      const metadataAvatarUrl =
+        getValidImageUrl(user?.user_metadata?.avatar_url) ||
+        getValidImageUrl(user?.user_metadata?.picture);
 
       // Fetch mentor profile by username
       const { data: profileData, error: profileError } = await supabase
@@ -192,12 +181,42 @@ export default function MentorPublicProfile() {
         return;
       }
 
-      console.log("Profile data fetched:", profileData);
-      console.log("📊 Service pricing data:", profileData.service_pricing);
-      setMentor(profileData as any);
+      const profileOwnerId = profileData.user_id || profileData.id;
+
+      const { data: profileDetails } = await supabase
+        .from("profiles")
+        .select("avatar_url, email")
+        .eq("id", profileOwnerId)
+        .maybeSingle();
+
+      const mergedProfileData = {
+        ...profileData,
+        profiles: profileDetails || undefined,
+      };
+
+      const isViewingOwnProfile =
+        !!user &&
+        (mergedProfileData.id === user.id ||
+          mergedProfileData.user_id === user.id);
+
+      const currentResolvedAvatar =
+        getValidImageUrl(mergedProfileData.profile_picture_url) ||
+        getValidImageUrl((mergedProfileData as Record<string, unknown>).avatar_url as string | undefined) ||
+        getValidImageUrl(mergedProfileData.profiles?.avatar_url);
+
+      if (isViewingOwnProfile && !currentResolvedAvatar && metadataAvatarUrl) {
+        mergedProfileData.profiles = {
+          ...(mergedProfileData.profiles || {}),
+          avatar_url: metadataAvatarUrl,
+        };
+      }
+
+      console.log("Profile data fetched:", mergedProfileData);
+      console.log("📊 Service pricing data:", mergedProfileData.service_pricing);
+      setMentor(mergedProfileData as MentorProfileData);
 
       // Check if the logged-in user is viewing their own profile
-      if (user && profileData.id === user.id) {
+      if (isViewingOwnProfile) {
         setIsOwnProfile(true);
       }
 
@@ -205,7 +224,7 @@ export default function MentorPublicProfile() {
       const { data: reviews, error: reviewsError } = await supabase
         .from("reviews")
         .select("rating, comment, created_at, mentor_reply, user_id")
-        .eq("expert_id", profileData.id)
+        .eq("expert_id", mergedProfileData.id)
         .order("created_at", { ascending: false });
 
       if (!reviewsError && reviews) {
@@ -219,7 +238,7 @@ export default function MentorPublicProfile() {
         const { data: sessions } = await supabase
           .from("bookings")
           .select("status")
-          .eq("expert_id", profileData.id);
+          .eq("expert_id", mergedProfileData.id);
 
         const totalSessions = sessions?.length || 0;
         const completedSessions =
@@ -232,15 +251,42 @@ export default function MentorPublicProfile() {
           completedSessions,
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to load mentor profile";
       console.error("Error fetching mentor profile:", error);
-      setError(error.message || "Failed to load mentor profile");
-      toast.error(error.message || "Failed to load mentor profile");
+      setError(message);
+      toast.error(message);
       // Don't navigate away, stay on page to show error
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate, username]);
+
+  useEffect(() => {
+    if (username) {
+      void fetchMentorProfile();
+    }
+  }, [username, fetchMentorProfile]);
+
+  useEffect(() => {
+    if (!mentor?.id || isOwnProfile) return;
+
+    const dateKey = new Date().toISOString().slice(0, 10);
+    const storageKey = `mentor-profile-view:${mentor.id}:${dateKey}`;
+    if (sessionStorage.getItem(storageKey)) return;
+
+    sessionStorage.setItem(storageKey, "1");
+
+    void supabase.rpc("track_mentor_analytics_event", {
+      p_mentor_id: mentor.id,
+      p_event_type: "profile_view",
+      p_metadata: {
+        source: "mentor_public_profile",
+        path: window.location.pathname,
+      },
+    });
+  }, [mentor?.id, isOwnProfile]);
 
   if (loading) {
     return (

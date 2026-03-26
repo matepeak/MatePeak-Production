@@ -87,6 +87,11 @@ const ProfileManagement = ({
   
   const [formData, setFormData] = useState(() => mapProfileToBasicFormData(mentorProfile));
   const [basicFormBaseline, setBasicFormBaseline] = useState(() => mapProfileToBasicFormData(mentorProfile));
+  const currentAvatarUrl =
+    previewUrl ||
+    mentorProfile?.profile_picture_url ||
+    mentorProfile?.avatar_url ||
+    "";
 
   const isBasicEditing = activeEditSection === "basic";
 
@@ -485,7 +490,7 @@ const ProfileManagement = ({
             <div className="relative group">
               <Avatar className="h-24 w-24 cursor-pointer border-4 border-white shadow-md hover:shadow-lg transition-all">
                 <AvatarImage
-                  src={previewUrl || mentorProfile.profile_picture_url || ""}
+                  src={currentAvatarUrl}
                   alt="Profile"
                   onClick={handleProfilePictureClick}
                 />
@@ -495,6 +500,11 @@ const ProfileManagement = ({
                 >
                   {uploadingImage ? (
                     <Loader2 className="h-8 w-8 text-gray-600 animate-spin" />
+                  ) : currentAvatarUrl ? (
+                    <span className="text-xl font-semibold text-gray-700">
+                      {(mentorProfile?.first_name?.charAt(0) || "")}
+                      {(mentorProfile?.last_name?.charAt(0) || "")}
+                    </span>
                   ) : (
                     <Camera className="h-8 w-8 text-gray-400" />
                   )}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Globe, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,7 +15,11 @@ import {
 interface AvailabilityPreviewProps {
   mentorId: string;
   onSeeMore?: () => void;
-  mentor?: any;
+  mentor?: {
+    id: string;
+    categories?: string[];
+    expertise_tags?: string[];
+  };
 }
 
 interface AvailableDate {
@@ -27,7 +31,7 @@ interface AvailableDate {
 
 interface Language {
   language: string;
-  level: string;
+  level?: string;
 }
 
 interface DayStatus {
@@ -54,12 +58,7 @@ export default function AvailabilityPreview({
   } | null>(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
-  useEffect(() => {
-    fetchAvailability();
-    fetchLanguages();
-  }, [mentorId]);
-
-  const fetchLanguages = async () => {
+  const fetchLanguages = useCallback(async () => {
     try {
       console.log("Fetching languages for mentor:", mentorId);
       const { data: profileData, error } = await supabase
@@ -75,15 +74,40 @@ export default function AvailabilityPreview({
 
       console.log("Languages data received:", profileData?.languages);
 
-      if (profileData && profileData.languages) {
-        setLanguages(profileData.languages);
+      if (profileData && Array.isArray(profileData.languages)) {
+        const normalizedLanguages: Language[] = profileData.languages
+          .map((entry: unknown) => {
+            if (typeof entry === "string") {
+              return {
+                language: entry.trim(),
+                level: "",
+              };
+            }
+
+            if (entry && typeof entry === "object") {
+              const languageEntry = entry as Record<string, unknown>;
+              return {
+                language: String(
+                  languageEntry.language || languageEntry.name || languageEntry.lang || ""
+                ).trim(),
+                level: String(languageEntry.level || languageEntry.proficiency || "").trim(),
+              };
+            }
+
+            return null;
+          })
+          .filter((entry): entry is Language => Boolean(entry?.language));
+
+        setLanguages(normalizedLanguages);
+      } else {
+        setLanguages([]);
       }
     } catch (error) {
       console.error("Error in fetchLanguages:", error);
     }
-  };
+  }, [mentorId]);
 
-  const fetchAvailability = async () => {
+  const fetchAvailability = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -213,7 +237,12 @@ export default function AvailabilityPreview({
     } finally {
       setLoading(false);
     }
-  };
+  }, [mentorId]);
+
+  useEffect(() => {
+    void fetchAvailability();
+    void fetchLanguages();
+  }, [fetchAvailability, fetchLanguages]);
 
   // Helper function to get date string in YYYY-MM-DD format in local timezone
   const getLocalDateString = (date: Date): string => {
@@ -660,9 +689,11 @@ export default function AvailabilityPreview({
                     <span className="text-sm font-medium text-gray-900">
                       {lang.language}
                     </span>
-                    <span className="text-xs px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full font-medium">
-                      {lang.level}
-                    </span>
+                    {lang.level ? (
+                      <span className="text-xs px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full font-medium">
+                        {lang.level}
+                      </span>
+                    ) : null}
                   </div>
                 ))}
               </div>
