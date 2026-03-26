@@ -142,6 +142,10 @@
     overflow-x: hidden;
   }
 
+  html {
+    scrollbar-gutter: stable;
+  }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -565,7 +569,9 @@
 
 .otp-digit-input.otp-digit-filled,
 .otp-digit-input.otp-digit-filled:hover,
-.otp-digit-input.otp-digit-filled:active {
+.otp-digit-input.otp-digit-filled:active,
+.otp-digit-input.otp-digit-filled:focus,
+.otp-digit-input.otp-digit-filled:focus-visible {
   background-color: rgb(238 240 243) !important;
 }
 
@@ -584,6 +590,22 @@
   background-color: rgb(229 231 235) !important;
   border-color: rgb(209 213 219) !important;
   color: rgb(75 85 99) !important;
+}
+
+.otp-digit-input[data-filled="true"],
+.otp-digit-input[data-filled="true"]:hover,
+.otp-digit-input[data-filled="true"]:focus,
+.otp-digit-input[data-filled="true"]:focus-visible,
+.otp-digit-input[data-filled="true"]:active {
+  background-color: rgb(238 240 243) !important;
+}
+
+.otp-digit-input[data-verifying="true"],
+.otp-digit-input[data-verifying="true"]:hover,
+.otp-digit-input[data-verifying="true"]:focus,
+.otp-digit-input[data-verifying="true"]:focus-visible,
+.otp-digit-input[data-verifying="true"]:active {
+  background-color: rgb(238 240 243) !important;
 }
 
 @keyframes step-exit-left {

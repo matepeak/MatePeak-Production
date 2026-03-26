@@ -13,7 +13,6 @@ const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
 const otpDebugMode = (Deno.env.get("OTP_DEBUG_MODE") ?? "false").toLowerCase() === "true";
 
 const OTP_TTL_SECONDS = Number(Deno.env.get("OTP_TTL_SECONDS") ?? "300");
-const OTP_SEND_COOLDOWN_SECONDS = Number(Deno.env.get("OTP_SEND_COOLDOWN_SECONDS") ?? "20");
 const OTP_MAX_SENDS_PER_HOUR = Number(Deno.env.get("OTP_MAX_SENDS_PER_HOUR") ?? "30");
 const OTP_MAX_SENDS_PER_DAY = Number(Deno.env.get("OTP_MAX_SENDS_PER_DAY") ?? "300");
 const OTP_MAX_VERIFY_ATTEMPTS = Number(Deno.env.get("OTP_MAX_VERIFY_ATTEMPTS") ?? "10");
@@ -55,6 +54,21 @@ const toHex = (buffer: ArrayBuffer): string =>
 const sha256Hex = async (value: string): Promise<string> => {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return toHex(digest);
+};
+
+const rollbackCreatedUser = async (
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  context: string
+): Promise<void> => {
+  const { error } = await supabase.auth.admin.deleteUser(userId);
+  if (error) {
+    console.error("Failed to rollback partially created user", {
+      userId,
+      context,
+      rollback_error: error.message,
+    });
+  }
 };
 
 const sendOtpEmail = async (to: string, otp: string): Promise<void> => {
@@ -162,20 +176,24 @@ Deno.serve(async (req: Request) => {
       const hourAgoIso = new Date(now - 60 * 60 * 1000).toISOString();
       const dayAgoIso = new Date(now - 24 * 60 * 60 * 1000).toISOString();
 
-      const { data: latestOtp } = await supabase
+      const { data: latestActiveOtp } = await supabase
         .from("email_otps")
-        .select("id, created_at")
+        .select("id, expires_at")
         .eq("email", email)
+        .is("used_at", null)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (latestOtp?.created_at) {
-        const secondsSinceLast = Math.floor((now - new Date(latestOtp.created_at).getTime()) / 1000);
-        if (secondsSinceLast < OTP_SEND_COOLDOWN_SECONDS) {
+      if (latestActiveOtp?.expires_at) {
+        const secondsLeft = Math.ceil((new Date(latestActiveOtp.expires_at).getTime() - now) / 1000);
+        if (secondsLeft > 0) {
           return jsonResponse(429, {
             success: false,
-            message: `Please wait ${OTP_SEND_COOLDOWN_SECONDS - secondsSinceLast}s before requesting a new OTP.`,
+            message: `Current OTP is still valid. Please wait ${secondsLeft}s before requesting a new OTP.`,
+            retry_after_seconds: secondsLeft,
+            expires_in_seconds: secondsLeft,
+            resend_available_in_seconds: secondsLeft,
           });
         }
       }
@@ -237,6 +255,7 @@ Deno.serve(async (req: Request) => {
         success: true,
         message: "OTP sent successfully",
         expires_in_seconds: OTP_TTL_SECONDS,
+        resend_available_in_seconds: OTP_TTL_SECONDS,
       };
 
       if (otpDebugMode) {
@@ -390,10 +409,11 @@ Deno.serve(async (req: Request) => {
     const userEmail = createdUser?.user?.email;
 
     if (!userId || !userEmail) {
+      if (userId) {
+        await rollbackCreatedUser(supabase, userId, "missing_user_payload");
+      }
       return jsonResponse(500, { success: false, message: "Account created but user data is incomplete." });
     }
-
-    let profileSyncWarning: string | null = null;
 
     const { error: profileUpsertWithRoleError } = await supabase.from("profiles").upsert(
       {
@@ -422,14 +442,17 @@ Deno.serve(async (req: Request) => {
           primary_error: profileUpsertWithRoleError.message,
           fallback_error: profileUpsertFallbackError.message,
         });
-        profileSyncWarning = "Profile sync pending. Please complete your profile after login.";
+        await rollbackCreatedUser(supabase, userId, "profile_upsert_failed");
+        return jsonResponse(500, {
+          success: false,
+          message: "Failed to complete account setup. Please try again.",
+        });
       }
     }
 
     return jsonResponse(200, {
       success: true,
       message: "Account created successfully",
-      profile_sync_warning: profileSyncWarning,
     });
   } catch (error) {
     console.error("email-otp function error:", error);

@@ -39,6 +39,7 @@ const Navbar = () => {
   const [userRole, setUserRole] = useState<"student" | "mentor" | null>(null);
   const [isExploreDropdownOpen, setIsExploreDropdownOpen] = useState(false);
   const [onboardingDraft, setOnboardingDraft] = useState<{ phase: number; step: number; timestamp: number } | null>(null);
+  const [needsPhase1Completion, setNeedsPhase1Completion] = useState(false);
   const [showHomeStickySearch, setShowHomeStickySearch] = useState(false);
   const navigate = useNavigate();
 
@@ -49,7 +50,7 @@ const Navbar = () => {
       if (session?.user) {
         const role = session.user.user_metadata?.role as "student" | "mentor";
         setUserRole(role);
-        fetchProfile(session.user.id, role);
+        fetchProfile(session.user.id, role, session.user);
         checkForOnboardingDraft(role);
       }
     });
@@ -62,12 +63,13 @@ const Navbar = () => {
       if (session?.user) {
         const role = session.user.user_metadata?.role as "student" | "mentor";
         setUserRole(role);
-        fetchProfile(session.user.id, role);
+        fetchProfile(session.user.id, role, session.user);
         checkForOnboardingDraft(role);
       } else {
         setProfile(null);
         setUserRole(null);
         setOnboardingDraft(null);
+        setNeedsPhase1Completion(false);
       }
     });
 
@@ -86,6 +88,7 @@ const Navbar = () => {
   const checkForOnboardingDraft = async (role: "student" | "mentor") => {
     if (role !== "mentor") {
       setOnboardingDraft(null);
+      setNeedsPhase1Completion(false);
       return;
     }
 
@@ -94,6 +97,7 @@ const Navbar = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setOnboardingDraft(null);
+        setNeedsPhase1Completion(false);
         return;
       }
 
@@ -105,6 +109,7 @@ const Navbar = () => {
 
       const phase1Complete = profileData?.phase_1_complete || false;
       const phase2Complete = profileData?.phase_2_complete || false;
+      setNeedsPhase1Completion(!phase1Complete);
 
       // Check for Phase 2 draft first if Phase 1 is complete
       const phase2Draft = localStorage.getItem('mentor-onboarding-phase2-draft');
@@ -162,10 +167,18 @@ const Navbar = () => {
     } catch (error) {
       console.error('Error checking onboarding draft:', error);
       setOnboardingDraft(null);
+      setNeedsPhase1Completion(false);
     }
   };
 
-  const fetchProfile = async (userId: string, role: "student" | "mentor") => {
+  const fetchProfile = async (
+    userId: string,
+    role: "student" | "mentor",
+    authUser?: any
+  ) => {
+    const metadataFullName = authUser?.user_metadata?.full_name || null;
+    const metadataAvatarUrl = authUser?.user_metadata?.avatar_url || null;
+
     if (role === "mentor") {
       // Get expert profile - username presence indicates completed onboarding
       const { data: expertData, error } = await supabase
@@ -179,29 +192,31 @@ const Navbar = () => {
         return;
       }
 
-      if (expertData) {
-        console.log("Navbar - Fetched expert profile:", expertData);
-        console.log("Navbar - username value:", expertData.username);
-        // Get avatar from profiles table as fallback
-        const { data: profilesData } = await supabase
-          .from("profiles")
-          .select("avatar_url")
-          .eq("id", userId)
-          .single();
-        const profileData = {
-          username: expertData.username,
-          full_name: expertData.full_name,
-          avatar_url:
-            expertData.profile_picture_url || profilesData?.avatar_url || null,
-          type: "mentor" as const,
-          // If username exists, onboarding is complete
-          onboarding_complete: !!expertData.username,
-        };
-        console.log("Navbar - Setting profile state:", profileData);
-        setProfile(profileData);
-      } else {
-        console.log("Navbar - No expert profile data found");
-      }
+      // Get name/avatar fallback from profiles table (available right after signup)
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("full_name, avatar_url")
+        .eq("id", userId)
+        .maybeSingle();
+
+      const profileData = {
+        username: expertData?.username || null,
+        full_name:
+          expertData?.full_name ||
+          profilesData?.full_name ||
+          metadataFullName ||
+          "Mentor",
+        avatar_url:
+          expertData?.profile_picture_url ||
+          profilesData?.avatar_url ||
+          metadataAvatarUrl ||
+          null,
+        type: "mentor" as const,
+        onboarding_complete: !!expertData?.username,
+      };
+
+      console.log("Navbar - Setting mentor profile state:", profileData);
+      setProfile(profileData);
     } else {
       // Get regular profile for student
       const { data: profileData } = await supabase
@@ -210,9 +225,11 @@ const Navbar = () => {
         .eq("id", userId)
         .maybeSingle();
 
-      if (profileData) {
-        setProfile({ ...profileData, type: "student" });
-      }
+      setProfile({
+        full_name: profileData?.full_name || metadataFullName || "Student",
+        avatar_url: profileData?.avatar_url || metadataAvatarUrl || null,
+        type: "student",
+      });
     }
   };
 
@@ -294,6 +311,12 @@ const Navbar = () => {
   };
 
   const handleResumeOnboarding = () => {
+    if (needsPhase1Completion) {
+      navigate('/expert/onboarding');
+      toast.info("Continue Phase 1 to complete your mentor onboarding.");
+      return;
+    }
+
     if (!onboardingDraft) return;
     
     if (onboardingDraft.phase === 1) {
@@ -566,8 +589,22 @@ const Navbar = () => {
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-gray-200 my-1" />
 
-                    {/* Resume Onboarding - Only for mentors with saved drafts */}
-                    {userRole === "mentor" && onboardingDraft && (
+                    {/* Phase 1 completion / Resume Onboarding */}
+                    {userRole === "mentor" && needsPhase1Completion && (
+                      <DropdownMenuItem
+                        onClick={() => {
+                          handleResumeOnboarding();
+                        }}
+                        className="cursor-pointer hover:bg-amber-50 rounded-lg px-3 py-2.5 text-amber-700 focus:bg-amber-50 focus:text-amber-900 transition-colors"
+                      >
+                        <FileEdit className="mr-3 h-4 w-4 text-amber-600" />
+                        <span className="text-sm font-medium">
+                          Complete Phase 1
+                        </span>
+                      </DropdownMenuItem>
+                    )}
+
+                    {userRole === "mentor" && !needsPhase1Completion && onboardingDraft && (
                       <DropdownMenuItem
                         onClick={() => {
                           handleResumeOnboarding();
@@ -749,7 +786,21 @@ const Navbar = () => {
                     </div>
                   </div>
 
-                  {userRole === "mentor" && onboardingDraft && (
+                  {userRole === "mentor" && needsPhase1Completion && (
+                    <Button
+                      variant="ghost"
+                      className="text-amber-700 hover:bg-amber-50 w-full font-medium justify-start rounded-xl h-11"
+                      onClick={() => {
+                        handleResumeOnboarding();
+                        setIsMobileNavOpen(false);
+                      }}
+                    >
+                      <FileEdit className="mr-3 h-4 w-4 text-amber-600" />
+                      Complete Phase 1
+                    </Button>
+                  )}
+
+                  {userRole === "mentor" && !needsPhase1Completion && onboardingDraft && (
                     <Button
                       variant="ghost"
                       className="text-amber-700 hover:bg-amber-50 w-full font-medium justify-start rounded-xl h-11"

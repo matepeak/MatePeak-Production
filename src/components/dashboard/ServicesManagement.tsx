@@ -1449,6 +1449,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                     <Switch
                       checked={!!newService.hasFreeDemo}
                       onCheckedChange={(hasFreeDemo) => setNewService({ ...newService, hasFreeDemo })}
+                      className="data-[state=checked]:bg-green-600"
                     />
                   </div>
                 )}
@@ -1960,6 +1961,7 @@ export default function ServicesManagement({ mentorId }: { mentorId: string }) {
                         <Switch
                           checked={!!editForm.hasFreeDemo}
                           onCheckedChange={(hasFreeDemo) => setEditForm({ ...editForm, hasFreeDemo })}
+                          className="data-[state=checked]:bg-green-600"
                         />
                       </div>
                     </div>

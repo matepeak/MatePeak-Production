@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,10 +8,23 @@ import { toast } from "@/components/ui/sonner";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Camera, CheckCircle2 } from "lucide-react";
+import ImageEditor from "@/components/onboarding/ImageEditor";
+import { Camera, CheckCircle2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type SignupRole = "student" | "mentor";
+type SignupStep = "email" | "otp" | "details";
+
+const STEP_EXIT_DURATION_MS = 180;
+const STEP_ENTER_DURATION_MS = 320;
+const STEP_EXIT_CLASS = "animate-step-exit-left";
+const STEP_ENTER_CLASS = "animate-step-enter-right";
+
+const STEP_MAX_WIDTH_CLASS: Record<SignupStep, string> = {
+  email: "max-w-[340px]",
+  otp: "max-w-[420px]",
+  details: "max-w-[420px]",
+};
 
 type MultiStepSignupFormProps = {
   role: SignupRole;
@@ -21,6 +34,9 @@ type MultiStepSignupFormProps = {
 type OtpFunctionResponse = {
   success?: boolean;
   message?: string;
+  expires_in_seconds?: number;
+  resend_available_in_seconds?: number;
+  retry_after_seconds?: number;
 };
 
 const getFunctionErrorMessage = async (error: any, fallback: string): Promise<string> => {
@@ -55,6 +71,14 @@ const sanitizeUserErrorMessage = (message: string | undefined, fallback: string)
   return normalized;
 };
 
+const extractWaitSeconds = (message: string | undefined): number | null => {
+  if (!message) return null;
+  const match = message.match(/please\s+wait\s+(\d+)s?/i);
+  if (!match) return null;
+  const seconds = Number(match[1]);
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
+};
+
 export default function MultiStepSignupForm({ role, successRedirectPath }: MultiStepSignupFormProps) {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -67,7 +91,7 @@ export default function MultiStepSignupForm({ role, successRedirectPath }: Multi
   const [rememberMe, setRememberMe] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   const [isResettingPassword, setIsResettingPassword] = useState(false);
-  const [signupStep, setSignupStep] = useState<"email" | "otp" | "details">("email");
+  const [signupStep, setSignupStep] = useState<SignupStep>("email");
   const [signupEmail, setSignupEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [otpError, setOtpError] = useState(false);
@@ -76,10 +100,63 @@ export default function MultiStepSignupForm({ role, successRedirectPath }: Multi
   const [continueShakeKey, setContinueShakeKey] = useState(0);
   const [profilePhotoPreview, setProfilePhotoPreview] = useState("");
   const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
+  const [isImageEditorOpen, setIsImageEditorOpen] = useState(false);
+  const [tempImageUrl, setTempImageUrl] = useState("");
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [stepAnimationClass, setStepAnimationClass] = useState("");
+  const [resendSecondsLeft, setResendSecondsLeft] = useState(0);
+  const [otpExpirySecondsLeft, setOtpExpirySecondsLeft] = useState(0);
   const isVerifyingOtpRef = useRef(false);
   const otpInputRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const stepSwitchTimeoutRef = useRef<number | null>(null);
+  const stepClearAnimationTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (resendSecondsLeft <= 0) return;
+
+    const timerId = window.setInterval(() => {
+      setResendSecondsLeft((prev) => {
+        if (prev <= 1) {
+          window.clearInterval(timerId);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [resendSecondsLeft]);
+
+  useEffect(() => {
+    if (otpExpirySecondsLeft <= 0) return;
+
+    const timerId = window.setInterval(() => {
+      setOtpExpirySecondsLeft((prev) => {
+        if (prev <= 1) {
+          window.clearInterval(timerId);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [otpExpirySecondsLeft]);
+
+  useEffect(() => {
+    return () => {
+      if (stepSwitchTimeoutRef.current !== null) {
+        window.clearTimeout(stepSwitchTimeoutRef.current);
+      }
+      if (stepClearAnimationTimeoutRef.current !== null) {
+        window.clearTimeout(stepClearAnimationTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const loginPath = role === "mentor" ? "/expert/login" : "/student/login";
   const subtitle =
@@ -87,26 +164,62 @@ export default function MultiStepSignupForm({ role, successRedirectPath }: Multi
       ? "Create your account. Share what you know. Earn from it."
       : "Create your account. Learn from experts. Grow faster.";
   const otpSlotClassName = cn(
-    "h-[4.9rem] w-16 rounded-xl border-2 text-4xl font-normal transition-colors duration-200",
+    "h-[4.9rem] w-16 rounded-xl border-2 text-4xl font-medium transition-colors duration-200",
     otpError
       ? "border-red-200 bg-red-50 text-gray-900 hover:border-red-200 focus:border-red-200 focus-visible:border-red-200 active:border-red-200"
       : "border-gray-300 bg-white text-gray-900 hover:border-gray-300 focus:border-gray-300 focus-visible:border-gray-300 active:border-gray-300"
   );
 
-  const transitionToStep = (nextStep: "email" | "otp" | "details") => {
+  const transitionToStep = (nextStep: SignupStep) => {
     if (nextStep === signupStep) return;
 
-    setStepAnimationClass("animate-step-exit-left");
+    if (stepSwitchTimeoutRef.current !== null) {
+      window.clearTimeout(stepSwitchTimeoutRef.current);
+    }
+    if (stepClearAnimationTimeoutRef.current !== null) {
+      window.clearTimeout(stepClearAnimationTimeoutRef.current);
+    }
 
-    window.setTimeout(() => {
+    setStepAnimationClass(STEP_EXIT_CLASS);
+
+    stepSwitchTimeoutRef.current = window.setTimeout(() => {
       setSignupStep(nextStep);
-      setStepAnimationClass("animate-step-enter-right");
+      window.requestAnimationFrame(() => {
+        setStepAnimationClass(STEP_ENTER_CLASS);
+      });
 
-      window.setTimeout(() => {
+      stepClearAnimationTimeoutRef.current = window.setTimeout(() => {
         setStepAnimationClass("");
-      }, 320);
-    }, 180);
+      }, STEP_ENTER_DURATION_MS);
+    }, STEP_EXIT_DURATION_MS);
   };
+
+  const setResendCooldown = (seconds?: number | null) => {
+    const nextSeconds = Number(seconds ?? 0);
+    if (!Number.isFinite(nextSeconds) || nextSeconds <= 0) {
+      setResendSecondsLeft(0);
+      return;
+    }
+    setResendSecondsLeft(Math.ceil(nextSeconds));
+  };
+
+  const setOtpExpiryCountdown = (seconds?: number | null) => {
+    const nextSeconds = Number(seconds ?? 0);
+    if (!Number.isFinite(nextSeconds) || nextSeconds <= 0) {
+      setOtpExpirySecondsLeft(0);
+      return;
+    }
+    setOtpExpirySecondsLeft(Math.ceil(nextSeconds));
+  };
+
+  const formatCountdown = (seconds: number): string => {
+    const safeSeconds = Math.max(0, Math.floor(seconds));
+    const mins = Math.floor(safeSeconds / 60);
+    const secs = safeSeconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const resendBlockSecondsLeft = otpExpirySecondsLeft > 0 ? otpExpirySecondsLeft : resendSecondsLeft;
 
   const uploadProfilePhotoForUser = async (userId: string): Promise<string | null> => {
     if (!profilePhotoFile) return null;
@@ -309,16 +422,36 @@ export default function MultiStepSignupForm({ role, successRedirectPath }: Multi
       setForgotPasswordEmail(email);
       setOtpCode("");
       setOtpError(false);
+      setResendCooldown(data?.resend_available_in_seconds ?? data?.expires_in_seconds);
+      setOtpExpiryCountdown(data?.expires_in_seconds);
       transitionToStep("otp");
       setIsEmailVerified(false);
       window.setTimeout(() => otpInputRefs.current[0]?.focus(), 250);
       toast.success("Verification code sent to your email.");
     } catch (error: any) {
-      const message = (error?.message || "").toLowerCase();
-      if (message.includes("limit") || message.includes("too many") || message.includes("wait")) {
-        toast.error(error?.message || "Too many attempts. Please try again later.");
+      const contextPayload = error?.context ? await error.context.json() : null;
+      const safeMessage = sanitizeUserErrorMessage(
+        contextPayload?.message || error?.message,
+        "Failed to send verification code."
+      );
+      const retryAfterSeconds = Number(contextPayload?.retry_after_seconds);
+      const waitSeconds = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+        ? retryAfterSeconds
+        : extractWaitSeconds(safeMessage);
+
+      if (waitSeconds && waitSeconds > 0) {
+        setSignupEmail(email);
+        setForgotPasswordEmail(email);
+        setResendCooldown(waitSeconds);
+        setOtpExpiryCountdown(waitSeconds);
+        setIsEmailVerified(false);
+        transitionToStep("otp");
+        window.setTimeout(() => otpInputRefs.current[0]?.focus(), 250);
+        toast.error(safeMessage);
+      } else if (safeMessage.toLowerCase().includes("limit") || safeMessage.toLowerCase().includes("too many")) {
+        toast.error(safeMessage || "Too many attempts. Please try again later.");
       } else {
-        toast.error(error?.message || "Failed to send verification code.");
+        toast.error(safeMessage || "Failed to send verification code.");
       }
     } finally {
       setIsSendingOtp(false);
@@ -486,20 +619,28 @@ export default function MultiStepSignupForm({ role, successRedirectPath }: Multi
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
+    const validTypes = ["image/jpeg", "image/jpg", "image/png"];
     if (!validTypes.includes(file.type)) {
-      toast.error("Please upload JPG, PNG, or GIF image");
+      toast.error("Please upload JPG or PNG image");
       return;
     }
 
-    const maxSize = 4 * 1024 * 1024;
+    const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
-      toast.error("Max file size is 4MB");
+      toast.error("Max file size is 5MB");
       return;
     }
 
-    const objectUrl = URL.createObjectURL(file);
-    setProfilePhotoFile(file);
+    const imageUrl = URL.createObjectURL(file);
+    setTempImageUrl(imageUrl);
+    setIsImageEditorOpen(true);
+    event.currentTarget.value = "";
+  };
+
+  const handleSaveEditedProfilePhoto = (editedBlob: Blob) => {
+    const croppedFile = new File([editedBlob], "profile-picture.jpg", { type: "image/jpeg" });
+    const objectUrl = URL.createObjectURL(croppedFile);
+    setProfilePhotoFile(croppedFile);
     setProfilePhotoPreview(objectUrl);
     toast.success("Profile photo selected");
   };
@@ -522,19 +663,34 @@ export default function MultiStepSignupForm({ role, successRedirectPath }: Multi
   };
 
   return (
-    <div className="min-h-screen bg-[rgb(255,255,255)] flex items-center justify-center px-4 py-10">
-      <div
-        className={`w-full transition-[max-width] duration-300 ${signupStep === "otp" ? "max-w-[480px]" : "max-w-[340px]"} ${stepAnimationClass}`}
+    <div className="relative min-h-screen bg-[rgb(255,255,255)] flex items-center justify-center px-4 py-10">
+      <Link
+        to="/"
+        className="absolute top-6 left-6 flex min-w-0 items-center gap-2 transition-transform duration-300 hover:scale-105"
       >
-        {signupStep !== "otp" && (
+        <img
+          src="/lovable-uploads/14bf0eea-1bc9-4675-9231-356df10eb82d.png"
+          alt="MatePeak Logo"
+          className="h-10 drop-shadow-sm mt-0.5"
+        />
+        <span className="truncate text-xl sm:text-2xl font-extrabold font-poppins text-gray-900">
+          MatePeak
+        </span>
+      </Link>
+
+      <div
+        className={`w-full transition-[max-width] duration-300 ${STEP_MAX_WIDTH_CLASS[signupStep]} ${stepAnimationClass}`}
+      >
+        <div className="text-center mb-4">
+          <img
+            src="/lovable-uploads/14bf0eea-1bc9-4675-9231-356df10eb82d.png"
+            alt="MatePeak Logo"
+            className="h-14 mx-auto"
+          />
+        </div>
+
+        {signupStep === "email" && (
           <div className="text-center mb-7">
-            <Link to="/" className="inline-block mb-4">
-              <img
-                src="/lovable-uploads/14bf0eea-1bc9-4675-9231-356df10eb82d.png"
-                alt="MatePeak Logo"
-                className="h-14 mx-auto"
-              />
-            </Link>
             <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Welcome to Matepeak</h1>
             <p className="text-base font-normal text-gray-600 mt-2 leading-relaxed">{subtitle}</p>
           </div>
@@ -602,7 +758,7 @@ export default function MultiStepSignupForm({ role, successRedirectPath }: Multi
                   emailError ? "animate-shake-button-fast" : ""
                 }`}
               >
-                {isSendingOtp ? "Sending..." : "Continue"}
+                {isSendingOtp ? <Loader2 className="h-5 w-5 animate-spin" /> : "Continue"}
               </Button>
 
               <p className="text-center mt-6 text-sm text-gray-500 leading-6">
@@ -625,7 +781,6 @@ export default function MultiStepSignupForm({ role, successRedirectPath }: Multi
           {signupStep === "otp" && (
             <>
               <div className="text-center pt-1 pb-1">
-                <img src="/lovable-uploads/14bf0eea-1bc9-4675-9231-356df10eb82d.png" alt="MatePeak" className="h-14 mx-auto mb-4" />
                 <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Check your email</h2>
                 <p className="mt-4 text-base leading-relaxed text-gray-700">
                   We&rsquo;ve sent you a 6 digit OTP.
@@ -655,6 +810,8 @@ export default function MultiStepSignupForm({ role, successRedirectPath }: Multi
                       onKeyDown={(event) => handleOtpKeyDown(index, event)}
                       onPaste={(event) => handleOtpPaste(index, event)}
                       disabled={isVerifyingOtp || isSendingOtp}
+                      data-verifying={isVerifyingOtp ? "true" : "false"}
+                      data-filled={(!isVerifyingOtp && !otpError && (otpCode[index] ?? "")) ? "true" : "false"}
                       aria-label={`OTP digit ${index + 1}`}
                       className={cn(
                         otpSlotClassName,
@@ -674,6 +831,7 @@ export default function MultiStepSignupForm({ role, successRedirectPath }: Multi
                   type="button"
                   onClick={async () => {
                     if (!signupEmail) return;
+                    if (resendBlockSecondsLeft > 0) return;
                     setIsSendingOtp(true);
                     try {
                       const { data, error } = await supabase.functions.invoke<OtpFunctionResponse>("email-otp", {
@@ -684,12 +842,28 @@ export default function MultiStepSignupForm({ role, successRedirectPath }: Multi
                       });
 
                       if (error) {
-                        const message = await getFunctionErrorMessage(error, "Failed to resend code.");
-                        throw new Error(sanitizeUserErrorMessage(message, "Failed to resend code."));
+                        const contextPayload = error?.context ? await error.context.json() : null;
+                        const message = sanitizeUserErrorMessage(
+                          contextPayload?.message || error?.message,
+                          "Failed to resend code."
+                        );
+                        const retryAfterSeconds = Number(contextPayload?.retry_after_seconds);
+                        const waitSeconds = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+                          ? retryAfterSeconds
+                          : extractWaitSeconds(message);
+
+                        if (waitSeconds && waitSeconds > 0) {
+                          setResendCooldown(waitSeconds);
+                          setOtpExpiryCountdown(waitSeconds);
+                        }
+
+                        throw new Error(message);
                       }
                       if (!data?.success) throw new Error(data?.message || "Failed to resend code.");
                       setOtpCode("");
                       setOtpError(false);
+                      setResendCooldown(data?.resend_available_in_seconds ?? data?.expires_in_seconds);
+                      setOtpExpiryCountdown(data?.expires_in_seconds);
                       toast.success("Verification code resent.");
                     } catch (error: any) {
                       toast.error(error?.message || "Failed to resend code.");
@@ -697,10 +871,13 @@ export default function MultiStepSignupForm({ role, successRedirectPath }: Multi
                       setIsSendingOtp(false);
                     }
                   }}
-                  disabled={isSendingOtp}
-                  className="text-sm font-semibold text-gray-500 hover:text-gray-600 disabled:opacity-50"
+                  disabled={isSendingOtp || resendBlockSecondsLeft > 0}
+                  className={cn(
+                    "text-sm font-semibold text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed",
+                    resendBlockSecondsLeft > 0 ? "cursor-not-allowed" : "hover:text-gray-600"
+                  )}
                 >
-                  {isSendingOtp ? "Sending..." : "Resend code"}
+                  {isSendingOtp ? <Loader2 className="h-4 w-4 animate-spin" /> : resendBlockSecondsLeft > 0 ? `Resend in ${formatCountdown(resendBlockSecondsLeft)}` : "Resend code"}
                 </button>
               </div>
             </>
@@ -709,50 +886,59 @@ export default function MultiStepSignupForm({ role, successRedirectPath }: Multi
           {signupStep === "details" && (
             <>
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">Profile Photo</Label>
-                <div className="flex items-center gap-3 rounded-md border border-gray-300 p-3">
-                  <div className="h-14 w-14 rounded-full border border-dashed border-gray-300 overflow-hidden bg-gray-50 flex items-center justify-center">
+                <div className="flex items-center gap-3 rounded-md p-3">
+                  <label
+                    htmlFor="profile-photo-upload"
+                    className="group h-14 w-14 rounded-full border border-dashed border-gray-300 hover:border-gray-900 focus-within:border-gray-900 overflow-hidden bg-gray-50 flex items-center justify-center cursor-pointer transition-colors"
+                  >
                     {profilePhotoPreview ? (
                       <img src={profilePhotoPreview} alt="Profile preview" className="h-full w-full object-cover" />
                     ) : (
-                      <Camera className="h-5 w-5 text-gray-400" />
+                      <Camera className="h-5 w-5 text-gray-400 group-hover:text-gray-900 group-focus-within:text-gray-900 transition-colors" />
                     )}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs text-gray-500">300px x 300px minimum • JPG, GIF, PNG • Max 4MB</p>
-                  </div>
-                  <label className="h-9 px-4 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground inline-flex items-center justify-center cursor-pointer text-sm font-medium">
-                    {profilePhotoFile ? "Change" : "Upload"}
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/gif"
-                      onChange={handleProfilePhotoSelect}
-                      className="hidden"
-                    />
                   </label>
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-500">JPG, PNG • Max 5MB</p>
+                  </div>
+                  <label
+                    htmlFor="profile-photo-upload"
+                    className="h-9 px-4 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground inline-flex items-center justify-center cursor-pointer text-sm font-medium"
+                  >
+                    {profilePhotoFile ? "Change" : "Upload"}
+                  </label>
+                  <input
+                    id="profile-photo-upload"
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png"
+                    onChange={handleProfilePhotoSelect}
+                    className="hidden"
+                  />
                 </div>
+                <ImageEditor
+                  open={isImageEditorOpen}
+                  onClose={() => setIsImageEditorOpen(false)}
+                  imageUrl={tempImageUrl}
+                  onSave={handleSaveEditedProfilePhoto}
+                />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="fullName" className="text-sm font-medium text-gray-700">
-                  Name
-                </Label>
                 <Input
                   id="fullName"
                   name="fullName"
                   type="text"
                   required
-                  placeholder="Enter your full name"
-                  className="h-12 rounded-md bg-white border-gray-300 px-5 focus-visible:ring-1 focus-visible:ring-gray-400"
+                  placeholder="Enter Full Name"
+                  className="h-12 rounded-md bg-white border-gray-300 px-5 shadow-sm placeholder:font-medium focus-visible:ring-1 focus-visible:ring-gray-400"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
                 <PasswordInput
                   id="password"
                   name="password"
                   value={password}
+                  placeholder="Enter Password"
                   onChange={(value) => {
                     setPassword(value);
                     setPasswordError("");
@@ -760,12 +946,11 @@ export default function MultiStepSignupForm({ role, successRedirectPath }: Multi
                   onValidityChange={setIsPasswordValid}
                   required
                   showRequirements={true}
-                  className="h-12 rounded-md bg-white border-gray-300 px-5 focus-visible:ring-1 focus-visible:ring-gray-400"
+                  className="h-12 rounded-md bg-white border-gray-300 px-5 shadow-sm placeholder:font-medium focus-visible:ring-1 focus-visible:ring-gray-400"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <Input
                   id="confirmPassword"
                   name="confirmPassword"
@@ -776,8 +961,8 @@ export default function MultiStepSignupForm({ role, successRedirectPath }: Multi
                     setPasswordError("");
                   }}
                   required
-                  placeholder="Confirm your password"
-                  className="h-12 rounded-md bg-white border-gray-300 px-5 focus-visible:ring-1 focus-visible:ring-gray-400"
+                  placeholder="Enter Confirm Password"
+                  className="h-12 rounded-md bg-white border-gray-300 px-5 shadow-sm placeholder:font-medium focus-visible:ring-1 focus-visible:ring-gray-400"
                 />
                 {passwordError && <p className="text-sm text-destructive mt-1 animate-fade-in">{passwordError}</p>}
                 {!passwordError && confirmPassword && password !== confirmPassword && (

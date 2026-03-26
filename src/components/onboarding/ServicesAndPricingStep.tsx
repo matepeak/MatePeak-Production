@@ -235,16 +235,16 @@ export default function ServicesAndPricingStep({
               key={service.key}
               className={cn(
                 "border rounded-xl p-6 transition-all",
-                isEnabled ? "border-gray-900 bg-gray-50" : "border-gray-200 bg-white"
+                isEnabled ? "border-green-500 bg-white" : "border-gray-200 bg-white"
               )}
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-start gap-4 flex-1">
                   <div className={cn(
                     "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
-                    isEnabled ? "bg-gray-900" : "bg-gray-100"
+                    isEnabled ? "bg-[#f8b857]" : "bg-gray-100"
                   )}>
-                    <Icon className={cn("w-5 h-5", isEnabled ? "text-white" : "text-gray-600")} />
+                    <Icon className={cn("w-5 h-5", isEnabled ? "text-black" : "text-gray-600")} />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
@@ -294,7 +294,7 @@ export default function ServicesAndPricingStep({
                             );
                           }
                         }}
-                        className="data-[state=checked]:bg-gray-900"
+                        className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-green-100"
                       />
                     </FormControl>
                   </FormItem>
@@ -433,6 +433,7 @@ export default function ServicesAndPricingStep({
                           <Checkbox
                             checked={field.value || false}
                             onCheckedChange={field.onChange}
+                            className="border-green-500 data-[state=checked]:border-green-600 data-[state=checked]:bg-green-600 focus-visible:ring-green-500"
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none flex-1">
@@ -573,7 +574,7 @@ export default function ServicesAndPricingStep({
                   type="button"
                   onClick={handleAddCustomService}
                   disabled={!newService.name || !newService.description}
-                  className="flex-1 h-11 bg-gray-900 hover:bg-gray-800 text-white transition-colors"
+                  className="flex-1 h-11 bg-matepeak-yellow hover:bg-matepeak-yellow/90 text-black transition-colors"
                 >
                   <Check className="w-4 h-4 mr-2" />
                   Add Service
