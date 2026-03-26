@@ -36,6 +36,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { NotificationBell } from "./NotificationBell";
+import { resolveAvatarUrl } from "@/utils/avatarResolver";
 
 type DashboardView =
   | "overview"
@@ -191,8 +192,11 @@ const DashboardLayout = ({
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || "M";
   };
 
-  const dashboardAvatarUrl =
-    mentorProfile?.profile_picture_url || mentorProfile?.avatar_url || "";
+  const dashboardAvatarUrl = resolveAvatarUrl({
+    profilePictureUrl: mentorProfile?.profile_picture_url,
+    avatarUrl: mentorProfile?.avatar_url,
+    profilesAvatarUrl: mentorProfile?.profiles?.avatar_url,
+  });
 
   const isVerifiedMentor =
     mentorProfile?.mentor_tier === "verified" ||

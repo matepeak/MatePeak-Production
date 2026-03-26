@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { resolveAvatarUrl } from "@/utils/avatarResolver";
 
 export interface BookingRequest {
   id: string;
@@ -16,6 +17,7 @@ export interface BookingRequest {
     full_name: string;
     username?: string;
     profile_picture_url?: string;
+    avatar_url?: string;
     headline?: string;
     expertise?: string[];
   };
@@ -137,8 +139,22 @@ export async function fetchBookingRequests(
 
     console.log("🔍 Final mentorMap:", Array.from(mentorMap.values()));
 
-    // Return requests with attached mentor details
-    return allRequests.map((r: any) => ({ ...r, mentor: mentorMap.get(r.mentor_id) }));
+    // Return requests with attached mentor details and normalized avatar fallback.
+    return allRequests.map((r: any) => {
+      const mentor = mentorMap.get(r.mentor_id);
+      if (!mentor) return { ...r, mentor };
+
+      return {
+        ...r,
+        mentor: {
+          ...mentor,
+          profile_picture_url: resolveAvatarUrl({
+            profilePictureUrl: mentor.profile_picture_url,
+            avatarUrl: mentor.avatar_url,
+          }),
+        },
+      };
+    });
   } catch (error) {
     console.error("Error in fetchBookingRequests:", error);
     return [];

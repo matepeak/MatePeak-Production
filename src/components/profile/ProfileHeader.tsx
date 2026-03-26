@@ -39,6 +39,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMentorLiveStatus } from "@/hooks/useMentorPresence";
 import PresenceDot from "@/components/PresenceDot";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { resolveAvatarUrl } from "@/utils/avatarResolver";
 
 interface ProfileHeaderProps {
   mentor: {
@@ -90,18 +91,11 @@ export default function ProfileHeader({
     mentor?.verification_status === "verified" ||
     Boolean(mentor?.is_verified);
 
-  const getValidImageUrl = (value?: string | null) => {
-    const normalized = String(value || "").trim();
-    if (!normalized) return "";
-    if (normalized.toLowerCase() === "null") return "";
-    if (normalized.toLowerCase() === "undefined") return "";
-    return normalized;
-  };
-
-  const profileImageUrl =
-    getValidImageUrl(mentor.profile_picture_url) ||
-    getValidImageUrl(mentor.avatar_url) ||
-    getValidImageUrl(mentor.profiles?.avatar_url);
+  const profileImageUrl = resolveAvatarUrl({
+    profilePictureUrl: mentor.profile_picture_url,
+    avatarUrl: mentor.avatar_url,
+    profilesAvatarUrl: mentor.profiles?.avatar_url,
+  });
 
   const handleBookingClick = async () => {
     setIsCheckingAuth(true);

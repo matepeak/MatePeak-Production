@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { SERVICE_CONFIG } from "@/config/serviceConfig";
 import { normalizeServiceType } from "@/config/serviceConfig";
 import { MentorProfile } from "@/components/MentorCard";
+import { resolveAvatarUrl } from "@/utils/avatarResolver";
 
 /**
  * Service to sync expert_profiles data with mentor cards
@@ -225,7 +226,10 @@ export function transformToMentorCard(
     id: profile.id,
     name: profile.full_name,
     title: profile.category || categories[0] || "Expert",
-    image: profile.profile_picture_url || profile.profiles?.avatar_url || "",
+    image: resolveAvatarUrl({
+      profilePictureUrl: profile.profile_picture_url,
+      profilesAvatarUrl: profile.profiles?.avatar_url,
+    }),
     categories: categories,
     rating: Number(profile.average_rating || 0),
     reviewCount: Number(profile.total_reviews || 0),

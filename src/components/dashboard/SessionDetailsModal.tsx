@@ -18,6 +18,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { resolveAvatarUrl } from "@/utils/avatarResolver";
 
 interface SessionDetailsModalProps {
   open: boolean;
@@ -96,11 +97,16 @@ const SessionDetailsModal = ({
         : session.mentor_profile?.full_name || session.display_name
     ) || (isMentorSideSession ? "Student" : "Mentor");
 
-  const participantImageUrl =
-    (isMentorSideSession
-      ? session.student?.avatar_url || session.student?.profile_picture_url
-      : session.mentor_profile?.avatar_url || session.mentor_profile?.profile_picture_url) ||
-    "";
+  const participantImageUrl = isMentorSideSession
+    ? resolveAvatarUrl({
+        profilePictureUrl: session.student?.profile_picture_url,
+        avatarUrl: session.student?.avatar_url,
+      })
+    : resolveAvatarUrl({
+        profilePictureUrl: session.mentor_profile?.profile_picture_url,
+        avatarUrl: session.mentor_profile?.avatar_url,
+        profilesAvatarUrl: session.mentor_profile?.profiles?.avatar_url,
+      });
 
   const formatDate = (date: string, time: string) => {
     try {

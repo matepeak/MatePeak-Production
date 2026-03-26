@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { resolveAvatarUrl } from "@/utils/avatarResolver";
 
 const LANGUAGES = [
   "English", "Spanish", "French", "German", "Italian", "Portuguese", "Dutch",
@@ -87,11 +88,12 @@ const ProfileManagement = ({
   
   const [formData, setFormData] = useState(() => mapProfileToBasicFormData(mentorProfile));
   const [basicFormBaseline, setBasicFormBaseline] = useState(() => mapProfileToBasicFormData(mentorProfile));
-  const currentAvatarUrl =
-    previewUrl ||
-    mentorProfile?.profile_picture_url ||
-    mentorProfile?.avatar_url ||
-    "";
+  const currentAvatarUrl = resolveAvatarUrl({
+    previewUrl,
+    profilePictureUrl: mentorProfile?.profile_picture_url,
+    avatarUrl: mentorProfile?.avatar_url,
+    profilesAvatarUrl: mentorProfile?.profiles?.avatar_url,
+  });
 
   const isBasicEditing = activeEditSection === "basic";
 

@@ -14,6 +14,7 @@ import ProfileReviews from "@/components/profile/ProfileReviews";
 import ProfileServices from "@/components/profile/ProfileServices";
 import AvailabilityPreview from "@/components/profile/AvailabilityPreview";
 import SEO from "@/components/SEO";
+import { resolveAvatarUrl } from "@/utils/avatarResolver";
 
 export type ProfileTab =
   | "overview"
@@ -55,14 +56,6 @@ interface MentorProfileData {
     email?: string;
   };
 }
-
-const getValidImageUrl = (value?: string | null) => {
-  const normalized = String(value || "").trim();
-  if (!normalized) return "";
-  if (normalized.toLowerCase() === "null") return "";
-  if (normalized.toLowerCase() === "undefined") return "";
-  return normalized;
-};
 
 export default function MentorPublicProfile() {
   const { username } = useParams<{ username: string }>();
@@ -141,9 +134,11 @@ export default function MentorPublicProfile() {
         url: `https://www.matepeak.com/mentor/${mentor.username}`,
         description: mentor.bio || mentor.headline || "Mentor on MatePeak",
         image:
-          getValidImageUrl(mentor.profile_picture_url) ||
-          getValidImageUrl(mentor.avatar_url) ||
-          getValidImageUrl(mentor.profiles?.avatar_url) ||
+          resolveAvatarUrl({
+            profilePictureUrl: mentor.profile_picture_url,
+            avatarUrl: mentor.avatar_url,
+            profilesAvatarUrl: mentor.profiles?.avatar_url,
+          }) ||
           "https://www.matepeak.com/lovable-uploads/14bf0eea-1bc9-4675-9231-356df10eb82d.png",
       }
     : undefined;
@@ -158,9 +153,10 @@ export default function MentorPublicProfile() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      const metadataAvatarUrl =
-        getValidImageUrl(user?.user_metadata?.avatar_url) ||
-        getValidImageUrl(user?.user_metadata?.picture);
+      const metadataAvatarUrl = resolveAvatarUrl({
+        metadataAvatarUrl: user?.user_metadata?.avatar_url,
+        metadataPictureUrl: user?.user_metadata?.picture,
+      });
 
       // Fetch mentor profile by username
       const { data: profileData, error: profileError } = await supabase
@@ -199,10 +195,12 @@ export default function MentorPublicProfile() {
         (mergedProfileData.id === user.id ||
           mergedProfileData.user_id === user.id);
 
-      const currentResolvedAvatar =
-        getValidImageUrl(mergedProfileData.profile_picture_url) ||
-        getValidImageUrl((mergedProfileData as Record<string, unknown>).avatar_url as string | undefined) ||
-        getValidImageUrl(mergedProfileData.profiles?.avatar_url);
+      const currentResolvedAvatar = resolveAvatarUrl({
+        profilePictureUrl: mergedProfileData.profile_picture_url,
+        avatarUrl: (mergedProfileData as Record<string, unknown>)
+          .avatar_url as string | undefined,
+        profilesAvatarUrl: mergedProfileData.profiles?.avatar_url,
+      });
 
       if (isViewingOwnProfile && !currentResolvedAvatar && metadataAvatarUrl) {
         mergedProfileData.profiles = {
