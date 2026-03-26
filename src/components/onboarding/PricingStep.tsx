@@ -71,6 +71,7 @@ export default function PricingStep({ form }: { form: UseFormReturn<any> }) {
                           <Checkbox
                             checked={field.value}
                             onCheckedChange={field.onChange}
+                            className="border-green-500 data-[state=checked]:border-green-600 data-[state=checked]:bg-green-600 focus-visible:ring-green-500"
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">

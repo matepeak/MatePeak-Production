@@ -142,6 +142,10 @@
     overflow-x: hidden;
   }
 
+  html {
+    scrollbar-gutter: stable;
+  }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -196,28 +200,105 @@
     ),
   textarea:hover:not(:focus):not(:disabled),
   button[role="combobox"]:hover:not(:focus):not(:disabled) {
-    background-color: hsl(0 0% 97%);
-    border-color: hsl(var(--border));
+    background-color: hsl(var(--background)) !important;
+    border-color: rgb(0 0 0 / 0.35) !important;
   }
 
   input:not([type="checkbox"]):not([type="radio"]):not(.hero-search-input):not(.explore-search-input):focus,
   textarea:focus,
   button[role="combobox"]:focus {
-    background-color: hsl(0 0% 100%);
-    border-color: hsl(0 0% 0%) !important;
+    background-color: hsl(var(--background)) !important;
+    border-color: rgb(0 0 0 / 0.35) !important;
     outline: none;
-    box-shadow: 0 0 0 3px hsl(0 0% 0% / 0.1) !important;
+    box-shadow: none !important;
   }
 
   /* Focus visible for better accessibility */
   input:not([type="checkbox"]):not([type="radio"]):not(.hero-search-input):not(.explore-search-input):focus-visible,
   textarea:focus-visible,
   button[role="combobox"]:focus-visible {
-    background-color: hsl(0 0% 100%);
-    border-color: hsl(0 0% 0%) !important;
+    background-color: hsl(var(--background)) !important;
+    border-color: rgb(0 0 0 / 0.35) !important;
     outline: none;
-    box-shadow: 0 0 0 3px hsl(0 0% 0% / 0.1) !important;
+    box-shadow: none !important;
   }
+
+  input[type="text"]:not(.hero-search-input):not(.explore-search-input),
+  input[type="email"]:not(.hero-search-input):not(.explore-search-input),
+  input[type="password"]:not(.hero-search-input):not(.explore-search-input),
+  input[type="search"]:not(.hero-search-input):not(.explore-search-input),
+  input[type="tel"]:not(.hero-search-input):not(.explore-search-input),
+  input[type="url"]:not(.hero-search-input):not(.explore-search-input),
+  input[type="number"]:not(.hero-search-input):not(.explore-search-input),
+  textarea {
+    background-color: hsl(var(--background)) !important;
+  }
+
+  input[type="text"]:not(.hero-search-input):not(.explore-search-input):hover,
+  input[type="email"]:not(.hero-search-input):not(.explore-search-input):hover,
+  input[type="password"]:not(.hero-search-input):not(.explore-search-input):hover,
+  input[type="search"]:not(.hero-search-input):not(.explore-search-input):hover,
+  input[type="tel"]:not(.hero-search-input):not(.explore-search-input):hover,
+  input[type="url"]:not(.hero-search-input):not(.explore-search-input):hover,
+  input[type="number"]:not(.hero-search-input):not(.explore-search-input):hover,
+  input[type="text"]:not(.hero-search-input):not(.explore-search-input):focus,
+  input[type="email"]:not(.hero-search-input):not(.explore-search-input):focus,
+  input[type="password"]:not(.hero-search-input):not(.explore-search-input):focus,
+  input[type="search"]:not(.hero-search-input):not(.explore-search-input):focus,
+  input[type="tel"]:not(.hero-search-input):not(.explore-search-input):focus,
+  input[type="url"]:not(.hero-search-input):not(.explore-search-input):focus,
+  input[type="number"]:not(.hero-search-input):not(.explore-search-input):focus,
+  input[type="text"]:not(.hero-search-input):not(.explore-search-input):active,
+  input[type="email"]:not(.hero-search-input):not(.explore-search-input):active,
+  input[type="password"]:not(.hero-search-input):not(.explore-search-input):active,
+  input[type="search"]:not(.hero-search-input):not(.explore-search-input):active,
+  input[type="tel"]:not(.hero-search-input):not(.explore-search-input):active,
+  input[type="url"]:not(.hero-search-input):not(.explore-search-input):active,
+  input[type="number"]:not(.hero-search-input):not(.explore-search-input):active,
+  textarea:hover,
+  textarea:focus,
+  textarea:active {
+    background-color: hsl(var(--background)) !important;
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus {
+    -webkit-text-fill-color: hsl(var(--foreground));
+    -webkit-box-shadow: 0 0 0px 1000px hsl(var(--background)) inset;
+    transition: background-color 9999s ease-out 0s;
+  }
+
+  /* Keep OTP native input transparent so slot boxes remain visible */
+  input.otp-native-input,
+  input.otp-native-input:hover,
+  input.otp-native-input:focus,
+  input.otp-native-input:focus-visible,
+  input.otp-native-input:active,
+  [data-input-otp],
+  [data-input-otp]:hover,
+  [data-input-otp]:focus,
+  [data-input-otp]:focus-visible,
+  [data-input-otp]:active {
+    border: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+
+  /* Keep all OTP slots visible in empty and interactive states */
+  .otp-slot,
+  .otp-slot:hover,
+  .otp-slot:focus,
+  .otp-slot:focus-visible,
+  .otp-slot:active {
+    background-color: #ffffff !important;
+    border-color: rgb(209 213 219) !important;
+  }
+
 }
 
 @layer components {
@@ -386,6 +467,175 @@
 
 .animate-shake {
   animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake-subtle {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-2px);
+  }
+  50% {
+    transform: translateX(2px);
+  }
+  75% {
+    transform: translateX(-1px);
+  }
+}
+
+.animate-shake-subtle {
+  animation: shake-subtle 0.7s ease-out;
+}
+
+@keyframes shake-button-fast {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-5px);
+  }
+  40% {
+    transform: translateX(5px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+.animate-shake-button-fast {
+  animation: shake-button-fast 0.4s ease-out;
+}
+
+@keyframes drop-down-subtle {
+  0% {
+    transform: translateY(0);
+  }
+  45% {
+    transform: translateY(6px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+.animate-drop-down-subtle {
+  animation: drop-down-subtle 0.35s ease-out;
+}
+
+@keyframes otp-error-slot {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  35% {
+    transform: translateY(10px);
+    opacity: 0.92;
+  }
+  70% {
+    transform: translateY(3px);
+    opacity: 0.97;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-otp-error-slot {
+  animation: otp-error-slot 420ms cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+.otp-digit-input,
+.otp-digit-input:hover,
+.otp-digit-input:focus,
+.otp-digit-input:focus-visible,
+.otp-digit-input:active {
+  background-color: #ffffff !important;
+}
+
+.otp-digit-input.otp-digit-empty,
+.otp-digit-input.otp-digit-empty:hover,
+.otp-digit-input.otp-digit-empty:focus,
+.otp-digit-input.otp-digit-empty:focus-visible,
+.otp-digit-input.otp-digit-empty:active {
+  background-color: #ffffff !important;
+}
+
+.otp-digit-input.otp-digit-filled,
+.otp-digit-input.otp-digit-filled:hover,
+.otp-digit-input.otp-digit-filled:active,
+.otp-digit-input.otp-digit-filled:focus,
+.otp-digit-input.otp-digit-filled:focus-visible {
+  background-color: rgb(238 240 243) !important;
+}
+
+.otp-digit-input:focus,
+.otp-digit-input:focus-visible {
+  background-color: #ffffff !important;
+  border-color: rgb(156 163 175) !important;
+  box-shadow: 0 0 0 2px rgb(17 24 39 / 0.05) !important;
+}
+
+.otp-digit-input.otp-digit-validating,
+.otp-digit-input.otp-digit-validating:hover,
+.otp-digit-input.otp-digit-validating:focus,
+.otp-digit-input.otp-digit-validating:focus-visible,
+.otp-digit-input.otp-digit-validating:active {
+  background-color: rgb(229 231 235) !important;
+  border-color: rgb(209 213 219) !important;
+  color: rgb(75 85 99) !important;
+}
+
+.otp-digit-input[data-filled="true"],
+.otp-digit-input[data-filled="true"]:hover,
+.otp-digit-input[data-filled="true"]:focus,
+.otp-digit-input[data-filled="true"]:focus-visible,
+.otp-digit-input[data-filled="true"]:active {
+  background-color: rgb(238 240 243) !important;
+}
+
+.otp-digit-input[data-verifying="true"],
+.otp-digit-input[data-verifying="true"]:hover,
+.otp-digit-input[data-verifying="true"]:focus,
+.otp-digit-input[data-verifying="true"]:focus-visible,
+.otp-digit-input[data-verifying="true"]:active {
+  background-color: rgb(238 240 243) !important;
+}
+
+@keyframes step-exit-left {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+
+@keyframes step-enter-right {
+  0% {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-step-exit-left {
+  animation: step-exit-left 0.18s ease-in forwards;
+}
+
+.animate-step-enter-right {
+  animation: step-enter-right 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 @keyframes bounce-horizontal {

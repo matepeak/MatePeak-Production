@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, Check, X } from "lucide-react";
+import { Eye, EyeOff, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -72,9 +72,7 @@ export function PasswordInput({
           placeholder={placeholder}
           required={required}
           className={cn(
-            "pr-10 transition-all duration-200 ease-in-out",
-            isFocused && "ring-2 ring-blue-400 border-transparent",
-            !isFocused && "hover:bg-gray-50",
+            "pr-10 transition-all duration-200 ease-in-out bg-white",
             hasInteracted && value.length > 0 && !allMet && "border-red-400",
             hasInteracted && allMet && value.length > 0 && "border-green-400",
             className
@@ -98,10 +96,11 @@ export function PasswordInput({
       {showValidation && (
         <div
           id={`${id}-requirements`}
-          className="border border-gray-200 bg-gray-50 p-3 rounded-md animate-fade-in"
+          className="border border-gray-200 bg-white p-3 rounded-lg animate-fade-in"
           role="status"
           aria-live="polite"
         >
+          <p className="text-xs font-medium text-gray-600 mb-2">Password requirements</p>
           <div className="space-y-2">
             {requirements.map((req, index) => {
               const isMet = metRequirements[index];
@@ -110,13 +109,13 @@ export function PasswordInput({
                   key={req.label}
                   className={cn(
                     "flex items-center gap-2 text-sm transition-all duration-200 ease-in-out",
-                    isMet ? "text-green-600" : "text-gray-500"
+                    isMet ? "text-gray-800" : "text-gray-500"
                   )}
                 >
                   {isMet ? (
                     <Check className="h-4 w-4 text-green-500 flex-shrink-0" aria-hidden="true" />
                   ) : (
-                    <X className="h-4 w-4 text-red-400 flex-shrink-0" aria-hidden="true" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-gray-300 flex-shrink-0" aria-hidden="true" />
                   )}
                   <span>{req.label}</span>
                 </div>

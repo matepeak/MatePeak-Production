@@ -19,7 +19,6 @@ import OutcomesStep from "@/components/onboarding/OutcomesStep";
 import ServicesAndPricingStep from "@/components/onboarding/ServicesAndPricingStep";
 import AvailabilityStep from "@/components/onboarding/AvailabilityStep";
 import ProfileSetupStep from "@/components/onboarding/ProfileSetupStep";
-import StepNavigation from "@/components/onboarding/StepNavigation";
 import OnboardingSuccessModal from "@/components/onboarding/OnboardingSuccessModal";
 import { useExpertOnboardingForm } from "@/hooks/useExpertOnboardingForm";
 import { updateExpertProfile } from "@/services/expertProfileService";
@@ -34,7 +33,6 @@ export default function ExpertOnboarding() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [completedUsername, setCompletedUsername] = useState("");
-  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [showPhaseTransition, setShowPhaseTransition] = useState(false);
   const navigate = useNavigate();
   const form = useExpertOnboardingForm();
@@ -141,21 +139,6 @@ export default function ExpertOnboarding() {
       toast.error(error.message || "Failed to save profile");
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleSaveDraft = async () => {
-    setIsSavingDraft(true);
-    try {
-      const data = form.getValues();
-      await updateExpertProfile({ ...data, is_profile_live: false });
-      toast.success("Draft saved! Continue later from your dashboard.");
-      localStorage.removeItem('mentor-onboarding-draft');
-      navigate("/");
-    } catch (error: any) {
-      toast.error("Failed to save draft");
-    } finally {
-      setIsSavingDraft(false);
     }
   };
 
@@ -316,24 +299,14 @@ export default function ExpertOnboarding() {
               <h3 className="text-lg font-semibold text-gray-800">
                 {currentStepInfo?.title}
               </h3>
-              {!currentStepInfo?.required && (
-                <span className="text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full">
-                  Optional
-                </span>
-              )}
-            </div>
-
-            {/* Save Draft Button */}
-            <div className="mb-4 flex justify-end">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={handleSaveDraft}
-                disabled={isSavingDraft}
-                className="text-gray-600 hover:text-gray-900"
-              >
-                {isSavingDraft ? "Saving..." : "💾 Save Draft & Continue Later"}
-              </Button>
+              <div className="flex items-center gap-2">
+                {!currentStepInfo?.required && (
+                  <span className="text-xs bg-gray-100 text-gray-600 px-3 py-1 rounded-full">
+                    Optional
+                  </span>
+                )}
+                <span className="text-xs text-gray-500">Draft auto-saves every 30s</span>
+              </div>
             </div>
 
             <TooltipProvider>

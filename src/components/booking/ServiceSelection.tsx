@@ -269,7 +269,7 @@ export default function ServiceSelection({
                       onCheckedChange={(checked) =>
                         toggleFreeDemo(serviceKey, checked)
                       }
-                      className="scale-90 origin-right data-[state=checked]:bg-matepeak-primary"
+                      className="scale-90 origin-right data-[state=checked]:bg-green-600"
                     />
                   </div>
                 )}
