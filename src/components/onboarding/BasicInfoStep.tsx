@@ -426,17 +426,49 @@ const COUNTRY_CODES = [
   { code: "+966", country: "Saudi Arabia", flag: "🇸🇦" },
 ];
 
+const getIsoCodeFromFlagEmoji = (flagEmoji: string): string | null => {
+  if (!flagEmoji) return null;
+
+  const codePoints = Array.from(flagEmoji).map((char) => char.codePointAt(0));
+  if (codePoints.length !== 2 || codePoints.some((point) => !point)) return null;
+
+  const iso = codePoints
+    .map((point) => {
+      const safePoint = point as number;
+      if (safePoint < 0x1f1e6 || safePoint > 0x1f1ff) return "";
+      return String.fromCharCode(safePoint - 0x1f1e6 + 65);
+    })
+    .join("");
+
+  return iso.length === 2 ? iso.toLowerCase() : null;
+};
+
+const getFlagImageUrl = (flagEmoji: string): string | null => {
+  const iso = getIsoCodeFromFlagEmoji(flagEmoji);
+  return iso ? `https://flagcdn.com/${iso}.svg` : null;
+};
+
 export default function BasicInfoStep({ form }: { form: UseFormReturn<any> }) {
   const languages = form.watch("languages") || [];
   const [searchQuery, setSearchQuery] = useState("");
   const [showAllExpertise, setShowAllExpertise] = useState(false);
   const [showAllSkills, setShowAllSkills] = useState(false);
   const [countryCode, setCountryCode] = useState("+91");
+  const [countrySearchTerm, setCountrySearchTerm] = useState("");
+  const [countryCodeSearchTerm, setCountryCodeSearchTerm] = useState("");
   const [customExpertise, setCustomExpertise] = useState("");
   const [customSkill, setCustomSkill] = useState("");
   const selectedCategories = form.watch("category") || [];
   const selectedSkills = form.watch("skills") || [];
   const expertiseTags = form.watch("expertiseTags") || [];
+  const filteredCountries = COUNTRIES.filter((country) =>
+    country.name.toLowerCase().includes(countrySearchTerm.toLowerCase())
+  );
+  const filteredCountryCodes = COUNTRY_CODES.filter((item) =>
+    item.country.toLowerCase().includes(countryCodeSearchTerm.toLowerCase()) ||
+    item.code.toLowerCase().includes(countryCodeSearchTerm.toLowerCase())
+  );
+  const selectedCountryCodeItem = COUNTRY_CODES.find((item) => item.code === countryCode);
   
   // Get available tags based on selected categories
   const availableTags = selectedCategories.length > 0 
@@ -616,9 +648,11 @@ export default function BasicInfoStep({ form }: { form: UseFormReturn<any> }) {
                 type="email"
                 placeholder="you@example.com" 
                 {...field} 
-                className="h-11 border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 rounded-lg transition-colors"
+                readOnly
+                className="h-11 border-gray-200 bg-gray-50 text-gray-600 focus:border-gray-200 focus:ring-0 rounded-lg transition-colors cursor-not-allowed"
               />
             </FormControl>
+            <p className="text-xs text-gray-500">Email is linked to your account and can’t be changed here.</p>
             <FormMessage />
           </FormItem>
         )}
@@ -707,20 +741,64 @@ export default function BasicInfoStep({ form }: { form: UseFormReturn<any> }) {
               <FormLabel className="text-sm font-medium text-gray-700">
                 Country of Birth*
               </FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select
+                modal={false}
+                onValueChange={field.onChange}
+                value={field.value}
+                onOpenChange={(open) => {
+                  if (!open) setCountrySearchTerm("");
+                }}
+              >
                 <FormControl>
                   <SelectTrigger className="h-11 border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 rounded-lg transition-colors">
                     <SelectValue placeholder="Select your country" className="flex items-center gap-2">
-                      {selectedCountry ? `${selectedCountry.flag} ${selectedCountry.name}` : "Select your country"}
+                      {selectedCountry ? (
+                        <span className="inline-flex items-center gap-2">
+                          <span className="relative inline-flex h-4 w-5 items-center justify-center overflow-hidden rounded-sm bg-gray-100">
+                            <span className="text-[10px] leading-none">{selectedCountry.flag}</span>
+                            <img
+                              src={getFlagImageUrl(selectedCountry.flag) || undefined}
+                              alt={`${selectedCountry.name} flag`}
+                              className="absolute inset-0 h-full w-full object-contain"
+                              loading="lazy"
+                            />
+                          </span>
+                          <span>{selectedCountry.name}</span>
+                        </span>
+                      ) : "Select your country"}
                     </SelectValue>
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent className="max-h-60">
-                  {COUNTRIES.map((country) => (
-                    <SelectItem key={country.name} value={country.name} className="cursor-pointer">
-                      {country.flag} {country.name}
-                    </SelectItem>
-                  ))}
+                  <div className="p-1.5 pb-2">
+                    <Input
+                      value={countrySearchTerm}
+                      onChange={(event) => setCountrySearchTerm(event.target.value)}
+                      onKeyDown={(event) => event.stopPropagation()}
+                      placeholder="Search country"
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                  {filteredCountries.length > 0 ? (
+                    filteredCountries.map((country) => (
+                      <SelectItem key={country.name} value={country.name} className="cursor-pointer">
+                        <span className="inline-flex items-center gap-2">
+                          <span className="relative inline-flex h-4 w-5 items-center justify-center overflow-hidden rounded-sm bg-gray-100">
+                            <span className="text-[10px] leading-none">{country.flag}</span>
+                            <img
+                              src={getFlagImageUrl(country.flag) || undefined}
+                              alt={`${country.name} flag`}
+                              className="absolute inset-0 h-full w-full object-contain"
+                              loading="lazy"
+                            />
+                          </span>
+                          <span>{country.name}</span>
+                        </span>
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-gray-500">No country found</div>
+                  )}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -935,21 +1013,9 @@ export default function BasicInfoStep({ form }: { form: UseFormReturn<any> }) {
       />
 
       <div className="space-y-4" data-field="languages">
-        <div className="flex items-center justify-between">
-          <FormLabel className="text-sm font-medium text-gray-700">
-            Languages You Speak*
-          </FormLabel>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={addLanguage}
-            className="h-9 text-xs border-gray-200 hover:bg-gray-50"
-          >
-            <Plus className="w-3.5 h-3.5 mr-1.5" />
-            Add Language
-          </Button>
-        </div>
+        <FormLabel className="text-sm font-medium text-gray-700">
+          Languages You Speak*
+        </FormLabel>
 
         <div className="space-y-3">
           {languages.map((_, index: number) => (
@@ -1015,11 +1081,23 @@ export default function BasicInfoStep({ form }: { form: UseFormReturn<any> }) {
           ))}
         </div>
         
-        {languages.length === 0 && (
-          <p className="text-sm text-center py-6 text-gray-400 border border-dashed border-gray-200 rounded-lg">
-            Click "Add Language" to add languages you speak
-          </p>
-        )}
+        <div className="border border-dashed border-gray-200 rounded-lg py-5 px-4 text-center space-y-2">
+          {languages.length === 0 && (
+            <p className="text-sm text-gray-400">
+              Add languages you speak to help students find you easily
+            </p>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={addLanguage}
+            className="h-9 text-xs border-gray-200 hover:bg-gray-50"
+          >
+            <Plus className="w-3.5 h-3.5 mr-1.5" />
+            Add Language
+          </Button>
+        </div>
       </div>
 
       <FormField
@@ -1031,16 +1109,65 @@ export default function BasicInfoStep({ form }: { form: UseFormReturn<any> }) {
               Phone number
             </FormLabel>
             <div className="flex gap-3">
-              <Select value={countryCode} onValueChange={setCountryCode}>
+              <Select
+                modal={false}
+                value={countryCode}
+                onValueChange={setCountryCode}
+                onOpenChange={(open) => {
+                  if (!open) setCountryCodeSearchTerm("");
+                }}
+              >
                 <SelectTrigger className="w-28 h-11 border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 rounded-lg transition-colors">
-                  <SelectValue />
+                  <SelectValue>
+                    {selectedCountryCodeItem ? (
+                      <span className="inline-flex items-center gap-2">
+                        <span className="relative inline-flex h-4 w-5 items-center justify-center overflow-hidden rounded-sm bg-gray-100">
+                          <span className="text-[10px] leading-none">{selectedCountryCodeItem.flag}</span>
+                          <img
+                            src={getFlagImageUrl(selectedCountryCodeItem.flag) || undefined}
+                            alt={`${selectedCountryCodeItem.country} flag`}
+                            className="absolute inset-0 h-full w-full object-contain"
+                            loading="lazy"
+                          />
+                        </span>
+                        <span className="font-medium">{selectedCountryCodeItem.code}</span>
+                      </span>
+                    ) : (
+                      countryCode
+                    )}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="max-h-60">
-                  {COUNTRY_CODES.map((item) => (
-                    <SelectItem key={item.code} value={item.code}>
-                      <span className="font-medium">{item.code}</span>
-                    </SelectItem>
-                  ))}
+                  <div className="p-1.5 pb-2">
+                    <Input
+                      value={countryCodeSearchTerm}
+                      onChange={(event) => setCountryCodeSearchTerm(event.target.value)}
+                      onKeyDown={(event) => event.stopPropagation()}
+                      placeholder="Search code"
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                  {filteredCountryCodes.length > 0 ? (
+                    filteredCountryCodes.map((item) => (
+                      <SelectItem key={`${item.code}-${item.country}`} value={item.code}>
+                        <span className="inline-flex items-center gap-2">
+                          <span className="relative inline-flex h-4 w-5 items-center justify-center overflow-hidden rounded-sm bg-gray-100">
+                            <span className="text-[10px] leading-none">{item.flag}</span>
+                            <img
+                              src={getFlagImageUrl(item.flag) || undefined}
+                              alt={`${item.country} flag`}
+                              className="absolute inset-0 h-full w-full object-contain"
+                              loading="lazy"
+                            />
+                          </span>
+                          <span className="font-medium">{item.code}</span>
+                          <span className="text-xs text-gray-500">{item.country}</span>
+                        </span>
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-gray-500">No code found</div>
+                  )}
                 </SelectContent>
               </Select>
               <FormControl>

@@ -32,7 +32,7 @@ const Footer = () => {
         .from("expert_profiles")
         .select("username, onboarding_complete")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
       setProfile(expertData);
     }
   };

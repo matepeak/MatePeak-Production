@@ -12,7 +12,7 @@ export default function OnboardingHeader() {
               <img
                 src="/lovable-uploads/14bf0eea-1bc9-4675-9231-356df10eb82d.png"
                 alt="MatePeak"
-                className="h-8 w-auto"
+                className="h-10 w-auto"
               />
               <span className="ml-2.5 text-xl font-semibold tracking-tight text-gray-900">
                 MatePeak

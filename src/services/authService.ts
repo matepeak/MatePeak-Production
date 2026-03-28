@@ -27,8 +27,7 @@ export async function signup(data: SignupData) {
         data: {
           full_name: name,
           role: role
-        },
-        emailRedirectTo: `${window.location.origin}/`
+        }
       }
     });
     
@@ -39,7 +38,7 @@ export async function signup(data: SignupData) {
       if (error.message.includes('fetch')) {
         return { success: false, error: 'Network error. Please check your internet connection.' };
       } else if (error.message.includes('User already registered')) {
-        return { success: false, error: 'An account with this email already exists.' };
+        return { success: false, error: 'This email may already be registered. If not verified yet, use email verification to continue.' };
       } else {
         return { success: false, error: error.message };
       }
@@ -47,7 +46,7 @@ export async function signup(data: SignupData) {
     
     return { 
       success: true, 
-      message: 'Signup successful! Please check your email to verify your account.',
+      message: 'Signup successful! Please enter the verification code sent to your email.',
       data: authData 
     };
   } catch (error: any) {

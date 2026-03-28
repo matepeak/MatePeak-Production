@@ -336,6 +336,39 @@ export default function MentorPublicProfile() {
                     navigate(`/booking?mentorId=${mentor.id}`);
                   }}
                 />
+
+                <div className="mt-4 bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                  <h3 className="text-base font-semibold text-gray-900">
+                    Want to become a mentor?
+                  </h3>
+                  <p className="mt-1.5 text-sm text-gray-600 leading-relaxed">
+                    Share your expertise and guide learners 1-on-1.
+                  </p>
+                  <Button
+                    onClick={() => navigate("/mentor/signup")}
+                    size="sm"
+                    className="w-full mt-3 rounded-full font-semibold"
+                  >
+                    Become a Mentor
+                  </Button>
+
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <h4 className="text-sm font-semibold text-gray-900">
+                      Want to learn from mentors?
+                    </h4>
+                    <p className="mt-1.5 text-sm text-gray-600 leading-relaxed">
+                      Create a student account and start learning with experts.
+                    </p>
+                    <Button
+                      onClick={() => navigate("/student/signup")}
+                      variant="secondary"
+                      size="sm"
+                      className="w-full mt-3 rounded-full font-semibold"
+                    >
+                      Create Student Account
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
 

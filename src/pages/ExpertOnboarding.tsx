@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,10 +21,22 @@ export default function ExpertOnboarding() {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [continueShakeKey, setContinueShakeKey] = useState(0);
+  const [isStepTransitioning, setIsStepTransitioning] = useState(false);
+  const [stepAnimationClass, setStepAnimationClass] = useState("animate-step-enter-right");
+  const stepTransitionTimeoutRef = useRef<number | null>(null);
   const navigate = useNavigate();
   const form = useExpertOnboardingForm();
   
   const totalSteps = 3; // Basic Info → Services → Availability
+
+  useEffect(() => {
+    return () => {
+      if (stepTransitionTimeoutRef.current) {
+        clearTimeout(stepTransitionTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Check if scheduling services are enabled
   const hasSchedulingService = useMemo(() => {
@@ -201,6 +213,7 @@ export default function ExpertOnboarding() {
           "firstName", "lastName", "email", "username", "skills", "ageConfirmation"
         ]);
         if (!isValid) {
+          setContinueShakeKey((prev) => prev + 1);
           toast.error("Please fill in all required fields");
         }
         break;
@@ -212,6 +225,7 @@ export default function ExpertOnboarding() {
         );
         
         if (!hasEnabledService) {
+          setContinueShakeKey((prev) => prev + 1);
           toast.error("Please add at least one service offering");
           isValid = false;
         } else {
@@ -227,6 +241,7 @@ export default function ExpertOnboarding() {
           );
           
           if (invalidPrices && invalidPrices.length > 0) {
+            setContinueShakeKey((prev) => prev + 1);
             toast.error("Invalid Price Range", {
               description: "All enabled services must have a price between ₹50 and ₹20,000",
             });
@@ -253,6 +268,7 @@ export default function ExpertOnboarding() {
         
         // Only require availability if they have scheduling-based services
         if (hasSchedulingService && !hasAvailability) {
+          setContinueShakeKey((prev) => prev + 1);
           toast.error("Please set your availability for at least one day", {
             description: "1-on-1 sessions and chat services require availability slots"
           });
@@ -270,8 +286,15 @@ export default function ExpertOnboarding() {
     }
 
     if (isValid && step < totalSteps) {
-      setStep(step + 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setIsStepTransitioning(true);
+      setStepAnimationClass("animate-step-exit-left");
+
+      stepTransitionTimeoutRef.current = window.setTimeout(() => {
+        setStep((prev) => prev + 1);
+        setStepAnimationClass("animate-step-enter-right");
+        setIsStepTransitioning(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 180);
     }
   };
 
@@ -326,19 +349,24 @@ export default function ExpertOnboarding() {
         {/* Main Content Card */}
         <div className="bg-white">
           {/* Title Section - Clean Typography */}
-          <div className="mb-12 text-center">
+          <div className={cn("mb-12 text-center will-change-transform", stepAnimationClass)}>
             <h1 className="text-3xl font-semibold tracking-tight text-gray-900 mb-3">
               {stepComponents[step - 1]?.title}
             </h1>
-            <p className="text-base text-gray-500 max-w-xl mx-auto">
-              Complete your essential profile to start mentoring
-            </p>
+            <div className="flex items-center justify-center gap-2 text-base text-gray-500 max-w-xl mx-auto">
+              <p>Complete your phase 1 profile to start mentoring</p>
+              <span className="inline-flex items-center rounded-full bg-gray-100 px-3.5 py-1 text-sm leading-none font-medium text-gray-700">
+                3-5 min
+              </span>
+            </div>
           </div>
 
           <TooltipProvider>
             <Form {...form}>
               <form className="space-y-8">
-                {renderStep()}
+                <div className={cn("will-change-transform", stepAnimationClass)}>
+                  {renderStep()}
+                </div>
 
                 {/* Navigation - Clean Buttons */}
                 <div className="flex justify-between items-center pt-12 mt-12 border-t border-gray-100">
@@ -346,7 +374,7 @@ export default function ExpertOnboarding() {
                     type="button"
                     variant="ghost"
                     onClick={handleBack}
-                    disabled={step === 1}
+                    disabled={step === 1 || isStepTransitioning}
                     className="group px-6 h-11 text-gray-600 hover:text-gray-900 font-medium disabled:opacity-30 flex items-center gap-2"
                   >
                     <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
@@ -359,17 +387,21 @@ export default function ExpertOnboarding() {
                       type="button"
                       variant="ghost"
                       onClick={handleSaveDraft}
-                      disabled={isSavingDraft}
+                      disabled={isSavingDraft || isStepTransitioning}
                       className="text-sm text-gray-400 hover:text-gray-600"
                     >
                       {isSavingDraft ? "Saving..." : "Save Draft"}
                     </Button>
 
                     <Button
+                      key={continueShakeKey}
                       type="button"
                       onClick={handleNext}
-                      disabled={isSubmitting}
-                      className="group px-8 h-11 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+                      disabled={isSubmitting || isStepTransitioning}
+                      className={cn(
+                        "group px-8 h-12 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-full transition-colors flex items-center gap-2",
+                        continueShakeKey > 0 && "animate-shake-button-fast"
+                      )}
                     >
                       <span>
                         {isSubmitting ? "Publishing..." : 

@@ -12,10 +12,19 @@ const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
 const otpDebugMode = (Deno.env.get("OTP_DEBUG_MODE") ?? "false").toLowerCase() === "true";
 
+const OTP_TTL_SECONDS = Number(Deno.env.get("OTP_TTL_SECONDS") ?? "300");
+const OTP_MAX_SENDS_PER_HOUR = Number(Deno.env.get("OTP_MAX_SENDS_PER_HOUR") ?? "30");
+const OTP_MAX_SENDS_PER_DAY = Number(Deno.env.get("OTP_MAX_SENDS_PER_DAY") ?? "300");
+const OTP_MAX_VERIFY_ATTEMPTS = Number(Deno.env.get("OTP_MAX_VERIFY_ATTEMPTS") ?? "10");
+const OTP_VERIFIED_WINDOW_SECONDS = Number(Deno.env.get("OTP_VERIFIED_WINDOW_SECONDS") ?? "900");
+
 interface OtpRequest {
-  action: "send" | "verify";
+  action: "send" | "verify" | "create_account";
   email: string;
   otp?: string;
+  password?: string;
+  fullName?: string;
+  role?: "student" | "mentor";
 }
 
 const jsonResponse = (status: number, body: Record<string, unknown>) =>
@@ -45,6 +54,21 @@ const toHex = (buffer: ArrayBuffer): string =>
 const sha256Hex = async (value: string): Promise<string> => {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return toHex(digest);
+};
+
+const rollbackCreatedUser = async (
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  context: string
+): Promise<void> => {
+  const { error } = await supabase.auth.admin.deleteUser(userId);
+  if (error) {
+    console.error("Failed to rollback partially created user", {
+      userId,
+      context,
+      rollback_error: error.message,
+    });
+  }
 };
 
 const sendOtpEmail = async (to: string, otp: string): Promise<void> => {
@@ -83,7 +107,7 @@ const sendOtpEmail = async (to: string, otp: string): Promise<void> => {
       <div class="otp-box">
         <div class="otp-code">${otp}</div>
       </div>
-      <p class="warning">This OTP expires in 1 minute.</p>
+      <p class="warning">This OTP expires in ${OTP_TTL_SECONDS} seconds.</p>
       <p>If you did not request this code, please ignore this email.</p>
     </div>
     <div class="footer">
@@ -132,10 +156,10 @@ Deno.serve(async (req: Request) => {
     const action = body?.action;
     const email = normalizeEmail(body?.email || "");
 
-    if (!action || (action !== "send" && action !== "verify")) {
+    if (!action || !["send", "verify", "create_account"].includes(action)) {
       return jsonResponse(400, {
         success: false,
-        message: "Invalid action. Use 'send' or 'verify'.",
+        message: "Invalid action. Use 'send', 'verify', or 'create_account'.",
       });
     }
 
@@ -143,9 +167,63 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(400, { success: false, message: "Valid email is required" });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     if (action === "send") {
+      const now = Date.now();
+      const hourAgoIso = new Date(now - 60 * 60 * 1000).toISOString();
+      const dayAgoIso = new Date(now - 24 * 60 * 60 * 1000).toISOString();
+
+      const { data: latestActiveOtp } = await supabase
+        .from("email_otps")
+        .select("id, expires_at")
+        .eq("email", email)
+        .is("used_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (latestActiveOtp?.expires_at) {
+        const secondsLeft = Math.ceil((new Date(latestActiveOtp.expires_at).getTime() - now) / 1000);
+        if (secondsLeft > 0) {
+          return jsonResponse(429, {
+            success: false,
+            message: `Current OTP is still valid. Please wait ${secondsLeft}s before requesting a new OTP.`,
+            retry_after_seconds: secondsLeft,
+            expires_in_seconds: secondsLeft,
+            resend_available_in_seconds: secondsLeft,
+          });
+        }
+      }
+
+      const { count: hourCount } = await supabase
+        .from("email_otps")
+        .select("id", { count: "exact", head: true })
+        .eq("email", email)
+        .gte("created_at", hourAgoIso);
+
+      if ((hourCount || 0) >= OTP_MAX_SENDS_PER_HOUR) {
+        return jsonResponse(429, {
+          success: false,
+          message: "Too many OTP requests this hour. Please try again later.",
+        });
+      }
+
+      const { count: dayCount } = await supabase
+        .from("email_otps")
+        .select("id", { count: "exact", head: true })
+        .eq("email", email)
+        .gte("created_at", dayAgoIso);
+
+      if ((dayCount || 0) >= OTP_MAX_SENDS_PER_DAY) {
+        return jsonResponse(429, {
+          success: false,
+          message: "Daily OTP request limit reached. Please try tomorrow.",
+        });
+      }
+
       const otp = generateOtp();
       const otpHash = await sha256Hex(otp);
 
@@ -153,9 +231,10 @@ Deno.serve(async (req: Request) => {
         .from("email_otps")
         .update({ used_at: new Date().toISOString(), updated_at: new Date().toISOString() })
         .eq("email", email)
-        .is("used_at", null);
+        .is("used_at", null)
+        .is("verified_at", null);
 
-      const expiresAt = new Date(Date.now() + 60 * 1000).toISOString();
+      const expiresAt = new Date(Date.now() + OTP_TTL_SECONDS * 1000).toISOString();
       const { error: insertError } = await supabase.from("email_otps").insert({
         email,
         otp_hash: otpHash,
@@ -175,7 +254,8 @@ Deno.serve(async (req: Request) => {
       const responseBody: Record<string, unknown> = {
         success: true,
         message: "OTP sent successfully",
-        expires_in_seconds: 60,
+        expires_in_seconds: OTP_TTL_SECONDS,
+        resend_available_in_seconds: OTP_TTL_SECONDS,
       };
 
       if (otpDebugMode) {
@@ -185,90 +265,194 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(200, responseBody);
     }
 
-    const otp = (body?.otp || "").trim();
-    if (!/^\d{6}$/.test(otp)) {
-      return jsonResponse(400, { success: false, message: "OTP must be exactly 6 digits" });
-    }
+    if (action === "verify") {
+      const otp = (body?.otp || "").trim();
+      if (!/^\d{6}$/.test(otp)) {
+        return jsonResponse(400, { success: false, message: "OTP must be exactly 6 digits" });
+      }
 
-    const otpHash = await sha256Hex(otp);
-
-    const { data: matchingOtp, error: matchingError } = await supabase
-      .from("email_otps")
-      .select("id, expires_at")
-      .eq("email", email)
-      .eq("otp_hash", otpHash)
-      .is("used_at", null)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (matchingError) {
-      return jsonResponse(500, {
-        success: false,
-        message: "Failed to verify OTP",
-        error: matchingError.message,
-      });
-    }
-
-    if (!matchingOtp) {
       const { data: latestOtp } = await supabase
         .from("email_otps")
-        .select("id, expires_at, verify_attempts")
+        .select("id, otp_hash, expires_at, verify_attempts")
         .eq("email", email)
         .is("used_at", null)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (latestOtp?.id) {
+      if (!latestOtp) {
+        return jsonResponse(400, { success: false, message: "No active OTP found. Please request a new code." });
+      }
+
+      if ((latestOtp.verify_attempts || 0) >= OTP_MAX_VERIFY_ATTEMPTS) {
+        await supabase
+          .from("email_otps")
+          .update({ used_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+          .eq("id", latestOtp.id)
+          .is("used_at", null);
+
+        return jsonResponse(429, { success: false, message: "Too many invalid attempts. Request a new OTP." });
+      }
+
+      if (new Date(latestOtp.expires_at).getTime() < Date.now()) {
+        await supabase
+          .from("email_otps")
+          .update({ used_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+          .eq("id", latestOtp.id)
+          .is("used_at", null);
+
+        return jsonResponse(400, { success: false, message: "OTP expired" });
+      }
+
+      const otpHash = await sha256Hex(otp);
+      if (otpHash !== latestOtp.otp_hash) {
+        const nextAttempts = (latestOtp.verify_attempts || 0) + 1;
         await supabase
           .from("email_otps")
           .update({
-            verify_attempts: (latestOtp.verify_attempts || 0) + 1,
+            verify_attempts: nextAttempts,
+            used_at: nextAttempts >= OTP_MAX_VERIFY_ATTEMPTS ? new Date().toISOString() : null,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", latestOtp.id);
+          .eq("id", latestOtp.id)
+          .is("used_at", null);
 
-        if (new Date(latestOtp.expires_at).getTime() < Date.now()) {
-          return jsonResponse(400, { success: false, message: "OTP expired" });
-        }
+        return jsonResponse(400, { success: false, message: "Invalid OTP" });
       }
 
-      return jsonResponse(400, { success: false, message: "Invalid OTP" });
-    }
-
-    if (new Date(matchingOtp.expires_at).getTime() < Date.now()) {
-      await supabase
+      const nowIso = new Date().toISOString();
+      const { error: consumeError } = await supabase
         .from("email_otps")
-        .update({ used_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-        .eq("id", matchingOtp.id);
+        .update({
+          used_at: nowIso,
+          verified_at: nowIso,
+          updated_at: nowIso,
+        })
+        .eq("id", latestOtp.id)
+        .is("used_at", null);
 
-      return jsonResponse(400, { success: false, message: "OTP expired" });
+      if (consumeError) {
+        return jsonResponse(500, {
+          success: false,
+          message: "Failed to finalize OTP verification",
+          error: consumeError.message,
+        });
+      }
+
+      return jsonResponse(200, {
+        success: true,
+        verified: true,
+        message: "Email verified successfully",
+      });
     }
 
-    const nowIso = new Date().toISOString();
-    const { error: consumeError } = await supabase
-      .from("email_otps")
-      .update({
-        used_at: nowIso,
-        verified_at: nowIso,
-        updated_at: nowIso,
-      })
-      .eq("id", matchingOtp.id)
-      .is("used_at", null);
+    const password = (body?.password || "").trim();
+    const fullName = (body?.fullName || "").trim();
+    const role = body?.role;
 
-    if (consumeError) {
+    if (!password || password.length < 8) {
+      return jsonResponse(400, { success: false, message: "Password must be at least 8 characters." });
+    }
+
+    if (!fullName) {
+      return jsonResponse(400, { success: false, message: "Full name is required." });
+    }
+
+    if (role !== "student" && role !== "mentor") {
+      return jsonResponse(400, { success: false, message: "Role must be 'student' or 'mentor'." });
+    }
+
+    const { data: latestVerifiedOtp } = await supabase
+      .from("email_otps")
+      .select("id, verified_at")
+      .eq("email", email)
+      .not("verified_at", "is", null)
+      .order("verified_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!latestVerifiedOtp?.verified_at) {
+      return jsonResponse(403, { success: false, message: "Email is not verified. Verify OTP first." });
+    }
+
+    const verifiedAgeSeconds = Math.floor((Date.now() - new Date(latestVerifiedOtp.verified_at).getTime()) / 1000);
+    if (verifiedAgeSeconds > OTP_VERIFIED_WINDOW_SECONDS) {
+      return jsonResponse(403, { success: false, message: "Verification expired. Please verify OTP again." });
+    }
+
+    const { data: createdUser, error: createUserError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        full_name: fullName,
+        role,
+      },
+    });
+
+    if (createUserError) {
+      if ((createUserError.message || "").toLowerCase().includes("already")) {
+        return jsonResponse(409, {
+          success: false,
+          message: "An account with this email already exists. Please sign in.",
+        });
+      }
+
       return jsonResponse(500, {
         success: false,
-        message: "Failed to finalize OTP verification",
-        error: consumeError.message,
+        message: "Failed to create account",
+        error: createUserError.message,
       });
+    }
+
+    const userId = createdUser?.user?.id;
+    const userEmail = createdUser?.user?.email;
+
+    if (!userId || !userEmail) {
+      if (userId) {
+        await rollbackCreatedUser(supabase, userId, "missing_user_payload");
+      }
+      return jsonResponse(500, { success: false, message: "Account created but user data is incomplete." });
+    }
+
+    const { error: profileUpsertWithRoleError } = await supabase.from("profiles").upsert(
+      {
+        id: userId,
+        email: userEmail,
+        full_name: fullName,
+        role,
+      },
+      { onConflict: "id" }
+    );
+
+    if (profileUpsertWithRoleError) {
+      const { error: profileUpsertFallbackError } = await supabase.from("profiles").upsert(
+        {
+          id: userId,
+          email: userEmail,
+          full_name: fullName,
+        },
+        { onConflict: "id" }
+      );
+
+      if (profileUpsertFallbackError) {
+        console.error("Profile sync failed after account creation", {
+          userId,
+          role,
+          primary_error: profileUpsertWithRoleError.message,
+          fallback_error: profileUpsertFallbackError.message,
+        });
+        await rollbackCreatedUser(supabase, userId, "profile_upsert_failed");
+        return jsonResponse(500, {
+          success: false,
+          message: "Failed to complete account setup. Please try again.",
+        });
+      }
     }
 
     return jsonResponse(200, {
       success: true,
-      verified: true,
-      message: "Email verified successfully",
+      message: "Account created successfully",
     });
   } catch (error) {
     console.error("email-otp function error:", error);
